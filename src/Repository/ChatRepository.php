@@ -21,7 +21,7 @@ final readonly class ChatRepository
             'user_id' => $userId,
             'title' => $title,
             'created_at' => date('Y-m-d H:i:s'),
-            'model' => $model ?? 'Qwen3-Coder-30B-A3B-Instruct',
+            'model' => \App\Infrastructure\AI\OvhModelDefaults::resolve($model),
         ]);
 
         return (int)$this->pdo->lastInsertId();
@@ -49,29 +49,43 @@ final readonly class ChatRepository
         return $result ?: null;
     }
 
-    public function addMessage(int $chatId, string $role, string $content): int
+    public function addMessage(int $chatId, string $role, string $content, array $images = []): int
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO chat_messages (chat_id, role, content, created_at) VALUES (:chat_id, :role, :content, :created_at)'
-        );
-        $stmt->execute([
-            'chat_id' => $chatId,
-            'role' => $role,
-            'content' => $content,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return (int)$this->pdo->lastInsertId();
+        $transaction = $images !== [];
+        if ($transaction) $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO chat_messages (chat_id, role, content, created_at) VALUES (:chat_id, :role, :content, :created_at)'
+            );
+            $stmt->execute([
+                'chat_id' => $chatId, 'role' => $role, 'content' => $content,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+            $id = (int)$this->pdo->lastInsertId();
+            if ($images !== []) {
+                $stmt = $this->pdo->prepare('INSERT INTO chat_message_images (message_id, data_url) VALUES (?, ?)');
+                $stmt->execute([$id, $images[0]]);
+            }
+            if ($transaction) $this->pdo->commit();
+            return $id;
+        } catch (\Throwable $error) {
+            if ($transaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
+        }
     }
 
     public function findMessagesByChatId(int $chatId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, role, content, created_at FROM chat_messages WHERE chat_id = :chat_id ORDER BY created_at ASC'
+            'SELECT m.id, m.role, m.content, m.created_at, i.data_url FROM chat_messages m LEFT JOIN chat_message_images i ON i.message_id = m.id WHERE m.chat_id = :chat_id ORDER BY m.id ASC'
         );
         $stmt->execute(['chat_id' => $chatId]);
 
-        return $stmt->fetchAll();
+        return array_map(static function (array $row): array {
+            if ($row['data_url'] !== null) $row['images'] = [$row['data_url']];
+            unset($row['data_url']);
+            return $row;
+        }, $stmt->fetchAll());
     }
 
     /**

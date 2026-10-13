@@ -16,6 +16,12 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'text/html');
     });
 
+    $app->get('/chat', function ($request, $response) {
+        $response->getBody()->write(file_get_contents(__DIR__.'/../public/ui/chat.html'));
+
+        return $response->withHeader('Content-Type', 'text/html; charset=UTF-8');
+    });
+
     $app->get('/test-api', function ($request, $response) {
         $body = $response->getBody();
         $body->write(file_get_contents(__DIR__.'/../public/ui/index.html'));
@@ -43,6 +49,7 @@ return function (App $app) {
         $group->post('/chats/{id}/messages', [ChatController::class, 'addMessage']);
         
         // AI Models
+        $group->get('/ai-connections', [ChatController::class, 'listConnections']);
         $group->get('/ai-models', [ChatController::class, 'listModels']);
     });
 };

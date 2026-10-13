@@ -23,12 +23,12 @@ final readonly class AuthService
     ) {
     }
 
-    public function register(RegisterInput $input): void
+    public function register(RegisterInput $input): bool
     {
         $existingUser = $this->userRepository->findByEmail($input->email);
         if ($existingUser) {
-            $this->logger->warning('Register failed: email taken', ['email' => $input->email]);
-            throw new ValidationException('Email is already taken');
+            $this->logger->warning('Register failed: email taken');
+            throw new ValidationException('Ten adres email ma już konto. Zaloguj się.');
         }
 
         $passwordHash = password_hash($input->password, PASSWORD_DEFAULT);
@@ -39,9 +39,17 @@ final readonly class AuthService
 
         $link = $this->appUrl.'/api/auth/verify-email?token='.$token;
         $body = '<p>Kliknij w link aby potwierdzić email:</p><p><a href="'.$link.'">'.$link.'</a></p>';
-        $this->mailService->send($input->email, 'Potwierdź rejestrację', $body);
-
-        $this->logger->info('User registered', ['email' => $input->email]);
+        $confirmationSent = false;
+        try {
+            $this->mailService->send($input->email, 'Potwierdź rejestrację', $body);
+            $confirmationSent = true;
+        } catch (\Throwable) {
+            // Konto jest już zapisane. Błąd SMTP nie oznacza nieudanej rejestracji.
+            // Nie zapisujemy adresu, linku aktywacyjnego ani wyjątku transportu w logach.
+            $this->logger->warning('Registration confirmation delivery failed');
+        }
+        $this->logger->info('User registered');
+        return $confirmationSent;
     }
 
     public function login(LoginInput $input): LoginResult
@@ -49,7 +57,7 @@ final readonly class AuthService
         $user = $this->userRepository->findByEmail($input->email);
 
         if (!$user || !password_verify($input->password, $user['password_hash'])) {
-            $this->logger->warning('Login failed', ['email' => $input->email]);
+            $this->logger->warning('Login failed');
             throw new UnauthorizedException('Invalid credentials');
         }
 

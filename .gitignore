@@ -4,3 +4,7 @@
 /var/database/
 /var/logs/
 /.idea/
+/.phpunit.cache/
+/.env.*
+/Design/*.zip
+/public/ui/favicons.zip

@@ -1,0 +1,39 @@
+/* Wspólna paleta VirralAI; układy ekranów pozostają lokalne. */
+:root{
+  color-scheme:dark;
+  --bg:#1b1d20; --bg-side:#121416; --field:#25282c;
+  --line:#2f3338; --line-soft:#272a2e;
+  --text:#ece8e1; --muted:#a09b93; --faint:#8d8981;
+  --accent:#3cc8bc; --accent-soft:rgba(60,200,188,.12); --accent-line:rgba(60,200,188,.5);
+  --danger:#e08a80; --danger-soft:rgba(224,138,128,.1); --danger-line:rgba(224,138,128,.35);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --metal:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,0) 46%),linear-gradient(180deg,#3b4046,#2b2f34);
+  --metal-edge:#4b5158 #23262a #1c1e21 #3f454b;
+  --metal-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 1px 2px rgba(0,0,0,.45);
+  --warning:#d3b980; --warning-soft:rgba(211,185,128,.12);
+  --metal-silver:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 52%),linear-gradient(180deg,#dfe3e7,#9da4ac);
+  --silver-text:#14171a;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans)}
+button,input,select,textarea{color:inherit;font-family:inherit}
+input,select,textarea{accent-color:var(--accent)}
+.legacy-ui nav{background:var(--bg-side);border-bottom:1px solid var(--line-soft)}
+.legacy-ui .card,.legacy-ui .dashboard-card{background:var(--bg-side);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.18);border-radius:12px}
+.legacy-ui .field input,.legacy-ui .field select,.legacy-ui .field textarea{background:var(--field);color:var(--text);border-color:var(--line);border-radius:10px}
+.legacy-ui input::placeholder,.legacy-ui textarea::placeholder{color:var(--faint);opacity:1}
+.legacy-ui button{background:var(--metal);color:var(--text);border:1px solid;border-color:var(--metal-edge);border-radius:10px;box-shadow:var(--metal-shadow)}
+.legacy-ui .btn-primary,.legacy-ui .btn-success{background:var(--metal-silver);color:var(--silver-text);border-color:#e1e5e9 #737b84 #626a73 #b8bec5}
+.legacy-ui .btn-outline{background:var(--metal);color:var(--text);border-color:var(--metal-edge)}
+.legacy-ui .btn-danger{background:linear-gradient(var(--danger-soft),var(--danger-soft)),var(--metal);color:var(--danger);border-color:var(--danger-line)}
+.legacy-ui button:hover{filter:brightness(1.12)}
+.legacy-ui button:active{filter:brightness(.92);box-shadow:inset 0 1px 3px rgba(0,0,0,.55)}
+.legacy-ui button:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.legacy-ui :is(button,a,input,select,textarea,.link):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.legacy-ui .dashboard-card:hover{border-color:var(--accent-line)}
+.legacy-ui pre,.legacy-ui .msg-json{background:var(--field);border-color:var(--line);color:var(--text);font-family:var(--mono)}
+.legacy-ui :is(pre.error){background:var(--danger-soft);border-color:var(--danger-line);color:var(--danger)}
+.legacy-ui :is(pre.success){background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.legacy-ui .badge-auth{background:var(--field);color:var(--muted);border:1px solid var(--line)}
+.legacy-ui .badge-ok{background:var(--accent-soft);color:var(--accent)}
+@media(prefers-reduced-motion:reduce){.legacy-ui *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

@@ -4,33 +4,22 @@ declare(strict_types=1);
 
 use DI\ContainerBuilder;
 
-$env = null;
+return function (ContainerBuilder $containerBuilder) {
+    $settings = require __DIR__.'/../config/app.php';
+    $sensitiveValue = static function (string $name, string $fallback = ''): string {
+        // Środowisko procesu ma pierwszeństwo przed zaszyfrowanym wpisem z pliku.
+        $candidates = [getenv($name), $_ENV[$name] ?? null, $_SERVER[$name] ?? null];
+        foreach ($candidates as $value) {
+            if (is_string($value) && trim($value) !== '' && !str_starts_with($value, 'encrypted:')) {
+                return $value;
+            }
+        }
+        return $fallback;
+    };
 
-/** @var string $env */
-return function (ContainerBuilder $containerBuilder) use ($env) {
+    $settings['ai_registry'] = ['key' => $sensitiveValue('DB_HASH')];
+    $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
+    $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);
 
-    $containerBuilder->addDefinitions([
-        'settings' => [
-            'displayErrorDetails' => $_ENV['APP_ENV'] === 'dev',
-            'db' => [
-                'path' => __DIR__.'/../var/database/app.sqlite',
-            ],
-            'ovh_ai' => [
-                'token' => $_ENV['OVH_AI_ENDPOINTS_ACCESS_TOKEN'] ?? 'no-token-set',
-                'url' => $_ENV['OVH_AI_BASE_URI'] ??  'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', //'https://qwen3-coder-30b-a3b-instruct.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1',
-                'model' => $_ENV['OVH_AI_MODEL'] ?? 'Qwen3-Coder-30B-A3B-Instruct',
-                'timeout' => (int)($_ENV['OVH_AI_TIMEOUT'] ?? 60),
-            ],
-            'logger' => [
-                'log_dir' => __DIR__.'/../var/logs',
-                'min_level' => $_ENV['LOG_LEVEL'] ?? 'warning',
-                'date_format' => 'Y-m-d H:i:s',
-                'timezone' => 'Europe/Warsaw',
-            ],
-            'app_url' => $_ENV['APP_URL'] ?? 'http://localhost:8181',
-            'mail' => [
-                'dsn' => $_ENV['MAIL_DSN'] ?? 'smtp://localhost:1025',
-            ],
-        ],
-    ]);
+    $containerBuilder->addDefinitions(['settings' => $settings]);
 };

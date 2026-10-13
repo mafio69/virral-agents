@@ -45,6 +45,11 @@ class ChatServiceTest extends TestCase
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
             );
+            CREATE TABLE chat_message_images (
+                message_id INTEGER PRIMARY KEY,
+                data_url TEXT NOT NULL,
+                FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
+            );
         ');
 
         // Create a test user
@@ -77,7 +82,7 @@ class ChatServiceTest extends TestCase
 
         $this->assertIsInt($result->id);
         $this->assertEquals('Test Chat', $result->title);
-        $this->assertEquals('Qwen3-Coder-30B-A3B-Instruct', $result->model);
+        $this->assertEquals('Qwen3.6-27B', $result->model);
     }
 
     public function testCreateChatWithDefaultModel(): void
@@ -92,7 +97,7 @@ class ChatServiceTest extends TestCase
 
         $this->assertIsInt($result->id);
         $this->assertEquals('Test Chat', $result->title);
-        $this->assertNull($result->model);
+        $this->assertSame('Qwen3.6-27B', $result->model);
     }
 
     public function testGetUserChats(): void
@@ -195,4 +200,38 @@ class ChatServiceTest extends TestCase
         
         $this->chatService->addMessage($messageInput);
     }
+    public function testImagesAreSavedAndRemainInModelHistory(): void
+    {
+        $image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXfoAAAAASUVORK5CYII=';
+        $client = $this->createMock(\App\Infrastructure\AI\OvhAiClient::class);
+        $client->expects($this->exactly(2))->method('generate')->willReturnCallback(
+            function (array $messages, ?string $model) use ($image): string {
+                $this->assertSame('Qwen3.6-27B', $model);
+                $this->assertSame('image_url', $messages[0]['content'][1]['type']);
+                $this->assertSame($image, $messages[0]['content'][1]['image_url']['url']);
+                return 'Analiza testowa';
+            }
+        );
+        $service = new ChatService(new \App\Repository\ChatRepository($this->pdo), $client, new \Psr\Log\NullLogger());
+        $chat = $service->createChat(new CreateChatInput($this->userId, 'Obraz', 'Qwen3.6-27B'));
+        $pair = $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, '', [$image]));
+        $this->assertSame([$image], $pair[0]['images']);
+        $this->assertSame('', $pair[0]['content']);
+        $saved = $service->getChatWithMessages($chat->id, $this->userId);
+        $this->assertSame([$image], $saved->messages[0]['images']);
+        $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, 'Co jeszcze widzisz?'));
+    }
+
+    public function testUnsupportedModelRejectsImageBeforeSavingMessage(): void
+    {
+        $image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXfoAAAAASUVORK5CYII=';
+        $chat = $this->chatService->createChat(new CreateChatInput($this->userId, 'Tekst', 'gpt-oss-20b'));
+        try {
+            $this->chatService->addMessage(new AddChatMessageInput($chat->id, $this->userId, 'Obraz', [$image]));
+            $this->fail('Expected validation failure');
+        } catch (\App\Exception\ValidationException) {
+            $this->assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM chat_messages')->fetchColumn());
+        }
+    }
+
 }

@@ -49,6 +49,28 @@ return function (ContainerBuilder $containerBuilder) {
                 timeout: $config['timeout'] ?? 120,
             );
         },
+        \App\Infrastructure\AI\ChatModelRegistryInterface::class => function (ContainerInterface $c) {
+            return new \App\Infrastructure\AI\ZaiChatModelRegistry(
+                $c->get(\App\Repository\AiModelRepository::class),
+                static fn() => $c->get(\App\Infrastructure\AI\AiClientFactoryInterface::class),
+            );
+        },
+        \App\Infrastructure\AI\AiClientFactoryInterface::class => function (ContainerInterface $c) {
+            $keyValue = $c->get('settings')['ai_registry']['key'];
+            if (!preg_match('/^[a-fA-F0-9]{64}$/D', $keyValue)) {
+                throw new \App\Exception\AiConnectionException('missing_configuration');
+            }
+            $key = new \App\Infrastructure\Secrets\SecretKey($keyValue);
+            $service = new \App\Infrastructure\Secrets\SecretService(
+                new \App\Infrastructure\Secrets\SecretEncryptor($key),
+                new \App\Infrastructure\Secrets\SecretDecryptor($key),
+            );
+            return new \App\Infrastructure\AI\AiClientFactory(
+                new \App\Repository\AiProviderRepository($c->get(PDO::class), $service),
+                $c->get(\App\Repository\AiUrlRepository::class),
+                $service,
+            );
+        },
         MailService::class => function (ContainerInterface $c) {
             $dsn = $c->get('settings')['mail']['dsn'];
 
@@ -66,6 +88,7 @@ return function (ContainerBuilder $containerBuilder) {
             return new ChatService(
                 chatRepository: $c->get(ChatRepository::class),
                 ovhAiClient: $c->get(OvhAiClient::class),
+                modelRegistry: $c->get(\App\Infrastructure\AI\ChatModelRegistryInterface::class),
                 logger: $c->get(LoggerInterface::class),
             );
         },

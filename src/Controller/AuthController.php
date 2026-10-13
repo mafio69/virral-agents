@@ -29,9 +29,11 @@ final class AuthController
         $data = (array)$request->getParsedBody();
         $input = $this->registerInputMapper->map($data);
 
-        $this->authService->register($input);
-
-        return JsonResponder::respond($response, ['message' => 'User registered successfully'], 201);
+        $confirmationSent = $this->authService->register($input);
+        return JsonResponder::respond($response, [
+            'message' => 'Konto zostało utworzone.',
+            'confirmation_sent' => $confirmationSent,
+        ], 201);
     }
 
     public function login(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -41,17 +43,15 @@ final class AuthController
 
         $result = $this->authService->login($input);
 
-        setcookie('token', $result->token, [
-            'expires' => strtotime($result->expiresAt),
-            'path' => '/',
-            'secure' => ($_ENV['APP_ENV'] ?? 'dev') === 'prod',
-            'httponly' => true,
-            'samesite' => ($_ENV['APP_ENV'] ?? 'dev') === 'prod' ? 'Strict' : 'Lax',
-        ]);
+        $secure = $request->getUri()->getScheme() === 'https' || ($_ENV['APP_ENV'] ?? 'dev') === 'prod';
+        $cookie = 'token='.rawurlencode($result->token)
+            .'; Expires='.gmdate('D, d M Y H:i:s', strtotime($result->expiresAt)).' GMT'
+            .'; Path=/; HttpOnly; SameSite='.($secure ? 'Strict' : 'Lax')
+            .($secure ? '; Secure' : '');
 
         return JsonResponder::respond($response, [
             'token' => $result->token,
-        ]);
+        ])->withAddedHeader('Set-Cookie', $cookie);
     }
 
     public function verifyEmail(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

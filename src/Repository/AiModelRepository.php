@@ -150,6 +150,40 @@ final readonly class AiModelRepository
         }
     }
 
+    /** @return list<AiModel> Active models with an active provider and endpoint. */
+    public function findAvailableAtEndpoint(string $endpoint): array
+    {
+        $stmt = $this->pdo->prepare($this->baseSelect().'
+            INNER JOIN ai_providers p ON p.id = m.provider_id
+            INNER JOIN ai_urls u ON u.id = m.endpoint_url_id
+            WHERE m.deleted_at IS NULL AND p.deleted_at IS NULL AND u.deleted_at IS NULL
+              AND rtrim(u.url, \'/\') = :endpoint
+            ORDER BY m.name_display, m.id');
+        $stmt->execute(['endpoint' => rtrim($endpoint, '/')]);
+        return array_map(static fn(array $row) => AiModel::fromRow($row), $stmt->fetchAll());
+    }
+
+    public function findOrCreateDiscovered(AiModel $connection, string $apiId): AiModel
+    {
+        $stmt = $this->pdo->prepare('
+            INSERT INTO ai_models (provider_id, id_model, name_display, endpoint_url_id, created_at, updated_at)
+            SELECT :provider, :model, :name, :endpoint, :created, :updated
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ai_models
+                WHERE provider_id = :provider AND id_model = :model
+                  AND endpoint_url_id = :endpoint AND deleted_at IS NULL
+            )');
+        $now = date('Y-m-d H:i:s');
+        $stmt->execute([
+            'provider' => $connection->providerId, 'model' => $apiId, 'name' => $apiId,
+            'endpoint' => $connection->endpointUrlId, 'created' => $now, 'updated' => $now,
+        ]);
+        foreach ($this->findByProviderId($connection->providerId) as $model) {
+            if ($model->endpointUrlId === $connection->endpointUrlId && $model->idModel === $apiId) return $model;
+        }
+        throw new RuntimeException('Discovered model registration failed');
+    }
+
     private function baseSelect(): string
     {
         return 'SELECT m.id, m.provider_id, m.id_model, m.name_display, m.endpoint_url_id, m.url_id,

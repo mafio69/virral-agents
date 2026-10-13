@@ -13,10 +13,11 @@ final readonly class AddChatMessageInputMapper
     {
         $content = $data['content'] ?? '';
 
-        if (!is_string($content) || trim($content) === '') {
+        $images = (new \App\Service\ChatImageValidator())->validate($data['images'] ?? []);
+        if (!is_string($content) || (trim($content) === '' && $images === []) || strlen($content) > 16000) {
             throw new ValidationException('Message content is required');
         }
 
-        return new AddChatMessageInput($chatId, $userId, trim($content));
+        return new AddChatMessageInput($chatId, $userId, trim($content), $images);
     }
 }

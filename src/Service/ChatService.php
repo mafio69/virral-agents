@@ -8,7 +8,11 @@ use App\Dto\Chat\AddChatMessageInput;
 use App\Dto\Chat\ChatResult;
 use App\Dto\Chat\CreateChatInput;
 use App\Exception\NotFoundException;
+use App\Exception\ValidationException;
 use App\Infrastructure\AI\OvhAiClient;
+use App\Infrastructure\AI\ChatModelRegistryInterface;
+use App\Infrastructure\AI\ZaiEndpointPolicy;
+use App\Exception\AiConnectionException;
 use App\Repository\ChatRepository;
 use Psr\Log\LoggerInterface;
 
@@ -18,12 +22,15 @@ final readonly class ChatService
         private readonly ChatRepository $chatRepository,
         private readonly OvhAiClient $ovhAiClient,
         private readonly LoggerInterface $logger,
+        private readonly ?ChatModelRegistryInterface $modelRegistry = null,
     ) {
     }
 
     public function createChat(CreateChatInput $input): ChatResult
     {
-        $id = $this->chatRepository->create($input->userId, $input->title, $input->model);
+        $model = $this->resolveModel($input->model);
+        if (str_starts_with($model, 'db:')) $this->registry()->resolve($model);
+        $id = $this->chatRepository->create($input->userId, $input->title, $model);
 
         $this->logger->info('Chat created', ['chat_id' => $id, 'user_id' => $input->userId]);
 
@@ -32,7 +39,7 @@ final readonly class ChatService
             userId: $input->userId,
             title: $input->title,
             createdAt: date('Y-m-d H:i:s'),
-            model: $input->model,
+            model: $model,
         );
     }
 
@@ -46,7 +53,7 @@ final readonly class ChatService
                 userId: (int)$row['user_id'],
                 title: $row['title'],
                 createdAt: $row['created_at'],
-                model: $row['model'] ?? null,
+                model: $this->resolveModel($row['model'] ?? null),
             ),
             $rows
         );
@@ -72,7 +79,7 @@ final readonly class ChatService
             title: $chat['title'],
             createdAt: $chat['created_at'],
             messages: $messages,
-            model: $chat['model'] ?? null,
+            model: $this->resolveModel($chat['model'] ?? null),
         );
     }
 
@@ -88,26 +95,35 @@ final readonly class ChatService
             throw new NotFoundException('Chat not found');
         }
 
+        $selector = $this->resolveModel($chat['model'] ?? null);
+        $registered = str_starts_with($selector, 'db:') ? $this->registry()->resolve($selector) : null;
+        $client = $registered !== null ? $this->registry()->clientFor($registered) : $this->ovhAiClient;
+        $apiModel = $registered?->idModel ?? $selector;
+        $images = (new ChatImageValidator())->validate($input->images);
+        if ($images !== [] && !$this->supportsImages($this->resolveModel($chat['model'] ?? null))) {
+            throw new ValidationException('Wybrany model nie obsługuje obrazów. Rozpocznij rozmowę z modelem tekst i obrazy.');
+        }
         $history = $this->chatRepository->findMessagesByChatId($input->chatId);
 
         $messageHistory = [];
         foreach ($history as $msg) {
             $messageHistory[] = [
                 'role' => $msg['role'],
-                'content' => $msg['content'],
+                'content' => $this->modelContent($msg['content'], $msg['images'] ?? []),
             ];
         }
 
         // Add user message to history for AI
         $messageHistory[] = [
             'role' => 'user',
-            'content' => $input->content,
+            'content' => $this->modelContent($input->content, $images),
         ];
 
         $userMessageId = $this->chatRepository->addMessage(
             $input->chatId,
             'user',
             $input->content,
+            $images,
         );
         
         $userMessage = [
@@ -118,11 +134,13 @@ final readonly class ChatService
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
+        if ($images !== []) $userMessage['images'] = $images;
+
         // Add assistant message
         try {
-            $aiContent = $this->ovhAiClient->generate($messageHistory, $chat['model'] ?? null);
+            $aiContent = $client->generate($messageHistory, $apiModel);
         } catch (\Throwable $e) {
-            $this->logger->error('AI call failed', ['chat_id' => $input->chatId, 'exception' => $e]);
+            $this->logger->error('AI call failed', ['chat_id' => $input->chatId]);
             throw $e;
         }
         
@@ -144,32 +162,66 @@ final readonly class ChatService
         return [$userMessage, $assistantMessage];
     }
 
-    public function getAvailableModels(): array
+    private function resolveModel(?string $model): string
     {
+        if ($model !== null && str_starts_with($model, 'zai:')) throw new AiConnectionException('missing_configuration');
+        if ($model !== null && str_starts_with($model, 'db:')) return $model;
+        if ($model !== null && str_starts_with($model, 'glm-')) {
+            throw new AiConnectionException('model_unavailable');
+        }
+        return \App\Infrastructure\AI\OvhModelDefaults::resolve($model,
+            \App\Infrastructure\AI\OvhModelDefaults::resolve($this->ovhAiClient->getDefaultModel()));
+    }
+
+    private function registry(): ChatModelRegistryInterface
+    {
+        return $this->modelRegistry ?? throw new AiConnectionException('missing_configuration');
+    }
+
+    private function modelContent(string $text, array $images): string|array
+    {
+        if ($images === []) return $text;
+        $parts = [['type' => 'text', 'text' => $text !== '' ? $text : 'Opisz ten obraz.']];
+        foreach ($images as $image) {
+            $parts[] = ['type' => 'image_url', 'image_url' => ['url' => $image]];
+        }
+        return $parts;
+    }
+
+    public function getConnections(): array
+    {
+        return [
+            ['id' => 'ovh', 'name' => 'OVH'],
+            ['id' => 'zai', 'name' => 'Z.ai / GLM'],
+        ];
+    }
+
+    public function getAvailableModels(?string $connection = null): array
+    {
+        if ($connection !== null && !in_array($connection, ['ovh', 'zai'], true)) {
+            throw new ValidationException('Nieznane połączenie AI.');
+        }
+        if ($connection === 'zai') return $this->registry()->listModels();
+        // The legacy endpoint without a connection parameter remains the OVH catalogue.
         try {
-            $client = new \GuzzleHttp\Client([
-                'base_uri' => $this->ovhAiClient->getBaseUrl(),
-                'timeout' => 30,
-            ]);
-            $response = $client->get('models');
-            $data = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
-            
+            $catalogue = $this->ovhAiClient->listModels();
+
             // Filter and format models
             $models = [];
-            foreach ($data['data'] as $model) {
-                // Skip non-text models (embeddings, image generation, etc.)
-                if (str_contains($model['id'], 'Embedding') || 
-                    str_contains($model['id'], 'stable-diffusion') ||
-                    str_contains($model['id'], 'bge-') ||
-                    $model['id'] === 'ppl') {
+            foreach ($catalogue as $model) {
+                // Keep chat models; image understanding is a separate capability.
+                if (preg_match('/embedding|stable-diffusion|bge-|whisper|guard|tts|^ppl$/i', $model['id'])) {
                     continue;
                 }
-                
+
                 $models[] = [
                     'id' => $model['id'],
+                    'provider' => 'ovh',
                     'name' => $model['id'],
                     'description' => $this->getModelDescription($model['id']),
                     'category' => $this->getModelCategory($model['id']),
+                    'supports_images' => $this->supportsImages($model['id']),
+                    'is_default' => $model['id'] === $this->resolveModel(null),
                     'context_length' => $model['context_length'] ?? 0,
                     'max_completion_tokens' => $model['max_completion_tokens'] ?? 0,
                 ];
@@ -177,7 +229,7 @@ final readonly class ChatService
             
             return $models;
         } catch (\Throwable $e) {
-            $this->logger->error('Failed to fetch models from OVH AI API', ['exception' => $e]);
+            $this->logger->error('Failed to fetch models from OVH AI API');
             throw $e;
         }
     }
@@ -185,6 +237,7 @@ final readonly class ChatService
     private function getModelDescription(string $modelId): string
     {
         $descriptions = [
+            'Qwen3.8-27B' => 'Coding and reasoning with image understanding',
             'Qwen3-Coder-30B-A3B-Instruct' => 'Advanced coding model optimized for code generation and debugging',
             'Qwen3-32B' => 'General purpose large language model',
             'Qwen3.5-397B-A17B' => 'Large reasoning model for complex tasks',
@@ -205,12 +258,23 @@ final readonly class ChatService
         return $descriptions[$modelId] ?? 'AI model for various tasks';
     }
 
+    private function supportsImages(string $modelId): bool
+    {
+        if (str_starts_with($modelId, 'db:')) {
+            return ZaiEndpointPolicy::supportsImages($this->registry()->resolve($modelId)->idModel);
+        }
+        return in_array($modelId, [
+            'Qwen3.8-27B', 'Qwen3.6-27B', 'Qwen3.5-397B-A17B',
+            'Qwen3.5-9B', 'Qwen2.5-VL-72B-Instruct',
+        ], true);
+    }
+
     private function getModelCategory(string $modelId): string
     {
-        if (str_contains($modelId, 'Coder')) {
+        if ($modelId === 'Qwen3.8-27B' || str_contains($modelId, 'Coder')) {
             return 'code';
         }
-        if (str_contains($modelId, 'VL') || str_contains($modelId, 'Visual')) {
+        if ($this->supportsImages($modelId)) {
             return 'visual';
         }
         if (str_contains($modelId, 'whisper')) {

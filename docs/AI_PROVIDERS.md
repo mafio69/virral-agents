@@ -26,3 +26,22 @@ Odpowiedzi modeli pozostają tekstem. Integracje nie udostępniają narzędzi wy
 
 Testy używają fikcyjnych kluczy, atrap HTTP i SQLite w pamięci. Nie potwierdzają
 uprawnień rzeczywistego konta ani płatnej odpowiedzi modelu.
+
+## Anthropic / Claude
+
+- Klucz: `ANTHROPIC_API_KEY`. Natywne `POST https://api.anthropic.com/v1/messages`,
+  nagłówki `x-api-key` i `anthropic-version: 2023-06-01`. To bezpośrednie API Anthropic.
+- Katalog konta z `GET /v1/models` uwzględnia paginację i pomija modele wycofane.
+  Możliwość analizy obrazów pochodzi z `capabilities.image_input`, a przy braku tego
+  pola z udokumentowanych rodzin Claude. Nie ma statycznej listy dostępnych modeli.
+- Wiadomości systemowe trafiają do pola `system`, historia zachowuje role user/assistant,
+  obrazy są wysyłane jako bloki base64 z MIME. Zdalne URL obrazów są odrzucane.
+- Limit odpowiedzi: 4096 tokenów. Odbierane są wyłącznie bloki tekstowe;
+  rozumowanie i wywołania narzędzi nie są wykonywane ani prezentowane jako odpowiedź.
+- Selektor rozmowy: `anthropic:<model>`. Klucz trafia z ustawień do klienta backendu
+  i jest przekazywany przez Compose/PHP-FPM.
+
+Źródła sprawdzone 2026-10-15:
+[Messages API](https://platform.claude.com/docs/en/api/messages/create),
+[katalog](https://platform.claude.com/docs/en/api/models/list),
+[możliwości modeli](https://platform.claude.com/docs/en/models/overview).

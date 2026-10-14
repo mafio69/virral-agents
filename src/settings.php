@@ -24,6 +24,7 @@ return function (ContainerBuilder $containerBuilder) {
     $settings['ai_registry'] = ['key' => $sensitiveValue('DB_HASH')];
     $settings['zai'] = ['key' => $sensitiveValue('ZAI_API_KEY')];
     $settings['openai'] = ['key' => $sensitiveValue('OPENAI_API_KEY')];
+    $settings['anthropic'] = ['key' => $sensitiveValue('ANTHROPIC_API_KEY')];
     $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
     $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);
 

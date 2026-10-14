@@ -1,5 +1,11 @@
 # STATUS
 
+## 2026-10-15 — integracja Anthropic
+
+- Osobna gałąź codex/integration-anthropic z develop, po lokalnym domknięciu etapu OpenAI. Natywny klient Messages i katalog konta z paginacją, przez wspólne interfejsy i transport.
+- ANTHROPIC_API_KEY w ustawieniach, DI i Compose/FPM. Selektor anthropic:..., system prompt osobno, obrazy base64, tylko odpowiedź tekstowa. Bez wykonywania narzędzi.
+- Testy protokołu, paginacji, metadanych obrazu, odrzucenia zdalnego URL i zapętlenia kursora: PHP 100/100, 347 asercji; UI 33/33. Składnia pięciu PHP i diff/Composer poprawne; istniejące ostrzeżenie o licencji i niedostępnym cache Composer. Brak prawdziwych zapytań API, odczytu sekretów i push.
+
 ## 2026-10-15 — integracja OpenAI
 
 - Osobna gałąź codex/integration-openai z lokalnego develop po domknięciu poprzednich zmian. Właściciel wybrał użycie istniejącego klucza; agent nie odczytał jego wartości.

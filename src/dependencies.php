@@ -67,6 +67,10 @@ return function (ContainerBuilder $containerBuilder) {
                 ) : null,
             );
             return new \App\Infrastructure\AI\ProviderRegistry($legacy, [
+                'anthropic' => new \App\Infrastructure\AI\AnthropicProvider(new \App\Infrastructure\AI\ProviderTransport(
+                    'https://api.anthropic.com/v1/', $c->get('settings')['anthropic']['key'] ?? '',
+                    authHeader: 'x-api-key', authPrefix: '', headers: ['anthropic-version' => '2023-06-01'],
+                )),
                 'openai' => new \App\Infrastructure\AI\OpenAiProvider(new \App\Infrastructure\AI\ProviderTransport(
                     'https://api.openai.com/v1/', $c->get('settings')['openai']['key'] ?? '',
                 )),

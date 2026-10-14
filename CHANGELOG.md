@@ -210,6 +210,12 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+## Anthropic — osobna integracja
+
+- Gałąź codex/integration-anthropic: natywne Messages API, katalog konta z paginacją i metadanymi obrazów, ANTHROPIC_API_KEY w ustawieniach/Compose/FPM. Historia anthropic:... zachowuje dostawcę.
+- System prompt, konwersja obrazów na base64/MIME, tekstowe odpowiedzi i odrzucanie zdalnych obrazów. Bez tools.
+- PHP 100/100 (347 asercji), UI 33/33; składnia i diff/Composer poprawne. Testy offline, bez płatnych wywołań i push.
+
 ## OpenAI — osobna integracja
 
 - Dodano katalog konta i Responses API z obrazami, store:false oraz limitem odpowiedzi. OPENAI_API_KEY w ustawieniach i Compose/FPM; osobny selektor openai:... zachowuje dostawcę rozmowy.

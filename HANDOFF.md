@@ -211,3 +211,11 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Historia openai:... pozostaje przypisana do dostawcy; frontend rozpoznaje dostawcę z selektora. Brak narzędzi, store:false, obrazy przez istniejącą walidację i input_image.
 - Testy na atrapach: katalog/filtrowanie, historia/własność/izolacja, nieznany model, brak klucza, neutralne błędy HTTP/sieci, błędny/za duży JSON. Nie uruchamiano płatnych odpowiedzi ani odczytu rzeczywistych sekretów.
 - Pełna weryfikacja etapu: PHP 94/94, 316 asercji; UI 32/32; składnia 10 PHP i kontrole diff/Composer poprawne (znane ostrzeżenie o licencji).
+
+## 2026-10-15 — etap Anthropic
+
+- OpenAI f64dd8c scalono lokalnie fast-forward do develop; osobna gałąź codex/integration-anthropic utworzona z develop.
+- AnthropicProvider używa Messages API, ProviderTransport, katalogu konta z paginacją i metadanych image_input. ANTHROPIC_API_KEY w ustawieniach/DI/Compose/FPM; historia anthropic:... pozostaje przypisana do dostawcy.
+- Dodano InlineImage do współdzielonej konwersji Data URL na base64/MIME dla natywnych API. Bez zdalnych obrazów i wykonywania tools. Instrukcja w docs/AI_PROVIDERS.md.
+- Testy offline, fikcyjne dane i klucze. Brak płatnych wywołań, odczytu rzeczywistych sekretów i push.
+- Pełna weryfikacja: PHP 100/100, 347 asercji; UI 33/33; składnia pięciu PHP i diff/Composer poprawne. Ostrzeżenia Composer: dotychczasowy brak licencji i niedostępny cache; walidacja i wymagania platformy przechodzą.

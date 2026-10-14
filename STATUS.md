@@ -1,5 +1,11 @@
 # STATUS
 
+## 2026-10-15 — integracja Google i domknięcie trzech dostawców
+
+- Gałąź codex/integration-google: natywne Gemini generateContent, katalog z paginacją, GEMINI_API_KEY w DI i Compose/FPM. Klucz wyłącznie w nagłówku, systemInstruction i obrazy inlineData; bez narzędzi.
+- Testy wspólnego routingu sprawdzają osobne historie OpenAI, Anthropic i Google oraz odmowę bez klucza przed siecią. PHP 108/108, 403 asercje; UI 34/34. Testy z atrapami HTTP, bez rzeczywistych zapytań dostawców.
+- Każdy dostawca ma własną gałąź i commit; lokalne scalenia do develop. Push wykonuje właściciel. Weryfikacja rzeczywistych uprawnień kont pozostaje lokalna.
+
 ## 2026-10-15 — integracja Anthropic
 
 - Osobna gałąź codex/integration-anthropic z develop, po lokalnym domknięciu etapu OpenAI. Natywny klient Messages i katalog konta z paginacją, przez wspólne interfejsy i transport.

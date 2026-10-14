@@ -1,5 +1,21 @@
 # Dostawcy czatu
 
+## Google / Gemini
+
+- Klucz: `GEMINI_API_KEY`, przesyłany nagłówkiem `x-goog-api-key`, bez umieszczania w URL.
+- Katalog `GET https://generativelanguage.googleapis.com/v1beta/models` uwzględnia
+  paginację i modele Gemini obsługujące generateContent; pomija warianty generowania obrazów i audio.
+- Rozmowa: `POST /v1beta/models/<model>:generateContent`, limit odpowiedzi 4096 tokenów.
+  System trafia do systemInstruction, rola assistant do model, obrazy do inlineData.
+- Selektor `google:<model>` zachowuje dostawcę rozmowy. Odpowiedź obejmuje tekst,
+  z pominięciem bloków thought i wywołań funkcji. Narzędzia nie są udostępniane.
+- Testy używają atrap; dostęp rzeczywistego konta wymaga lokalnego sprawdzenia.
+
+Źródła sprawdzone 2026-10-15:
+[katalog](https://ai.google.dev/api/models),
+[generateContent](https://ai.google.dev/api/generate-content),
+[autoryzacja](https://ai.google.dev/gemini-api/docs/generate-content/text-generation).
+
 Każda rozmowa zapisuje wybrany model wraz z identyfikatorem dostawcy. Brak dostępu,
 konfiguracji lub modelu powoduje błąd; historia nie przechodzi do innego dostawcy.
 Odpowiedzi modeli pozostają tekstem. Integracje nie udostępniają narzędzi wykonawczych.

@@ -18,6 +18,7 @@ services:
       ZAI_API_KEY: ${ZAI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       MAIL_DSN: ${MAIL_DSN:-}
       PHP_IDE_CONFIG: serverName=slim-ovh-ai
 

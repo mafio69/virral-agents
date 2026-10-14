@@ -67,6 +67,10 @@ return function (ContainerBuilder $containerBuilder) {
                 ) : null,
             );
             return new \App\Infrastructure\AI\ProviderRegistry($legacy, [
+                'google' => new \App\Infrastructure\AI\GeminiProvider(new \App\Infrastructure\AI\ProviderTransport(
+                    'https://generativelanguage.googleapis.com/v1beta/', $c->get('settings')['google']['key'] ?? '',
+                    authHeader: 'x-goog-api-key', authPrefix: '',
+                )),
                 'anthropic' => new \App\Infrastructure\AI\AnthropicProvider(new \App\Infrastructure\AI\ProviderTransport(
                     'https://api.anthropic.com/v1/', $c->get('settings')['anthropic']['key'] ?? '',
                     authHeader: 'x-api-key', authPrefix: '', headers: ['anthropic-version' => '2023-06-01'],

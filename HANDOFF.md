@@ -219,3 +219,8 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Dodano InlineImage do współdzielonej konwersji Data URL na base64/MIME dla natywnych API. Bez zdalnych obrazów i wykonywania tools. Instrukcja w docs/AI_PROVIDERS.md.
 - Testy offline, fikcyjne dane i klucze. Brak płatnych wywołań, odczytu rzeczywistych sekretów i push.
 - Pełna weryfikacja: PHP 100/100, 347 asercji; UI 33/33; składnia pięciu PHP i diff/Composer poprawne. Ostrzeżenia Composer: dotychczasowy brak licencji i niedostępny cache; walidacja i wymagania platformy przechodzą.
+# 2026-10-15 — trzy integracje dostawców
+
+- Osobne etapy i gałęzie: codex/integration-openai (f64dd8c), codex/integration-anthropic (0543e46), codex/integration-google. Scalenia lokalne do develop, bez push.
+- Google korzysta z natywnego generateContent, GEMINI_API_KEY i katalogu z paginacją. Instrukcja: docs/AI_PROVIDERS.md; lista konfiguracji: docs/KONFIGURACJA.md.
+- Pełne testy PHP 108/108, 403 asercje; UI 34/34. Dodatkowy test sprawdza routing i rozdzielenie historii wszystkich trzech dostawców. Brak płatnych wywołań i odczytu sekretów; rzeczywiste uprawnienia kont niepotwierdzone.

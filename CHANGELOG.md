@@ -210,6 +210,11 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+## Google — osobna integracja
+
+- Gałąź codex/integration-google: Gemini generateContent, katalog konta z paginacją, GEMINI_API_KEY, obsługa obrazów i historii google:... .
+- Testy wszystkich trzech dostawców sprawdzają routing i rozdzielenie historii. PHP 108/108 (403 asercje), UI 34/34; bez płatnych wywołań i push.
+
 ## Anthropic — osobna integracja
 
 - Gałąź codex/integration-anthropic: natywne Messages API, katalog konta z paginacją i metadanymi obrazów, ANTHROPIC_API_KEY w ustawieniach/Compose/FPM. Historia anthropic:... zachowuje dostawcę.

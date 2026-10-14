@@ -181,7 +181,7 @@ test('authentication failure prevents sending', async () => {
     assert.equal(sends, 0);
 });
 
-for (const provider of ['openai', 'anthropic']) test(`opening ${provider} history selects its provider and prevents changing the binding`, async () => {
+for (const provider of ['openai', 'anthropic', 'google']) test(`opening ${provider} history selects its provider and prevents changing the binding`, async () => {
     const requested = [];
     const controller = new ChatController(fixture({
         listConnections: async () => [{ id: 'ovh', name: 'OVH' }, { id: provider, name: provider }],

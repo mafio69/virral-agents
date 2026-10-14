@@ -9,14 +9,15 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 async function fixture({ blockedStorage = false, restoreCookie = false, response = { ok: true, status: 201, data: { confirmation_sent: false } } } = {}) {
     const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map(([, id]) => {
         const classes = new Set(['hidden']);
-        return [id, { value: '', textContent: '', disabled: false, checked: false, className: '',
+        return [id, { value: '', textContent: '', disabled: false, checked: false, className: '', attributes: {},
+            setAttribute(name, value) { this.attributes[name] = value; },
             classList: { add: (...names) => names.forEach(name => classes.add(name)),
                 remove: (...names) => names.forEach(name => classes.delete(name)), contains: name => classes.has(name) } }];
     }));
     const buttons = new Map(['register', 'login'].map(name => [name, { disabled: false }]));
     const requests = [];
     const context = vm.createContext({
-        document: { cookie: '', getElementById: id => elements.get(id) || null,
+        document: { cookie: '', body: { dataset: {} }, getElementById: id => elements.get(id) || null,
             querySelector: selector => buttons.get(selector.includes('register') ? 'register' : 'login') },
         localStorage: { getItem: () => { if (blockedStorage) throw new Error('Storage disabled'); return null; },
             removeItem: () => { if (blockedStorage) throw new Error('Storage disabled'); },
@@ -45,6 +46,19 @@ test('registration and login views open without missing DOM elements', async () 
     vm.runInContext("showForm('login')", context);
     assert.equal(elements.get('login-form').classList.contains('hidden'), false);
     assert.equal(elements.get('register-form').classList.contains('hidden'), true);
+});
+
+test('theme comparison preserves form values and sends no requests', async () => {
+    const { context, elements, requests } = await fixture({ blockedStorage: true });
+    elements.get('login-email').value = 'fixture@example.invalid';
+    vm.runInContext('toggleTheme()', context);
+    assert.equal(context.document.body.dataset.theme, 'dark');
+    assert.equal(elements.get('theme-toggle').attributes['aria-pressed'], 'true');
+    vm.runInContext('toggleTheme()', context);
+    assert.equal(context.document.body.dataset.theme, 'light');
+    assert.equal(elements.get('theme-toggle').attributes['aria-pressed'], 'false');
+    assert.equal(elements.get('login-email').value, 'fixture@example.invalid');
+    assert.equal(requests.length, 0);
 });
 
 test('blocked storage does not prevent registration or misreport mail failure', async () => {

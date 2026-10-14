@@ -189,3 +189,9 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Zmieniono selektory blokady wysyłania na button[type=submit], aby nie blokować przycisku Zamknij. Testy wykonują rzeczywiste handlery submit i sprawdzają jedno żądanie oraz preventDefault.
 - PHP 82/82, 250 asercji; UI 30/30; diff-check i Composer poprawne (znane ostrzeżenie o licencji). W przeglądarce potwierdzono biały kolor tła, 1px dolnej linii, natywną walidację pustego formularza i Enter wysyłający fikcyjne logowanie.
 - Screenshot bez wpisanych danych: artifacts/account-light-2026-10-15.jpg. Nie wykonywano rejestracji, wysyłki emaili ani zmiany hasła rzeczywistego konta. Bez push.
+
+## 2026-10-15 — wizualne porównanie obu kolorystyk
+
+- Właściciel nie wybrał jeszcze kolorystyki: chce zobaczyć tę samą stronę w obu wersjach. Dodano przełącznik jasnego/ciemnego tła na landing, bez utrwalania preferencji i bez zmiany układu/czatu.
+- Potwierdzono oba warianty w przeglądarce i zapisano artifacts/account-compare-light-2026-10-15.jpg oraz artifacts/account-compare-dark-2026-10-15.jpg; puste pola formularza, bez wrażliwych danych.
+- Test przełączania sprawdza zachowanie pól formularza, aria-pressed oraz brak żądań API także przy zablokowanym localStorage. PHP 82/82, 250 asercji; UI 31/31; diff/Composer poprawne (dotychczasowe ostrzeżenie o licencji). Bez push.

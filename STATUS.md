@@ -1,5 +1,11 @@
 # STATUS
 
+## 2026-10-15 — porównanie jasnego i ciemnego tła
+
+- Właściciel chce zobaczyć oba warianty przed wyborem kolorystyki. Landing ma przełącznik Ciemne tło / Jasne tło: ten sam układ i formularz, zmieniają się wyłącznie zmienne kolorów. Bez zapisywania preferencji i bez zmiany czatu.
+- Przełączanie zachowuje wpisane dane i nie wysyła formularza. PHP 82/82 (250 asercji), UI 31/31, kontrole diff/Composer poprawne (istniejące ostrzeżenie o licencji).
+- Zapisano rzeczywiste podglądy przeglądarkowe: artifacts/account-compare-light-2026-10-15.jpg oraz artifacts/account-compare-dark-2026-10-15.jpg. Nie dokonywano logowania/rejestracji ani operacji na danych użytkownika. Bez push.
+
 ## 2026-10-15 — jasny start i formularze konta
 
 - Na wyraźne życzenie właściciela zmiana obejmuje wyłącznie landing, panel startowy oraz logowanie/rejestrację. Czat i panel testowania API zachowują swój wygląd; wspólnego theme.css nie zmieniono.

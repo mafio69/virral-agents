@@ -210,6 +210,8 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+- Dodano możliwość obejrzenia tego samego formularza w jasnej i ciemnej kolorystyce przez przełącznik w nagłówku, bez utrwalania preferencji. Układ i dane formularza pozostają zachowane; czat bez zmian. PHP 82/82, UI 31/31; podglądy obu wersji w artifacts/account-compare-*-2026-10-15.jpg.
+
 - Białe tło, tekstowe akcje bez dekoracyjnych przycisków i ikon; pola z cienką dolną linią. Zmiana ograniczona do landing.html, bez zmiany czatu i panelu API.
 - Natywny submit i Enter dla logowania/rejestracji, walidacja przeglądarki oraz powiązane etykiety i autocomplete.
 - PHP 82/82 (250 asercji), UI 30/30; kontrole diff/Composer poprawne. Rzeczywista weryfikacja przeglądarkowa wyglądu i Enter na fikcyjnych danych.

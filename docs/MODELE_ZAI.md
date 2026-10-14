@@ -38,6 +38,16 @@ Nie wpisywać kluczy do tego dokumentu, czatu ani logów. Rejestr modeli może u
 
 ## Konfiguracja i uruchomienie
 
+### Bezpośrednia konfiguracja lokalna (2026-10-15)
+
+- Bieżąca instalacja korzysta z `ZAI_API_KEY` w lokalnym środowisku, wczytywanym przez wspólne src/settings.php. Compose oraz PHP-FPM przekazują tę samą zmienną. Nie wymaga to dodawania dostawcy ani klucza do rejestru bazy.
+- Przy skonfigurowanym kluczu lista zwraca modele `zai:...` z configured:true. To informacja o obecności konfiguracji, nie potwierdzenie uprawnień konta. Wywołania używają wyłącznie https://api.z.ai/api/paas/v4/chat/completions.
+- Istniejące selektory `db:...` nadal używają przypisanego rejestru. Nowe rozmowy z selektorem `zai:...` korzystają z konfiguracji środowiska; jej usunięcie blokuje wysyłkę zamiast przekierowania do OVH lub dostawcy z bazy. Nie zapisuje się klucza środowiska w bazie.
+- Publiczny katalog nadal służy walidacji identyfikatorów modeli i nie potwierdza rzeczywistego dostępu. Działający endpoint aplikacji zwrócił 8 modeli configured:true; właściciel potwierdził działanie czatu.
+- PHP 87/87 (270 asercji), UI 31/31; atrapy transportu potwierdzają standardowy endpoint, obrazy/historię, odmowę nieznanego modelu, kontrolę właściciela oraz blokadę po usunięciu konfiguracji. Agent nie wysłał rzeczywistej wiadomości testowej.
+
+### Konfiguracja przez rejestr bazy
+
 - UI pokazuje aktywne rekordy GLM z ai_models, połączone z aktywnym dostawcą i URL standardowego API. Nazwa zaczyna się od Z.ai. Sam dokument nie dodaje rekordów modeli do bazy.
 - Dla obrazów należy skonfigurować dokładnie glm-5.3-flash lub glm-5.3-flashx. Inne identyfikatory GLM pozostają tekstowe, dopóki możliwości nie zostaną potwierdzone.
 - Klucz dostawcy pozostaje w istniejącym zaszyfrowanym rejestrze. DB_HASH jest przekazywany z procesu do Compose i PHP-FPM, a używany dopiero przy wyborze zarejestrowanego modelu. Agent nie odczytywał ani nie zmieniał rzeczywistej konfiguracji lub danych bazy.

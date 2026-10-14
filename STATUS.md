@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-15 — działające Z.ai z konfiguracji środowiska
+
+- Podłączono potwierdzoną przez właściciela nazwę ZAI_API_KEY w src/settings.php, DI, Compose i PHP-FPM. Klient używa standardowego endpointu Z.ai; bez zapisu klucza do kodu, bazy i odpowiedzi API.
+- Rejestr obsługuje selektory zai:... z konfiguracji procesu oraz wcześniejsze db:... z bazy. Walidacja katalogu i własności zachowana; brak klucza blokuje wysyłkę bez przekierowania historii do OVH lub innego połączenia.
+- PHP 87/87, 270 asercji; UI 31/31; składnia pięciu PHP i kontrole diff/Composer poprawne (dotychczasowe ostrzeżenie o licencji). Lokalny katalog zwrócił 8 modeli configured:true; właściciel potwierdził działanie czatu.
+- Agent nie odczytywał kluczy ani danych bazy i nie wysłał rzeczywistej wiadomości testowej. Osobną kartę testową zamknięto bez wysyłania. Bez push; nie dodawano nieśledzonego katalogu chronionych danych do commitu.
+
 ## 2026-10-15 — porównanie jasnego i ciemnego tła
 
 - Właściciel chce zobaczyć oba warianty przed wyborem kolorystyki. Landing ma przełącznik Ciemne tło / Jasne tło: ten sam układ i formularz, zmieniają się wyłącznie zmienne kolorów. Bez zapisywania preferencji i bez zmiany czatu.

@@ -58,9 +58,13 @@ return function (ContainerBuilder $containerBuilder) {
             );
         },
         \App\Infrastructure\AI\ChatModelRegistryInterface::class => function (ContainerInterface $c) {
+            $key = $c->get('settings')['zai']['key'] ?? '';
             return new \App\Infrastructure\AI\ZaiChatModelRegistry(
                 $c->get(\App\Repository\AiModelRepository::class),
                 static fn() => $c->get(\App\Infrastructure\AI\AiClientFactoryInterface::class),
+                environmentClient: $key !== '' ? new \App\Infrastructure\AI\OpenAiCompatClient(
+                    \App\Infrastructure\AI\ZaiEndpointPolicy::BASE_URI, $key, 'glm-5.3',
+                ) : null,
             );
         },
         \App\Infrastructure\AI\AiClientFactoryInterface::class => function (ContainerInterface $c) {

@@ -29,7 +29,7 @@ final readonly class ChatService
     public function createChat(CreateChatInput $input): ChatResult
     {
         $model = $this->resolveModel($input->model);
-        if (str_starts_with($model, 'db:')) $this->registry()->resolve($model);
+        if ($this->usesRegistry($model)) $this->registry()->resolve($model);
         $id = $this->chatRepository->create($input->userId, $input->title, $model);
 
         $this->logger->info('Chat created', ['chat_id' => $id, 'user_id' => $input->userId]);
@@ -96,7 +96,7 @@ final readonly class ChatService
         }
 
         $selector = $this->resolveModel($chat['model'] ?? null);
-        $registered = str_starts_with($selector, 'db:') ? $this->registry()->resolve($selector) : null;
+        $registered = $this->usesRegistry($selector) ? $this->registry()->resolve($selector) : null;
         $client = $registered !== null ? $this->registry()->clientFor($registered) : $this->ovhAiClient;
         $apiModel = $registered?->idModel ?? $selector;
         $images = (new ChatImageValidator())->validate($input->images);
@@ -164,8 +164,7 @@ final readonly class ChatService
 
     private function resolveModel(?string $model): string
     {
-        if ($model !== null && str_starts_with($model, 'zai:')) throw new AiConnectionException('missing_configuration');
-        if ($model !== null && str_starts_with($model, 'db:')) return $model;
+        if ($model !== null && $this->usesRegistry($model)) return $model;
         if ($model !== null && str_starts_with($model, 'glm-')) {
             throw new AiConnectionException('model_unavailable');
         }
@@ -176,6 +175,11 @@ final readonly class ChatService
     private function registry(): ChatModelRegistryInterface
     {
         return $this->modelRegistry ?? throw new AiConnectionException('missing_configuration');
+    }
+
+    private function usesRegistry(string $model): bool
+    {
+        return str_starts_with($model, 'db:') || str_starts_with($model, 'zai:');
     }
 
     private function modelContent(string $text, array $images): string|array
@@ -260,7 +264,7 @@ final readonly class ChatService
 
     private function supportsImages(string $modelId): bool
     {
-        if (str_starts_with($modelId, 'db:')) {
+        if ($this->usesRegistry($modelId)) {
             return ZaiEndpointPolicy::supportsImages($this->registry()->resolve($modelId)->idModel);
         }
         return in_array($modelId, [

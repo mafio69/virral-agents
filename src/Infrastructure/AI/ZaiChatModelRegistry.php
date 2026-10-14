@@ -13,7 +13,7 @@ use Throwable;
 final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
 {
     /** @param Closure(): AiClientFactoryInterface $factory */
-    public function __construct(private AiModelRepository $models, private Closure $factory, private ?ModelCatalogueInterface $catalogue = null)
+    public function __construct(private AiModelRepository $models, private Closure $factory, private ?ModelCatalogueInterface $catalogue = null, private ?AiClientInterface $environmentClient = null)
     {
     }
 
@@ -21,14 +21,17 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
     {
         $remote = ($this->catalogue ?? new ZaiModelCatalogue())->listModels();
         $registered = $this->availableModels();
-        if ($registered === []) {
+        if ($registered === [] || $this->environmentClient !== null) {
+            $configured = $this->environmentClient !== null;
             return array_map(static fn(array $entry): array => [
                 'id' => 'zai:'.$entry['id'],
                 'name' => 'Z.ai — '.$entry['id'],
-                'description' => 'Katalog Z.ai z sieci; połączenie wymaga skonfigurowania dostawcy.',
+                'description' => $configured
+                    ? 'Katalog Z.ai z sieci; dostęp konta sprawdzany przy wysyłaniu.'
+                    : 'Katalog Z.ai z sieci; połączenie wymaga skonfigurowania dostawcy.',
                 'category' => $entry['supports_images'] ? 'visual' : 'general',
                 'supports_images' => $entry['supports_images'] && ZaiEndpointPolicy::supportsImages($entry['id']),
-                'provider' => 'zai', 'is_default' => false, 'configured' => false,
+                'provider' => 'zai', 'is_default' => false, 'configured' => $configured,
                 'catalogue_source' => 'provider_documentation', 'account_access_verified' => false,
             ], $remote);
         }
@@ -63,6 +66,21 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
 
     public function resolve(string $selector): AiModel
     {
+        if (str_starts_with($selector, 'zai:')) {
+            if ($this->environmentClient === null) {
+                throw new AiConnectionException('missing_configuration');
+            }
+            foreach (($this->catalogue ?? new ZaiModelCatalogue())->listModels() as $entry) {
+                if ($selector === 'zai:'.$entry['id']) {
+                    // Zero IDs identify process configuration, never a database record.
+                    return AiModel::fromRow([
+                        'id' => 0, 'provider_id' => 0, 'endpoint_url_id' => 0,
+                        'id_model' => $entry['id'], 'name_display' => 'Z.ai — '.$entry['id'],
+                    ]);
+                }
+            }
+            throw new AiConnectionException('model_unavailable');
+        }
         foreach ($this->availableModels() as $model) {
             if (hash_equals($this->selector($model), $selector)) return $model;
         }
@@ -72,6 +90,9 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
 
     public function clientFor(AiModel $model): AiClientInterface
     {
+        if ($model->id === 0 && $model->providerId === 0 && $model->endpointUrlId === 0) {
+            return $this->environmentClient ?? throw new AiConnectionException('missing_configuration');
+        }
         try {
             return ($this->factory)()->fromModel($model);
         } catch (AiConnectionException $error) {

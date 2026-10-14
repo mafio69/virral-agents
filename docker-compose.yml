@@ -15,6 +15,7 @@ services:
       OVH_AI_ENDPOINTS_ACCESS_TOKEN: ${OVH_AI_ENDPOINTS_ACCESS_TOKEN:-}
       DB_HASH: ${DB_HASH:-}
       USER_DATA_KEY: ${USER_DATA_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
       MAIL_DSN: ${MAIL_DSN:-}
       PHP_IDE_CONFIG: serverName=slim-ovh-ai
 

@@ -143,4 +143,93 @@ final class ZaiChatIntegrationTest extends TestCase
             $this->assertNull($error->getPrevious());
         }
     }
+
+    private function environmentRegistry(bool $configured = true): ZaiChatModelRegistry
+    {
+        $client = $this->client;
+        $factory = new class($client) implements AiClientFactoryInterface {
+            public function __construct(private AiClientInterface $client) {}
+            public function fromModel(AiModel $model): AiClientInterface { return $this->client; }
+        };
+        return new ZaiChatModelRegistry(new AiModelRepository($this->pdo), static fn() => $factory,
+            new class implements \App\Infrastructure\AI\ModelCatalogueInterface {
+                public function listModels(): array { return [['id' => 'glm-5.3-flash', 'supports_images' => true]]; }
+            }, environmentClient: $configured ? $client : null);
+    }
+
+    private function chatUsing(ZaiChatModelRegistry $registry): ChatService
+    {
+        return new ChatService(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)),
+            new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $registry);
+    }
+
+    public function testEnvironmentConnectionSendsImagesAndHistoryToStandardZaiEndpoint(): void
+    {
+        $registry = $this->environmentRegistry();
+        $this->pdo->exec('DELETE FROM ai_models');
+        $this->pdo->exec('DELETE FROM ai_providers');
+        $models = $registry->listModels();
+        self::assertTrue($models[0]['configured']);
+        self::assertFalse($models[0]['account_access_verified']);
+        self::assertSame('zai:glm-5.3-flash', $models[0]['id']);
+        self::assertStringNotContainsString('dummy-value', json_encode($models));
+        $chatService = $this->chatUsing($registry);
+        $chat = $chatService->createChat(new CreateChatInput(1, 'Fixture', $models[0]['id']));
+        $chatService->addMessage(new AddChatMessageInput($chat->id, 1, 'Fixture image', [self::PNG]));
+        $chatService->addMessage(new AddChatMessageInput($chat->id, 1, 'Fixture follow-up'));
+        $request = $this->history[1]['request'];
+        self::assertSame('https://api.z.ai/api/paas/v4/chat/completions', (string)$request->getUri());
+        $body = json_decode((string)$request->getBody(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame('glm-5.3-flash', $body['model']);
+        self::assertCount(3, $body['messages']);
+        self::assertSame(self::PNG, $body['messages'][0]['content'][1]['image_url']['url']);
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM ai_providers')->fetchColumn());
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM ai_models')->fetchColumn());
+    }
+
+    public function testUnknownEnvironmentModelIsRejectedBeforeCreatingConversation(): void
+    {
+        try {
+            $this->chatUsing($this->environmentRegistry())->createChat(new CreateChatInput(1, 'Fixture', 'zai:glm-invented'));
+            self::fail('Unknown model must be rejected');
+        } catch (AiConnectionException $error) {
+            self::assertSame('model_unavailable', $error->reason);
+            self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM chats')->fetchColumn());
+            self::assertSame([], $this->history);
+        }
+    }
+
+    public function testEnvironmentKeyRemovalDoesNotSendHistoryToDatabaseProviderOrOvh(): void
+    {
+        $chat = $this->chatUsing($this->environmentRegistry())->createChat(new CreateChatInput(1, 'Fixture', 'zai:glm-5.3-flash'));
+        try {
+            $this->chatUsing($this->environmentRegistry(false))->addMessage(new AddChatMessageInput($chat->id, 1, 'Fixture'));
+            self::fail('Missing environment configuration must be rejected');
+        } catch (AiConnectionException $error) {
+            self::assertSame('missing_configuration', $error->reason);
+            self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM chat_messages')->fetchColumn());
+            self::assertSame([], $this->history);
+        }
+    }
+
+    public function testEnvironmentConfigurationPreservesExistingDatabaseBindings(): void
+    {
+        $selector = $this->registry->listModels()[0]['id'];
+        $registry = $this->environmentRegistry();
+        self::assertSame(1, $registry->resolve($selector)->id);
+        self::assertSame($this->client, $registry->clientFor($registry->resolve($selector)));
+    }
+
+    public function testEnvironmentChatOwnerIsCheckedBeforeProviderAccess(): void
+    {
+        $service = $this->chatUsing($this->environmentRegistry());
+        $chat = $service->createChat(new CreateChatInput(1, 'Fixture', 'zai:glm-5.3-flash'));
+        try {
+            $service->addMessage(new AddChatMessageInput($chat->id, 2, 'Fixture'));
+            self::fail('Another user must not access the conversation');
+        } catch (NotFoundException) {
+            self::assertSame([], $this->history);
+            self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM chat_messages')->fetchColumn());
+        }
+    }
 }

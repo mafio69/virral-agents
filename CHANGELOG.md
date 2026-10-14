@@ -210,6 +210,12 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+## Połączenie Z.ai z lokalnego środowiska
+
+- Naprawiono brak połączenia dla ZAI_API_KEY: konfiguracja HTTP i DI używa klucza środowiska do standardowego API Z.ai. Compose/FPM przekazują tę zmienną.
+- Selekcje zai:... działają bez tworzenia dostawcy w bazie; istniejące db:... zachowują powiązania. Usunięcie konfiguracji blokuje wysyłkę, a nie zmienia dostawcy.
+- PHP 87/87 (270 asercji), UI 31/31; składnia i diff/Composer poprawne. Katalog runtime: 8 skonfigurowanych modeli. Właściciel potwierdził działanie; agent nie wysłał rzeczywistej wiadomości testowej.
+
 - Dodano możliwość obejrzenia tego samego formularza w jasnej i ciemnej kolorystyce przez przełącznik w nagłówku, bez utrwalania preferencji. Układ i dane formularza pozostają zachowane; czat bez zmian. PHP 82/82, UI 31/31; podglądy obu wersji w artifacts/account-compare-*-2026-10-15.jpg.
 
 - Białe tło, tekstowe akcje bez dekoracyjnych przycisków i ikon; pola z cienką dolną linią. Zmiana ograniczona do landing.html, bez zmiany czatu i panelu API.

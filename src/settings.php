@@ -22,6 +22,7 @@ return function (ContainerBuilder $containerBuilder) {
 
     $settings['user_data'] = ['key' => $sensitiveValue('USER_DATA_KEY')];
     $settings['ai_registry'] = ['key' => $sensitiveValue('DB_HASH')];
+    $settings['zai'] = ['key' => $sensitiveValue('ZAI_API_KEY')];
     $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
     $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);
 

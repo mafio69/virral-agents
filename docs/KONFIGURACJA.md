@@ -15,6 +15,7 @@ src/settings.php pobiera tylko:
 - OVH_AI_ENDPOINTS_ACCESS_TOKEN — dostęp do OVH.
 - DB_HASH — istniejący klucz szyfrowania rejestru dostawców; nie zastępować nowym.
 - USER_DATA_KEY — osobny klucz szyfrowania danych użytkowników, zgodnie z docs/OCHRONA_DANYCH.md.
+- ZAI_API_KEY — klucz standardowego API Z.ai, używany bezpośrednio przez backend bez wpisu dostawcy w bazie.
 - MAIL_DSN — transport poczty, jeśli zawiera poświadczenia lub prywatny adres. Gdy go nie ma, używana jest lokalna wartość z konfiguracji PHP.
 
 HTTP i migrator CLI wczytują lokalny plik środowiska przez wspólne src/settings.php.
@@ -29,7 +30,7 @@ Pliki .env, klucze, tokeny, ścieżki do sekretów i zaszyfrowane rekordy dostaw
 
 Parametry instalacji, porty, wolumeny i UID:GID są w docker-compose.yml. UID:GID ma jawną wartość 1000:1000, odpowiadającą wcześniejszym wartościom domyślnym. Jeśli instalacja używała innych APP_UID/APP_GID, ustaw właściwe liczby w Compose przed odtworzeniem kontenerów.
 
-Compose przekazuje cztery wymienione wartości wrażliwe; PHP-FPM ma tę samą listę. PHP_IDE_CONFIG jest technicznym ustawieniem IDE zapisanym jawnie w Compose.
+Compose przekazuje pięć wymienionych wartości wrażliwych; PHP-FPM ma tę samą listę. PHP_IDE_CONFIG jest technicznym ustawieniem IDE zapisanym jawnie w Compose.
 
 Przy bieżącym nieszyfrowanym pliku środowiska Compose wczytuje wartości lokalnie;
 po ich zmianie właściciel odtwarza kontener:
@@ -42,7 +43,7 @@ Poniższy wariant dotyczy tylko instalacji używających dotenvx, dxrun i sudo;
 zachowaj wtedy tylko wymagane wartości wrażliwe:
 
 ```bash
-dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,MAIL_DSN docker compose up -d --force-recreate
+dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,MAIL_DSN docker compose up -d --force-recreate
 ```
 
 Polecenie wykonuje właściciel. Zmiana ustawień tablicy PHP nie wymaga ponownego budowania obrazu. Zmiana Compose lub listy PHP-FPM wymaga odtworzenia kontenerów.

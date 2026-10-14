@@ -181,3 +181,11 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Landing wywołuje backend, czyści stan po sukcesie, a przy niepowodzeniu zachowuje panel i pokazuje komunikat. Działa również przy zablokowanym localStorage.
 - PHP 82/82, 250 asercji; UI 28/28; składnia i kontrole diff/Composer poprawne. Testy obejmują unieważnienie sesji, zachowanie drugiej sesji, Secure/HttpOnly, idempotencję, stary Bearer i awarię wylogowania w UI.
 - Nie uruchamiano resetu ani wylogowania rzeczywistego konta. Dane konta i sekrety nie były odczytywane. Bez push.
+
+## 2026-10-15 — jasne formularze i Enter
+
+- Właściciel zawęził zmianę wyglądu do startu i formularzy konta; czat i panel API bez zmian. Wszystko w landing.html, bez zmiany wspólnej palety theme.css.
+- Biała strona, brak dekoracyjnych ikon/ramek/cieni przycisków, tekstowe akcje z zachowaną semantyką button, pola z dolną linią. Formularze mają etykiety for, autocomplete, required i natywny submit, dzięki czemu Enter wysyła bez dodatkowego globalnego keydown.
+- Zmieniono selektory blokady wysyłania na button[type=submit], aby nie blokować przycisku Zamknij. Testy wykonują rzeczywiste handlery submit i sprawdzają jedno żądanie oraz preventDefault.
+- PHP 82/82, 250 asercji; UI 30/30; diff-check i Composer poprawne (znane ostrzeżenie o licencji). W przeglądarce potwierdzono biały kolor tła, 1px dolnej linii, natywną walidację pustego formularza i Enter wysyłający fikcyjne logowanie.
+- Screenshot bez wpisanych danych: artifacts/account-light-2026-10-15.jpg. Nie wykonywano rejestracji, wysyłki emaili ani zmiany hasła rzeczywistego konta. Bez push.

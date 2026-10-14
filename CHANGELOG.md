@@ -208,3 +208,8 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Dodano bezpieczny kod etapu i przyczyny błędu do logu 503 oraz X-App-Error, a także testy idempotencji, odmowy dla istniejących danych, błędnego klucza, rollback i zamkniętej listy kodów diagnostycznych.
 - Poprawiono przykład preserve-env o USER_DATA_KEY. Lokalna odpowiedź dev potwierdziła brak tego klucza w aplikacji; nie odczytywano jego wartości.
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
+# 2026-10-15 — minimalistyczna strona startowa i konto
+
+- Białe tło, tekstowe akcje bez dekoracyjnych przycisków i ikon; pola z cienką dolną linią. Zmiana ograniczona do landing.html, bez zmiany czatu i panelu API.
+- Natywny submit i Enter dla logowania/rejestracji, walidacja przeglądarki oraz powiązane etykiety i autocomplete.
+- PHP 82/82 (250 asercji), UI 30/30; kontrole diff/Composer poprawne. Rzeczywista weryfikacja przeglądarkowa wyglądu i Enter na fikcyjnych danych.

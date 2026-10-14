@@ -6,38 +6,38 @@
 <title>WirralAI</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-nav { background: var(--text); color: var(--text); padding: 0 24px; display: flex; align-items: center; gap: 32px; height: 56px; }
+body { --bg:#fff; --text:#202124; --muted:#62666d; --field:#fff; --line:#c7cbd0; --accent:#202124; --danger:#a4262c; --danger-soft:#fff; --danger-line:#e3b9bc; --warning:#62666d; --warning-soft:transparent; --accent-soft:transparent; color-scheme:light; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+nav { background: var(--bg); color: var(--text); padding: 0 32px; display: flex; align-items: center; gap: 32px; height: 72px; }
 nav h1 { font-size: 18px; font-weight: 600; }
 nav a { color: var(--muted); text-decoration: none; font-size: 14px; cursor: pointer; padding: 4px 0; border-bottom: 2px solid transparent; transition: .15s; }
 nav a:hover, nav a.active { color: var(--text); border-bottom-color: var(--accent); }
 .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; text-align: center; }
-.card { background: var(--field); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 32px; margin-bottom: 20px; max-width: 420px; margin-left: auto; margin-right: auto; text-align: left; }
-.hero { padding: 60px 0 40px; }
-.hero h2 { font-size: 32px; font-weight: 700; color: var(--text); }
+.card { background: var(--bg); padding: 24px 0; margin-bottom: 20px; max-width: 360px; margin-left: auto; margin-right: auto; text-align: left; }
+.hero { padding: 100px 0 40px; }
+.hero h2 { font-size: clamp(32px,6vw,48px); font-weight: 500; letter-spacing:-.04em; color: var(--text); }
 .hero p { color: var(--muted); font-size: 16px; margin-top: 8px; }
 .hero-buttons { margin-top: 24px; display: flex; gap: 12px; justify-content: center; }
-.field { margin-bottom: 14px; }
-.field label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.field input, .field select { width: 100%; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 6px; font-size: 14px; outline: none; transition: .15s; background: var(--field); }
+.field { margin-bottom: 28px; }
+.field label { display: block; font-size: 13px; font-weight: 400; color: var(--muted); margin-bottom: 4px; }
+.field input, .field select { width: 100%; padding: 10px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-size: 16px; outline: none; transition: border-color .15s; background: transparent; box-shadow:none; }
 .field input:focus { border-color: var(--accent); }
+.field input:autofill { box-shadow:0 0 0 1000px #fff inset; -webkit-text-fill-color:var(--text); }
 .field-row { display: flex; gap: 8px; align-items: center; }
-.field-row input[type=checkbox] { width: auto; }
-button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; white-space: nowrap; }
-.btn-primary { background: var(--accent); color: var(--text); }
-.btn-primary:hover { background: var(--accent); }
-.btn-outline { background: transparent; border: 1.5px solid var(--line); color: var(--muted); }
-.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-.btn-lg { padding: 14px 36px; font-size: 16px; }
+.field-row input[type=checkbox] { width:16px; height:16px; padding:0; border:0; accent-color:var(--text); }
+button { padding: 10px 0; border: 0; border-radius: 0; background:transparent; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; text-decoration:underline; text-underline-offset:5px; }
+.btn-primary,.btn-outline { background: transparent; color: var(--text); }
+button:hover,.link:hover { color:var(--muted); }
+button:disabled { opacity:.5; cursor:wait; }
+:is(button,a,input,select):focus-visible { outline:2px solid #202124; outline-offset:5px; }
+.btn-lg { padding: 14px 12px; font-size: 15px; }
 .card h2 { font-size: 18px; margin-bottom: 16px; color: var(--text); }
 .card h3 { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
-pre { background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin-top: 12px; }
+pre { background: transparent; border: 0; border-left:2px solid var(--line); padding: 4px 0 4px 12px; font-family:inherit; font-size:13px; line-height:1.6; overflow-x: auto; white-space: pre-wrap; overflow-wrap:anywhere; margin-top: 12px; }
 pre.error { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line); }
 pre.success { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
 .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; text-align: center; }
-.dashboard-card { background: var(--field); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 32px 24px; cursor: pointer; transition: .15s; text-decoration: none; color: inherit; display: block; }
-.dashboard-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
-.dashboard-card .icon { font-size: 32px; margin-bottom: 8px; }
+.dashboard-card { background: transparent; border-top:1px solid var(--line); padding: 24px 0; cursor: pointer; text-decoration: none; color: inherit; display: block; }
+.dashboard-card:hover h3 { text-decoration:underline; text-underline-offset:5px; }
 .dashboard-card h3 { font-size: 16px; font-weight: 600; color: var(--text); }
 .dashboard-card p { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .hidden { display: none; }
@@ -49,10 +49,11 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
 .auth-status.logged-out { background: var(--warning-soft); color: var(--warning); }
 .link { color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 13px; }
 .link:hover { color: var(--accent); }
+@media(max-width:480px) { nav { padding:0 20px; gap:12px; } .container { padding:28px 24px; } .hero { padding-top:60px; } }
 </style>
 <link rel="stylesheet" href="/ui/theme.css">
 </head>
-<body class="legacy-ui">
+<body class="minimal-ui">
 
 <nav>
   <h1>WirralAI</h1>
@@ -76,17 +77,14 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
   <p style="color:var(--muted); font-size:14px;">Wybierz sekcję</p>
   <div class="dashboard-grid">
     <a class="dashboard-card" href="/test-api">
-      <div class="icon">🔌</div>
       <h3>Test API</h3>
       <p>Ręczne testowanie endpointów</p>
     </a>
     <a class="dashboard-card" href="/test-api#tasks">
-      <div class="icon">📋</div>
       <h3>Zadania</h3>
       <p>Zarządzanie listą zadań</p>
     </a>
     <a class="dashboard-card" href="/chat">
-      <div class="icon">💬</div>
       <h3>Czat AI</h3>
       <p>Rozmowa z modelem AI</p>
     </a>
@@ -96,52 +94,52 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
 
 <!-- Register form modal -->
 <div class="container hidden" id="register-form">
-  <div class="card">
+  <form class="card" onsubmit="event.preventDefault(); return register();">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <h2 style="margin:0">Rejestracja</h2>
-      <span class="link" onclick="hideForms()">✕ zamknij</span>
+      <button type="button" class="link" onclick="hideForms()">Zamknij</button>
     </div>
     <div class="field">
-      <label>Email</label>
-      <input type="email" id="reg-email" placeholder="user@example.com">
+      <label for="reg-email">Email</label>
+      <input type="email" id="reg-email" name="email" autocomplete="email" placeholder="user@example.com" required>
     </div>
     <div class="field">
-      <label>Hasło</label>
-      <input type="password" id="reg-password" placeholder="min. 6 znaków">
+      <label for="reg-password">Hasło</label>
+      <input type="password" id="reg-password" name="password" autocomplete="new-password" placeholder="min. 6 znaków" minlength="6" required>
     </div>
-    <button class="btn-primary" onclick="register()" style="width:100%">Zarejestruj</button>
+    <button type="submit" class="btn-primary">Zarejestruj</button>
     <pre id="reg-result" class="mt-2 hidden"></pre>
     <p class="text-center mt-2" style="font-size:13px;color:var(--muted);">
-      Masz konto? <span class="link" onclick="showForm('login')">Zaloguj się</span>
+      Masz konto? <button type="button" class="link" onclick="showForm('login')">Zaloguj się</button>
     </p>
-  </div>
+  </form>
 </div>
 
 <!-- Login form modal -->
 <div class="container hidden" id="login-form">
-  <div class="card">
+  <form class="card" onsubmit="event.preventDefault(); return login();">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <h2 style="margin:0">Logowanie</h2>
-      <span class="link" onclick="hideForms()">✕ zamknij</span>
+      <button type="button" class="link" onclick="hideForms()">Zamknij</button>
     </div>
     <div class="field">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="user@example.com">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" name="email" autocomplete="username" placeholder="user@example.com" required>
     </div>
     <div class="field">
-      <label>Hasło</label>
-      <input type="password" id="login-password" placeholder="••••••">
+      <label for="login-password">Hasło</label>
+      <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="••••••" required>
     </div>
     <div class="field field-row">
       <input type="checkbox" id="login-remember">
-      <label style="font-size:13px;text-transform:none;margin:0;cursor:pointer;">Zapamiętaj mnie na 30 dni</label>
+      <label for="login-remember" style="font-size:13px;text-transform:none;margin:0;cursor:pointer;">Zapamiętaj mnie na 30 dni</label>
     </div>
-    <button class="btn-primary" onclick="login()" style="width:100%">Zaloguj</button>
+    <button type="submit" class="btn-primary">Zaloguj</button>
     <pre id="login-result" class="mt-2 hidden"></pre>
     <p class="text-center mt-2" style="font-size:13px;color:var(--muted);">
-      Nie masz konta? <span class="link" onclick="showForm('register')">Zarejestruj się</span>
+      Nie masz konta? <button type="button" class="link" onclick="showForm('register')">Zarejestruj się</button>
     </p>
-  </div>
+  </form>
 </div>
 
 <script>
@@ -204,7 +202,7 @@ let registering = false, loggingIn = false;
 async function register() {
   if (registering) return;
   const el = document.getElementById('reg-result');
-  const button = document.querySelector('#register-form button');
+  const button = document.querySelector('#register-form button[type="submit"]');
   registering = true;
   button.disabled = true;
   show(el, 'Tworzenie konta…');
@@ -233,7 +231,7 @@ async function register() {
 async function login() {
   if (loggingIn) return;
   const el = document.getElementById('login-result');
-  const button = document.querySelector('#login-form button');
+  const button = document.querySelector('#login-form button[type="submit"]');
   loggingIn = true;
   button.disabled = true;
   show(el, 'Logowanie…');
@@ -273,7 +271,7 @@ async function loadDashboard(user = null) {
 
   const indicator = document.getElementById('auth-indicator');
   indicator.className = 'auth-status logged-in';
-  indicator.textContent = '✅ Zalogowano';
+  indicator.textContent = 'Zalogowano';
 
   document.getElementById('user-email').textContent = user.email || '—';
 }

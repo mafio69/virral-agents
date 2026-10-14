@@ -1,5 +1,13 @@
 # STATUS
 
+## 2026-10-15 — jasny start i formularze konta
+
+- Na wyraźne życzenie właściciela zmiana obejmuje wyłącznie landing, panel startowy oraz logowanie/rejestrację. Czat i panel testowania API zachowują swój wygląd; wspólnego theme.css nie zmieniono.
+- Białe tło, bez ikon i metalicznych/kafelkowych dekoracji; akcje jako prosty tekst, pola z pojedynczą dolną linią. Zachowano semantykę przycisków i widoczny fokus klawiatury.
+- Logowanie/rejestracja korzystają z natywnych form/submit, Enter i walidacji przeglądarki. Dodano etykiety for, autocomplete i required. Przyciski zamknięcia/przełączenia nie wysyłają formularza.
+- PHP 82/82, 250 asercji; UI 30/30; diff-check i kontrole Composer poprawne (dotychczasowe ostrzeżenie o licencji). Przeglądarka: białe tło, dolna linia 1px, Enter na fikcyjnych danych wywołuje logowanie, pusty formularz zatrzymuje walidacja. Bez tworzenia kont i emaili.
+- Podgląd: artifacts/account-light-2026-10-15.jpg. Nie zmieniano sekretów ani hasła właściciela. Bez push.
+
 ## 2026-10-14 — wylogowanie unieważniające sesję
 
 - POST /api/auth/logout usuwa sesje wskazane przez cookie i nagłówek Bearer, wygasza ciasteczko HttpOnly i zwraca 204/no-store. Wylogowanie jest idempotentne; pozostałe sesje konta pozostają aktywne.

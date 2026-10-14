@@ -105,3 +105,19 @@ test('failed logout keeps dashboard visible and reports failure', async () => {
     assert.equal(elements.get('dashboard-view').classList.contains('hidden'), false);
     assert.match(elements.get('auth-indicator').textContent, /Wylogowanie nie powiodło się/);
 });
+
+for (const [action, emailId, passwordId] of [['login', 'login-email', 'login-password'], ['register', 'reg-email', 'reg-password']]) {
+    test(`${action} native form submit prevents navigation and sends one request`, async () => {
+        const { context, elements, requests } = await fixture({ response: { ok: false, status: 422, data: {} } });
+        elements.get(emailId).value = 'fixture@example.invalid';
+        elements.get(passwordId).value = 'fixture-password';
+        let prevented = false;
+        context.event = { preventDefault() { prevented = true; } };
+        const form = html.match(new RegExp(`<div[^>]*id="${action}-form"[^>]*>[\\s\\S]*?<form[^>]*onsubmit="([^"]+)"`));
+        assert.ok(form, 'Native form must handle submit rather than only button clicks');
+        await vm.runInContext(`(async () => { ${form[1]} })()`, context);
+        assert.equal(prevented, true);
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0].url, `/api/auth/${action}`);
+    });
+}

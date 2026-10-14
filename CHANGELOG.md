@@ -186,6 +186,12 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - To szyfrowanie wybranych pól, nie całego pliku SQLite. Metadane pozostają jawne; serwer i wybrany dostawca AI mają dostęp do treści podczas działania. Bez ochrony przed przejęciem procesu/klucza i bez szyfrowania end-to-end.
 # 2026-10-14 — inicjalizacja pustej szyfrowanej bazy
 
+## Lokalny reset hasła
+
+- Interaktywny reset hasła korzysta ze wspólnej konfiguracji HTTP/CLI i fabryki szyfratora; nieszyfrowany lokalny plik środowiska nie wymaga ręcznego eksportowania klucza.
+- Zachowano standardowe hashowanie PHP, transakcję i unieważnienie sesji. Ograniczono komunikaty wyjątków konfiguracji i uzupełniono instrukcję.
+- PHP 80/80 (240 asercji), UI 26/26, składnia i kontrole diff/Composer poprawne. Nie wykonywano resetu na rzeczywistym koncie.
+
 ## Wspólna konfiguracja HTTP i CLI
 
 - Migrator wczytuje nieszyfrowany lokalny plik środowiska przez ten sam src/settings.php co HTTP i używa istniejącej fabryki szyfratora DI. Usunięto powieloną walidację kluczy oraz obowiązek dxrun dla bieżącej instalacji.

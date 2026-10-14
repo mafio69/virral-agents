@@ -50,8 +50,12 @@ function hiddenPassword(string $prompt): string
 
 try {
     require dirname(__DIR__).'/vendor/autoload.php';
-    $cipher = new \App\Infrastructure\DataProtection\SodiumDataCipher(getenv('USER_DATA_KEY') ?: '');
-    $settings = require dirname(__DIR__).'/config/app.php';
+    $builder = new \DI\ContainerBuilder();
+    (require dirname(__DIR__).'/src/settings.php')($builder);
+    (require dirname(__DIR__).'/src/dependencies.php')($builder);
+    $container = $builder->build();
+    $cipher = $container->get(\App\Infrastructure\DataProtection\DataCipherInterface::class);
+    $settings = $container->get('settings');
     $path = $settings['db']['path'];
     if (!is_file($path)) throw new RuntimeException('Brak istniejącej bazy aplikacji. Nie utworzono nowej.');
     $pdo = new PDO('sqlite:'.$path, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
@@ -87,7 +91,7 @@ try {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     // Komunikaty PDO mogą zawierać dane operacji — nie wypisujemy ich ani trace.
     $message = $error instanceof PDOException ? 'Nie udało się zapisać zmiany w bazie.'
-        : ($error instanceof RuntimeException ? $error->getMessage() : 'Nie udało się wykonać resetu.');
+        : ($error::class === RuntimeException::class ? $error->getMessage() : 'Nie udało się wykonać resetu. Sprawdź konfigurację i przygotowanie bazy.');
     fwrite(STDERR, $message."\n");
     exit(1);
 }

@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-14 — lokalny reset hasła z konfiguracją aplikacji
+
+- bin/reset-password.php korzysta ze wspólnego src/settings.php i fabryki szyfratora DI, tak jak HTTP oraz migrator. Właściciel uruchamia zwykłe php w interaktywnym terminalu, bez sudo.
+- Zachowano ukryty odczyt hasła, standardowy password_hash, transakcję zmiany hasha oraz unieważnienie sesji wyłącznie wybranego konta. Ograniczono ujawnianie komunikatów wyjątków konfiguracji.
+- PHP 80/80, 240 asercji; UI 26/26; składnia skryptu, diff-check i kontrole Composer poprawne (dotychczasowe ostrzeżenie o licencji).
+- Agent nie uruchamiał resetu, nie odczytywał sekretów ani rekordów bazy. Reset na rzeczywistym koncie i ponowne logowanie wymagają wykonania przez właściciela. Bez push.
+
 ## 2026-10-14 — wspólna konfiguracja HTTP i migratora CLI
 
 - Właściciel sprostował sposób uruchamiania: bieżący plik środowiska nie jest szyfrowany i nie używa dxrun. Poprzednie instrukcje wynikały z dokumentacji historycznej.

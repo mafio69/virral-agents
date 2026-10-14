@@ -166,3 +166,10 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Zwykłe lokalne polecenie właściciela po zatrzymaniu aplikacji: php bin/protect-user-data.php --apply. Skrypt podaje bezpieczny kod etapu przy błędzie. Potem uruchomić aplikację i sprawdzić HTTP.
 - PHP 80/80, 240 asercji; UI 26/26; składnia trzech PHP, diff-check i wymagania platformy Composer poprawne; Composer validate z istniejącym ostrzeżeniem o braku licencji. Etap przygotowany do osobnego lokalnego commitu, bez push.
 - Nie uruchamiano migracji rzeczywistej bazy ani nie odczytywano pliku środowiska lub kluczy. Weryfikacja rzeczywistego odczytu konfiguracji przez migrator wymaga lokalnego wykonania przez właściciela.
+
+## 2026-10-14 — reset hasła po uruchomieniu aplikacji
+
+- Właściciel potwierdził działanie aplikacji i migrację. Próba utworzenia wskazanego konta zwróciła komunikat o istniejącym koncie; logowanie podanymi danymi zwróciło 401. Nie odczytywano hasha ani rekordów bazy i nie zmieniono hasła konta.
+- Poprawiono bin/reset-password.php: wspólne ustawienia i fabryka szyfratora DI, tak jak w migratorze. Właściciel uruchamia lokalnie php bin/reset-password.php bez sudo, podaje email i hasło dwukrotnie w ukrytym polu.
+- Dane użytkownika zachowane; reset unieważnia dotychczasowe sesje tego konta. Brak publicznego endpointu i utrwalania danych logowania w kodzie lub dokumentacji.
+- PHP 80/80, 240 asercji; UI 26/26; składnia, diff-check i kontrole Composer poprawne (istniejące ostrzeżenie o licencji). Reset na rzeczywistym koncie nadal wymaga wykonania przez właściciela; bez push.

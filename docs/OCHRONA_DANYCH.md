@@ -81,6 +81,16 @@ Bez klucza, z błędnym kluczem albo bez znacznika migracji istniejących danych
 z danymi i zwraca 503. Nie przechodzi na zapis jawny i nie migruje danych użytkowników
 automatycznie przy żądaniu HTTP. Migracja struktury tabel przy starcie nadal działa.
 Interaktywny reset hasła również wymaga poprawnego `USER_DATA_KEY`.
+Korzysta z tej samej konfiguracji lokalnej i fabryki szyfratora co aplikacja.
+Właściciel uruchamia go bez sudo i wpisuje email istniejącego konta oraz nowe hasło
+dwukrotnie (hasło nie jest wyświetlane):
+
+```bash
+php bin/reset-password.php
+```
+
+Reset zachowuje dane konta i rozmowy, zapisuje standardowy hash PHP oraz unieważnia
+wcześniejsze sesje tego konta. Nie tworzy nowego użytkownika.
 
 Przy HTTP 503 log inicjalizacji zawiera wyłącznie bezpieczny kod etapu `stage`;
 ten sam kod jest dostępny w nagłówku odpowiedzi `X-App-Error`:

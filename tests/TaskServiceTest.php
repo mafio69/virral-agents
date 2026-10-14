@@ -48,7 +48,7 @@ class TaskServiceTest extends TestCase
         $this->userId = (int)$this->pdo->lastInsertId();
 
         // Create service
-        $taskRepository = new \App\Repository\TaskRepository($this->pdo);
+        $taskRepository = new \App\Repository\TaskRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
 
         $this->taskService = new TaskService($taskRepository, $logger);

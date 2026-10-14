@@ -5,43 +5,44 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use PDO;
+use App\Infrastructure\DataProtection\DataCipherInterface;
+use App\Infrastructure\DataProtection\ProtectedStore;
 
 final readonly class UserRepository
 {
-    public function __construct(private readonly PDO $pdo)
+    private ProtectedStore $store;
+
+    public function __construct(private readonly PDO $pdo, private DataCipherInterface $cipher)
     {
+        $this->store = new ProtectedStore($pdo, $cipher);
     }
 
     public function createUser(string $email, string $passwordHash): int
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO users (email, password_hash, created_at) VALUES (:email, :password_hash, :created_at)'
-        );
-        $stmt->execute([
-            'email' => $email,
+        return $this->store->insert('users', [
+            'email' => $this->cipher->emailIndex($email),
+            'email_ciphertext' => $email,
             'password_hash' => $passwordHash,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-
-        return (int)$this->pdo->lastInsertId();
     }
 
     public function findByEmail(string $email): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE email = :email');
-        $stmt->execute(['email' => $email]);
-        $result = $stmt->fetch();
+        $stmt->execute(['email' => $this->cipher->emailIndex($email)]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result ?: null;
+        return $result ? $this->decodeUser($result) : null;
     }
 
     public function findById(int $id): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = :id');
         $stmt->execute(['id' => $id]);
-        $result = $stmt->fetch();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result ?: null;
+        return $result ? $this->decodeUser($result) : null;
     }
 
     public function createSession(int $userId, string $token, string $expiresAt): void
@@ -51,7 +52,7 @@ final readonly class UserRepository
         );
         $stmt->execute([
             'user_id' => $userId,
-            'token' => $token,
+            'token' => hash('sha256', $token),
             'created_at' => date('Y-m-d H:i:s'),
             'expires_at' => $expiresAt,
         ]);
@@ -61,10 +62,10 @@ final readonly class UserRepository
     {
         $stmt = $this->pdo->prepare('SELECT * FROM sessions WHERE token = :token AND expires_at > :now');
         $stmt->execute([
-            'token' => $token,
+            'token' => hash('sha256', $token),
             'now' => date('Y-m-d H:i:s'),
         ]);
-        $result = $stmt->fetch();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $result ?: null;
     }
@@ -72,16 +73,27 @@ final readonly class UserRepository
     public function setVerificationToken(int $userId, string $token): void
     {
         $stmt = $this->pdo->prepare('UPDATE users SET email_verification_token = :token WHERE id = :id');
-        $stmt->execute(['token' => $token, 'id' => $userId]);
+        $stmt->execute(['token' => hash('sha256', $token), 'id' => $userId]);
     }
 
     public function findByVerificationToken(string $token): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE email_verification_token = :token');
-        $stmt->execute(['token' => $token]);
-        $result = $stmt->fetch();
+        $stmt->execute(['token' => hash('sha256', $token)]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result ?: null;
+        return $result ? $this->decodeUser($result) : null;
+    }
+
+    private function decodeUser(array $row): array
+    {
+        $row = $this->store->decrypt('users', $row);
+        if (!isset($row['email_ciphertext']) || !hash_equals($row['email'], $this->cipher->emailIndex($row['email_ciphertext']))) {
+            throw new \App\Exception\DataProtectionException();
+        }
+        $row['email'] = $row['email_ciphertext'];
+        unset($row['email_ciphertext']);
+        return $row;
     }
 
     public function verifyEmail(int $userId): void

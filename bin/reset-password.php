@@ -49,18 +49,21 @@ function hiddenPassword(string $prompt): string
 }
 
 try {
+    require dirname(__DIR__).'/vendor/autoload.php';
+    $cipher = new \App\Infrastructure\DataProtection\SodiumDataCipher(getenv('USER_DATA_KEY') ?: '');
     $settings = require dirname(__DIR__).'/config/app.php';
     $path = $settings['db']['path'];
     if (!is_file($path)) throw new RuntimeException('Brak istniejącej bazy aplikacji. Nie utworzono nowej.');
     $pdo = new PDO('sqlite:'.$path, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec('PRAGMA busy_timeout = 5000');
+    (new \App\Infrastructure\DataProtection\DataProtectionMigration($pdo, $cipher))->assertReady();
     fwrite(STDOUT, "Email istniejącego konta: ");
     $line = fgets(STDIN);
     if ($line === false) throw new RuntimeException('Przerwano.');
     $email = trim($line);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('Nieprawidłowy email.');
     $find = $pdo->prepare('SELECT id FROM users WHERE email = :email');
-    $find->execute(['email' => $email]);
+    $find->execute(['email' => $cipher->emailIndex($email)]);
     $id = $find->fetchColumn();
     if ($id === false) throw new RuntimeException('Nie znaleziono konta. Utwórz je przez formularz rejestracji.');
 

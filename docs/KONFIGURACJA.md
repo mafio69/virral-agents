@@ -37,3 +37,8 @@ Polecenie wykonuje właściciel. Zmiana ustawień tablicy PHP nie wymaga ponowne
 ## Weryfikacja
 
 2026-10-13: sprawdzono składnię config/app.php i src/settings.php; oba poprawne. Nie uruchamiano aplikacji, odtworzenia kontenerów ani kolejnej serii testów. Wcześniejsze wyniki testów dotyczą poprzedniego stanu konfiguracji.
+
+
+## Ochrona danych użytkowników (2026-10-14)
+
+Do trzech wcześniej opisanych wartości dołącza USER_DATA_KEY, niezależny klucz ochrony danych użytkowników. Obowiązuje instrukcja docs/OCHRONA_DANYCH.md. Przy preserve-env dodaj USER_DATA_KEY do istniejącej listy. Bez poprawnego klucza i migracji aplikacja odmawia pracy z bazą. Dotychczasowy DB_HASH pozostaje kluczem rejestru dostawców.

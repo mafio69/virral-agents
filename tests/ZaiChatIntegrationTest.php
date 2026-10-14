@@ -62,7 +62,7 @@ final class ZaiChatIntegrationTest extends TestCase
             new class implements \App\Infrastructure\AI\ModelCatalogueInterface {
                 public function listModels(): array { return [['id' => 'glm-5.3-flash', 'supports_images' => true]]; }
             });
-        $this->chat = new ChatService(new ChatRepository($this->pdo), new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $this->registry);
+        $this->chat = new ChatService(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $this->registry);
     }
 
     public function testImageAndHistoryReachOnlySelectedProvider(): void
@@ -70,7 +70,7 @@ final class ZaiChatIntegrationTest extends TestCase
         $selector = $this->registry->listModels()[0]['id'];
         $chat = $this->chat->createChat(new CreateChatInput(1, 'Obraz', $selector));
         $other = $this->chat->createChat(new CreateChatInput(1, 'Inna rozmowa', $selector));
-        (new ChatRepository($this->pdo))->addMessage($other->id, 'user', 'Nie przekazuj tej historii');
+        (new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)))->addMessage($other->id, 'user', 'Nie przekazuj tej historii');
         $this->chat->addMessage(new AddChatMessageInput($chat->id, 1, 'Opisz', [self::PNG]));
         $this->chat->addMessage(new AddChatMessageInput($chat->id, 1, 'Co dalej?'));
         $request = $this->history[1]['request'];

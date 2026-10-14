@@ -44,7 +44,7 @@ class ChatServiceModelsTest extends TestCase
         ');
 
         // Create service dependencies
-        $chatRepository = new \App\Repository\ChatRepository($this->pdo);
+        $chatRepository = new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         
         $catalogue = ['data' => array_map(static fn(string $id): array => ['id' => $id], [
             'Qwen3.8-27B', 'Qwen3.6-27B', 'Qwen3.5-397B-A17B',

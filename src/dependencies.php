@@ -19,6 +19,14 @@ use Psr\Log\LoggerInterface;
 
 return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
+        \App\Infrastructure\DataProtection\DataCipherInterface::class => function (ContainerInterface $c) {
+            $settings = $c->get('settings');
+            $value = $settings['user_data']['key'];
+            if ($value !== '' && hash_equals(strtolower($settings['ai_registry']['key']), strtolower($value))) {
+                throw new \App\Exception\DataProtectionException();
+            }
+            return new \App\Infrastructure\DataProtection\SodiumDataCipher($value);
+        },
         DualLogger::class => function (ContainerInterface $c) {
             $config = $c->get('settings')['logger'];
 

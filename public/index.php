@@ -29,8 +29,12 @@ $logger = $container->get(\Psr\Log\LoggerInterface::class);
 try {
     $migrationRunner = $container->get(\App\Infrastructure\Database\MigrationRunner::class);
     $migrationRunner->run();
+    (new \App\Infrastructure\DataProtection\DataProtectionMigration(
+        $container->get(PDO::class),
+        $container->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
+    ))->assertReady();
 } catch (\Throwable $e) {
-    $logger->critical($e->getMessage(), ['exception' => $e]);
+    $logger->critical('Database initialization unavailable');
     http_response_code(503);
     require __DIR__ . '/error-pages/503.html';
     exit(1);

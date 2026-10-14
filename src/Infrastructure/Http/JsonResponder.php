@@ -12,6 +12,6 @@ final class JsonResponder
     {
         $response->getBody()->write(json_encode($data));
 
-        return $response->withStatus($status)->withHeader('Content-Type', 'application/json');
+        return $response->withStatus($status)->withHeader('Content-Type', 'application/json')->withHeader('Cache-Control', 'no-store');
     }
 }

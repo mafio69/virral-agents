@@ -50,6 +50,11 @@ return function (App $app) {
             $response->getBody()->write(json_encode(['error' => 'Połączenie z AI jest niedostępne.']));
             return $response->withStatus(503)->withHeader('Content-Type', 'application/json')
                 ->withHeader('X-AI-Error', $e->reason);
+        } catch (\App\Exception\DataProtectionException) {
+            $logger->error('Data protection unavailable');
+            $response = new Response();
+            return \App\Infrastructure\Http\JsonResponder::respond($response,
+                ['error' => 'Ochrona danych jest niedostępna. Skontaktuj się z administratorem.'], 503);
         } catch (Throwable $e) {
             $logger->error('Application operation failed', ['type' => get_class($e)]);
 

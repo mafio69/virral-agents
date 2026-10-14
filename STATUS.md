@@ -1,8 +1,8 @@
 # STATUS
 
-Ostatnia aktualizacja: 2026-10-14. Gałąź pracy: `chore/cleanup-pending-changes`; docelowa gałąź lokalnego scalenia: `develop`.
+Ostatnia aktualizacja: 2026-10-14. Gałąź pracy: `security/protect-user-data`; docelowa gałąź lokalnego scalenia: `develop`.
 
-Aktualne wyniki są w sekcji „bieżący wynik porządkowania przed commitem” na końcu pliku. Starsze sekcje zachowano jako zapis poprzednich sesji.
+Aktualne wyniki są w sekcji „ochrona danych użytkowników w SQLite” na końcu pliku. Starsze sekcje zachowano jako zapis poprzednich sesji.
 
 ## Gotowe
 
@@ -127,3 +127,17 @@ Aktualne wyniki są w sekcji „bieżący wynik porządkowania przed commitem”
 - Poprzedni reset konta testowego wykonano i zweryfikowano na wyraźne polecenie właściciela; sesje unieważniono. Hasła ani hasha nie zapisano w kodzie lub dokumentacji. Rzeczywista baza pozostaje ignorowana.
 - Po fetch potwierdzono brak develop na origin i wspólną bazę HEAD/master/origin/master. Utworzono lokalny develop oraz chore/cleanup-pending-changes z develop; develop nie śledzi origin/master. Commit po zielonych testach, potem lokalne scalenie do develop. Push wykonuje właściciel, tylko develop w normalnym trybie. Nie wykonywano deploy.
 - Dalszy krok: właściciel wykonuje push develop, następnie CI i PR develop → master zgodnie z GIT-FLOW.md. Prawdziwe połączenia AI, doręczenie poczty i pełny test przeglądarkowy pozostają do weryfikacji. Zmiany Compose/PHP-FPM wymagają odtworzenia kontenerów przez właściciela.
+
+
+## 2026-10-14 — ochrona danych użytkowników w SQLite
+
+- Osobny USER_DATA_KEY, niezależny od DB_HASH; żadnego rzeczywistego klucza nie odczytywano ani nie zapisywano przez agenta. Compose, PHP-FPM i kontener aplikacji obsługują nową zmienną. Identyczny klucz dostawców jest odrzucany niezależnie od wielkości liter HEX.
+- DataCipherInterface i wspólny ProtectedStore: XChaCha20-Poly1305 z losowym nonce oraz powiązaniem szyfrogramu z tabelą, polem, ID rekordu i odpowiednimi relacjami właściciela/rozmowy/roli. Bez jawnego zapisu, także w batch i update.
+- Szyfrowane emaile, tytuły rozmów, wiadomości, obrazy oraz tytuły/opisy zadań. HMAC emaila służy wyszukiwaniu i unikalności, z oddzielnie wyprowadzonym kluczem indeksowania. Dotychczasowe rozróżnianie wielkości liter adresów zachowano.
+- Tokeny sesji i potwierdzeń emaila zapisywane jako hashe; hashe nie działają jako tokeny do logowania/potwierdzenia. Hashe haseł użytkowników zachowano.
+- Transakcyjna i idempotentna migracja zachowuje dane i ID, unieważnia wcześniejsze sesje i weryfikuje klucz znacznikiem migracji. CLI wykonuje secure_delete, checkpoint WAL i VACUUM. Nie usuwa dawnych backupów/snapshotów; pełne wymazanie SSD nie jest gwarantowane.
+- Bez klucza, z błędnym kluczem lub bez migracji repozytoria i aplikacja odmawiają pracy; HTTP 503 bez diagnostyki i danych. Brak automatycznej migracji treści przy żądaniu HTTP. Public/index.php nie loguje już wyjątku inicjalizacji bazy. Odpowiedzi API mają Cache-Control: no-store.
+- Testy pełne: PHP 74/74, 211 asercji; UI 26/26. Pokrycie m.in. braku jawnych wartości w rekordach, aktualizacji/batch, Unicode/null, podmiany rekordów i właściciela, modyfikacji szyfrogramu, błędnego klucza, wiring DI, idempotencji i rollback. Wyłącznie dane fikcyjne i bazy w pamięci.
+- Składnia 26 zmienionych/nowych PHP: OK. Kontrole diff, Composer validate i check-platform-reqs: OK (dotychczasowe ostrzeżenie o braku licencji). Inspekcje PhpStorm dla szyfratora i migratora bez błędów.
+- Właściciel potwierdził, że sam skonfiguruje klucz i uruchomi migrację lokalnie. Nie potwierdzono jej wykonania. Obecna baza nie została zmigrowana przez agenta. Instrukcja: docs/OCHRONA_DANYCH.md; polecenie właściciela: dxrun php bin/protect-user-data.php --apply po zatrzymaniu aplikacji. Następnie odtworzyć kontenery, przekazując także USER_DATA_KEY, i zalogować się ponownie.
+- To szyfrowanie wybranych pól, nie całego pliku SQLite. Metadane pozostają jawne; serwer i wybrany dostawca AI mają dostęp do treści podczas działania. Bez ochrony przed przejęciem procesu/klucza i bez szyfrowania end-to-end.

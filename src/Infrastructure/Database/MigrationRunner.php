@@ -15,6 +15,12 @@ final class MigrationRunner
     public function run(): void
     {
         $sql = <<<SQL
+CREATE TABLE IF NOT EXISTS data_protection_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    version INTEGER NOT NULL,
+    key_check TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
@@ -104,6 +110,7 @@ SQL;
 
         $this->pdo->exec($sql);
 
+        $this->addColumnIfNotExists('users', 'email_ciphertext', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'email_verification_token', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'email_confirmed_at', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('chats', 'model', "TEXT DEFAULT '".\App\Infrastructure\AI\OvhModelDefaults::MODEL."'");

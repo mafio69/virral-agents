@@ -34,7 +34,7 @@ final class AuthHttpTest extends TestCase
         ]);
         (new MigrationRunner($this->pdo))->run();
         $this->mail = $this->createMock(MailService::class);
-        $repository = new UserRepository($this->pdo);
+        $repository = new UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $logger = new NullLogger();
         $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger);
         $container = new Container([

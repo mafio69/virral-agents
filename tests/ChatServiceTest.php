@@ -58,7 +58,7 @@ class ChatServiceTest extends TestCase
         $this->userId = (int)$this->pdo->lastInsertId();
 
         // Create service dependencies
-        $chatRepository = new \App\Repository\ChatRepository($this->pdo);
+        $chatRepository = new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         
         // Mock OVH AI client
         $ovhAiClient = $this->createMock(\App\Infrastructure\AI\OvhAiClient::class);
@@ -212,7 +212,7 @@ class ChatServiceTest extends TestCase
                 return 'Analiza testowa';
             }
         );
-        $service = new ChatService(new \App\Repository\ChatRepository($this->pdo), $client, new \Psr\Log\NullLogger());
+        $service = new ChatService(new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), $client, new \Psr\Log\NullLogger());
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Obraz', 'Qwen3.6-27B'));
         $pair = $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, '', [$image]));
         $this->assertSame([$image], $pair[0]['images']);

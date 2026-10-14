@@ -18,6 +18,7 @@ final readonly class AiModel
         public ?float $priceIn,
         public ?float $priceOut,
         public ?float $priceCache,
+        public ?string $connection = null,
     ) {
     }
 

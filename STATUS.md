@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-15 — integracja OpenAI
+
+- Osobna gałąź codex/integration-openai z lokalnego develop po domknięciu poprzednich zmian. Właściciel wybrał użycie istniejącego klucza; agent nie odczytał jego wartości.
+- OPENAI_API_KEY w ustawieniach, DI i Compose/FPM. Responses API, katalog konta, obrazy i historia. Wspólny transport oraz rejestr dostawców przez interfejsy przygotowane do kolejnych integracji.
+- Selekcja openai:... zapisywana w rozmowie; kontrola właściciela, brak zastępowania dostawcy, błędy bez odpowiedzi/wyjątków dostawcy. Instrukcja: docs/AI_PROVIDERS.md.
+- Weryfikacja: PHP 94/94 (316 asercji), UI 32/32, składnia 10 PHP i kontrole diff/Composer poprawne; dotychczasowe ostrzeżenie o licencji. Brak płatnych zapytań i dostępu do rzeczywistych sekretów/bazy. Bez push.
+
 ## 2026-10-15 — działające Z.ai z konfiguracji środowiska
 
 - Podłączono potwierdzoną przez właściciela nazwę ZAI_API_KEY w src/settings.php, DI, Compose i PHP-FPM. Klient używa standardowego endpointu Z.ai; bez zapisu klucza do kodu, bazy i odpowiedzi API.

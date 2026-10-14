@@ -210,6 +210,12 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+## OpenAI — osobna integracja
+
+- Dodano katalog konta i Responses API z obrazami, store:false oraz limitem odpowiedzi. OPENAI_API_KEY w ustawieniach i Compose/FPM; osobny selektor openai:... zachowuje dostawcę rozmowy.
+- Wspólny transport i rejestr przez interfejsy, neutralne błędy dostawcy i obsługa nowych dostawców w selektorze historii.
+- Gałąź codex/integration-openai; PHP 94/94 (316 asercji), UI 32/32, składnia i diff/Composer poprawne. Bez płatnych zapytań i push.
+
 ## Połączenie Z.ai z lokalnego środowiska
 
 - Naprawiono brak połączenia dla ZAI_API_KEY: konfiguracja HTTP i DI używa klucza środowiska do standardowego API Z.ai. Compose/FPM przekazują tę zmienną.

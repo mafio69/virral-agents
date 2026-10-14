@@ -66,7 +66,7 @@ export class ChatController {
             const selected = forHistory ? this.state.activeChat?.model
                 : models.find(item => item.id === remembered)?.id || models[0]?.id || '';
             this.update({ models, selectedModel: selected || '', modelsLoading: false,
-                notice: models.length ? models.every(item => item.configured === false) ? 'Katalog pobrany. Aby rozmawiać, skonfiguruj dostęp Z.ai w aplikacji.' : '' : 'To połączenie nie ma skonfigurowanych modeli.' });
+                notice: models.length ? models.every(item => item.configured === false) ? 'Katalog pobrany. Aby rozmawiać, skonfiguruj dostęp do wybranego dostawcy.' : '' : 'To połączenie nie ma skonfigurowanych modeli.' });
             if (!forHistory && selected) this.preferences.save(connection, selected);
             return true;
         } catch (error) {
@@ -131,7 +131,10 @@ export class ChatController {
                 activeChat: chat, messages: chat.messages, selectedModel: chat.model || '',
                 draft: '', images: [], loading: false, deliveryUncertain: false, notice: '',
             });
-            await this.selectConnection(chat.model?.startsWith('db:') || chat.model?.startsWith('zai:') ? 'zai' : 'ovh', { forHistory: true });
+            const namespace = chat.model?.split(':', 1)[0];
+            const connection = namespace === 'db' ? 'zai'
+                : this.state.connections.some(item => item.id === namespace) ? namespace : 'ovh';
+            await this.selectConnection(connection, { forHistory: true });
             return true;
         } catch (error) {
             if (version !== this.selectionVersion) return false;

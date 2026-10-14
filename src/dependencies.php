@@ -59,13 +59,18 @@ return function (ContainerBuilder $containerBuilder) {
         },
         \App\Infrastructure\AI\ChatModelRegistryInterface::class => function (ContainerInterface $c) {
             $key = $c->get('settings')['zai']['key'] ?? '';
-            return new \App\Infrastructure\AI\ZaiChatModelRegistry(
+            $legacy = new \App\Infrastructure\AI\ZaiChatModelRegistry(
                 $c->get(\App\Repository\AiModelRepository::class),
                 static fn() => $c->get(\App\Infrastructure\AI\AiClientFactoryInterface::class),
                 environmentClient: $key !== '' ? new \App\Infrastructure\AI\OpenAiCompatClient(
                     \App\Infrastructure\AI\ZaiEndpointPolicy::BASE_URI, $key, 'glm-5.3',
                 ) : null,
             );
+            return new \App\Infrastructure\AI\ProviderRegistry($legacy, [
+                'openai' => new \App\Infrastructure\AI\OpenAiProvider(new \App\Infrastructure\AI\ProviderTransport(
+                    'https://api.openai.com/v1/', $c->get('settings')['openai']['key'] ?? '',
+                )),
+            ]);
         },
         \App\Infrastructure\AI\AiClientFactoryInterface::class => function (ContainerInterface $c) {
             $keyValue = $c->get('settings')['ai_registry']['key'];

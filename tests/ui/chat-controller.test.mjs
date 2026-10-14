@@ -181,6 +181,21 @@ test('authentication failure prevents sending', async () => {
     assert.equal(sends, 0);
 });
 
+test('opening OpenAI history selects its provider and prevents changing the binding', async () => {
+    const requested = [];
+    const controller = new ChatController(fixture({
+        listConnections: async () => [{ id: 'ovh', name: 'OVH' }, { id: 'openai', name: 'OpenAI' }],
+        listModels: async connection => { requested.push(connection); return [{ id: connection === 'openai' ? 'openai:gpt-6-astra' : 'fixture-model' }]; },
+        getChat: async id => ({ ...chat(id), model: 'openai:gpt-6-astra' }),
+    }));
+    await controller.load();
+    await controller.openChat(1);
+    assert.equal(controller.state.selectedConnection, 'openai');
+    assert.equal(requested.at(-1), 'openai');
+    assert.equal(await controller.selectConnection('ovh'), false);
+    assert.equal(controller.state.activeChat.model, 'openai:gpt-6-astra');
+});
+
 test('missing model list prevents sending until a catalogue is available', async () => {
     const controller = new ChatController(fixture({
         listModels: async () => { throw new ChatApiError('Offline'); },

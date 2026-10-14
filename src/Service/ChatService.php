@@ -179,7 +179,7 @@ final readonly class ChatService
 
     private function usesRegistry(string $model): bool
     {
-        return str_starts_with($model, 'db:') || str_starts_with($model, 'zai:');
+        return str_contains($model, ':');
     }
 
     private function modelContent(string $text, array $images): string|array
@@ -197,15 +197,19 @@ final readonly class ChatService
         return [
             ['id' => 'ovh', 'name' => 'OVH'],
             ['id' => 'zai', 'name' => 'Z.ai / GLM'],
+            ...($this->modelRegistry instanceof \App\Infrastructure\AI\MultiProviderRegistryInterface ? $this->modelRegistry->connections() : []),
         ];
     }
 
     public function getAvailableModels(?string $connection = null): array
     {
-        if ($connection !== null && !in_array($connection, ['ovh', 'zai'], true)) {
+        if ($connection !== null && !in_array($connection, array_column($this->getConnections(), 'id'), true)) {
             throw new ValidationException('Nieznane połączenie AI.');
         }
-        if ($connection === 'zai') return $this->registry()->listModels();
+        if ($connection !== null && $connection !== 'ovh') {
+            $registry = $this->registry();
+            return $registry instanceof \App\Infrastructure\AI\MultiProviderRegistryInterface ? $registry->listFor($connection) : $registry->listModels();
+        }
         // The legacy endpoint without a connection parameter remains the OVH catalogue.
         try {
             $catalogue = $this->ovhAiClient->listModels();
@@ -265,6 +269,7 @@ final readonly class ChatService
     private function supportsImages(string $modelId): bool
     {
         if ($this->usesRegistry($modelId)) {
+            if ($this->registry() instanceof \App\Infrastructure\AI\MultiProviderRegistryInterface) return $this->registry()->supportsImages($modelId);
             return ZaiEndpointPolicy::supportsImages($this->registry()->resolve($modelId)->idModel);
         }
         return in_array($modelId, [

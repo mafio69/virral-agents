@@ -203,3 +203,11 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Walidacja modelu przez publiczny katalog, własność rozmów i brak przekierowania historii po utracie klucza są pokryte testami. Obsługiwane są obrazy i dalsza historia zgodnie z polityką modeli.
 - PHP 87/87, 270 asercji; UI 31/31; składnia pięciu PHP i diff/Composer poprawne (znane ostrzeżenie o licencji). Lokalny endpoint zwrócił 8 configured:true, a właściciel potwierdził działanie czatu.
 - Próby rzeczywistej wiadomości agent nie wykonał; osobną kartę testową zamknął bez wysyłania. Nie odczytywał kluczy/bazy. Nie dodawać chronionych nieśledzonych plików do commitu; bez push.
+
+## 2026-10-15 — etap OpenAI z wielkiej trójki
+
+- Na polecenie właściciela każdy dostawca ma osobną gałąź. Poprzednią przetestowaną pracę scalono fast-forward do develop lokalnie; utworzono codex/integration-openai z develop. Bez fetch/push.
+- Wspólny ProviderTransport, ChatProviderInterface i MultiProviderRegistryInterface obsługują przyszłe rozszerzenia bez logiki w kontrolerach. OpenAI używa Responses API i katalogu konta; OPENAI_API_KEY jest wczytywany w runtime jak pozostałe klucze.
+- Historia openai:... pozostaje przypisana do dostawcy; frontend rozpoznaje dostawcę z selektora. Brak narzędzi, store:false, obrazy przez istniejącą walidację i input_image.
+- Testy na atrapach: katalog/filtrowanie, historia/własność/izolacja, nieznany model, brak klucza, neutralne błędy HTTP/sieci, błędny/za duży JSON. Nie uruchamiano płatnych odpowiedzi ani odczytu rzeczywistych sekretów.
+- Pełna weryfikacja etapu: PHP 94/94, 316 asercji; UI 32/32; składnia 10 PHP i kontrole diff/Composer poprawne (znane ostrzeżenie o licencji).

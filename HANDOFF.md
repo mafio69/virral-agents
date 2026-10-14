@@ -158,3 +158,11 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Weryfikacja przed commitem: PHP 80/80, 240 asercji; UI 26/26. Składnia sześciu PHP, diff-check i wymagania platformy Composer poprawne; Composer validate poprawny z dotychczasowym ostrzeżeniem o braku licencji. Wszystkie testy z fikcyjnymi danymi, bez rzeczywistej bazy i sekretów.
 - Lokalny HEAD dev potwierdził 503 i user_data_key_missing. Właściciel musi zapewnić USER_DATA_KEY w procesie i FPM; istniejąca baza nadal wymaga jawnej migracji według instrukcji. Agent nie usuwał danych i nie odtwarzał kontenerów. AGENTS.md zabrania agentowi odczytu i modyfikacji sekretów.
 - Rozważenie PostgreSQL pozostaje osobnym etapem: aktualne połączenie i migracje używają PDO SQLite, PRAGMA oraz AUTOINCREMENT. Nie rozpoczęto zmiany silnika.
+
+## 2026-10-14 — wspólna konfiguracja migratora i aplikacji
+
+- Właściciel wyjaśnił, że bieżące pliki środowiska nie są szyfrowane i nie korzysta z dxrun. Dokumentacja historyczna sugerowała inny sposób uruchamiania.
+- Ładowanie Dotenv jest teraz w src/settings.php, wspólne dla HTTP i bin/protect-user-data.php. CLI używa tego samego kontenera ustawień i fabryki DataCipherInterface; nie powiela walidacji kluczy.
+- Zwykłe lokalne polecenie właściciela po zatrzymaniu aplikacji: php bin/protect-user-data.php --apply. Skrypt podaje bezpieczny kod etapu przy błędzie. Potem uruchomić aplikację i sprawdzić HTTP.
+- PHP 80/80, 240 asercji; UI 26/26; składnia trzech PHP, diff-check i wymagania platformy Composer poprawne; Composer validate z istniejącym ostrzeżeniem o braku licencji. Etap przygotowany do osobnego lokalnego commitu, bez push.
+- Nie uruchamiano migracji rzeczywistej bazy ani nie odczytywano pliku środowiska lub kluczy. Weryfikacja rzeczywistego odczytu konfiguracji przez migrator wymaga lokalnego wykonania przez właściciela.

@@ -5,6 +5,9 @@ declare(strict_types=1);
 use DI\ContainerBuilder;
 
 return function (ContainerBuilder $containerBuilder) {
+    // HTTP and CLI share the same local configuration source. Existing process
+    // values take precedence; encrypted values still require external decryption.
+    \Dotenv\Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
     $settings = require __DIR__.'/../config/app.php';
     $sensitiveValue = static function (string $name, string $fallback = ''): string {
         // Środowisko procesu ma pierwszeństwo przed zaszyfrowanym wpisem z pliku.

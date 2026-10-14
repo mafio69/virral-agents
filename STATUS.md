@@ -1,5 +1,13 @@
 # STATUS
 
+## 2026-10-14 — wspólna konfiguracja HTTP i migratora CLI
+
+- Właściciel sprostował sposób uruchamiania: bieżący plik środowiska nie jest szyfrowany i nie używa dxrun. Poprzednie instrukcje wynikały z dokumentacji historycznej.
+- Ładowanie lokalnej konfiguracji przez Dotenv przeniesiono z public/index.php do wspólnego src/settings.php. Migrator CLI korzysta z tych samych ustawień i fabryki szyfratora DI; nie wymaga eksportowania wartości z pliku przed zwykłym php.
+- Migrator podaje bezpieczny kod etapu/przyczyny, bez treści wyjątku, ścieżek i kluczy. Instrukcje obejmują zwykłe php i Compose; wariant dxrun dotyczy wyłącznie instalacji z dotenvx.
+- Walidacja: PHP 80/80, 240 asercji; UI 26/26; składnia trzech PHP, diff-check i wymagania platformy Composer poprawne. Composer validate: poprawny z dotychczasowym ostrzeżeniem o licencji.
+- Agent nie odczytał pliku środowiska, nie uruchomił migratora na rzeczywistej bazie i nie potwierdził migracji właściciela. Kolejny krok lokalny: zatrzymać aplikację, php bin/protect-user-data.php --apply, uruchomić ponownie i zweryfikować HTTP.
+
 ## 2026-10-14 — start pustej bazy dev
 
 - Gałąź `codex/fix-dev-database-startup`, utworzona za zgodą z lokalnego develop bez fetch.

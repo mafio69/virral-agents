@@ -186,6 +186,12 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - To szyfrowanie wybranych pól, nie całego pliku SQLite. Metadane pozostają jawne; serwer i wybrany dostawca AI mają dostęp do treści podczas działania. Bez ochrony przed przejęciem procesu/klucza i bez szyfrowania end-to-end.
 # 2026-10-14 — inicjalizacja pustej szyfrowanej bazy
 
+## Wspólna konfiguracja HTTP i CLI
+
+- Migrator wczytuje nieszyfrowany lokalny plik środowiska przez ten sam src/settings.php co HTTP i używa istniejącej fabryki szyfratora DI. Usunięto powieloną walidację kluczy oraz obowiązek dxrun dla bieżącej instalacji.
+- Dodano bezpieczne kody błędów migracji i poprawiono instrukcje uruchamiania. Nie odczytywano rzeczywistych sekretów ani nie wykonywano migracji bazy.
+- PHP 80/80 (240 asercji), UI 26/26, składnia trzech zmienionych PHP i kontrole diff/Composer poprawne; dotychczasowe ostrzeżenie o braku licencji.
+
 - Naprawiono start nowej bazy: znacznik ochrony danych jest przygotowywany atomowo tylko przy braku danych użytkowników i sesji. Istniejące dane nie są migrowane przy żądaniu HTTP.
 - Dodano bezpieczny kod etapu i przyczyny błędu do logu 503 oraz X-App-Error, a także testy idempotencji, odmowy dla istniejących danych, błędnego klucza, rollback i zamkniętej listy kodów diagnostycznych.
 - Poprawiono przykład preserve-env o USER_DATA_KEY. Lokalna odpowiedź dev potwierdziła brak tego klucza w aplikacji; nie odczytywano jego wartości.

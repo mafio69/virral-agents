@@ -17,7 +17,11 @@ src/settings.php pobiera tylko:
 - USER_DATA_KEY — osobny klucz szyfrowania danych użytkowników, zgodnie z docs/OCHRONA_DANYCH.md.
 - MAIL_DSN — transport poczty, jeśli zawiera poświadczenia lub prywatny adres. Gdy go nie ma, używana jest lokalna wartość z konfiguracji PHP.
 
-Rozszyfrowana wartość środowiska procesu ma pierwszeństwo przed wpisem pliku. Wpisy encrypted: nie są traktowane jako działające poświadczenia. Kod aplikacji używa wartości w runtime; agent nie odczytuje ich podczas konfiguracji.
+HTTP i migrator CLI wczytują lokalny plik środowiska przez wspólne src/settings.php.
+Bieżąca instalacja korzysta z nieszyfrowanego pliku i nie wymaga dxrun. Wartość
+środowiska procesu ma pierwszeństwo przed wpisem pliku. Wpisy encrypted: nie są
+traktowane jako działające poświadczenia. Kod aplikacji używa wartości w runtime;
+agent nie odczytuje ich podczas konfiguracji.
 
 Pliki .env, klucze, tokeny, ścieżki do sekretów i zaszyfrowane rekordy dostawców zostały zachowane. Agent nie odczytywał ani nie modyfikował tych danych. Dawne zmienne APP_URL, OVH_AI_BASE_URI, OVH_AI_MODEL, OVH_AI_TIMEOUT i LOG_LEVEL nie sterują już aplikacją; ich odpowiedniki są w config/app.php. Nie kopiowano starych wartości z .env, więc przy instalacji należy dopasować jawne ustawienia PHP.
 
@@ -27,7 +31,15 @@ Parametry instalacji, porty, wolumeny i UID:GID są w docker-compose.yml. UID:GI
 
 Compose przekazuje cztery wymienione wartości wrażliwe; PHP-FPM ma tę samą listę. PHP_IDE_CONFIG jest technicznym ustawieniem IDE zapisanym jawnie w Compose.
 
-Przy uruchamianiu przez dxrun przed sudo zachowaj tylko wymagane wartości wrażliwe:
+Przy bieżącym nieszyfrowanym pliku środowiska Compose wczytuje wartości lokalnie;
+po ich zmianie właściciel odtwarza kontener:
+
+```bash
+docker compose up -d --force-recreate app
+```
+
+Poniższy wariant dotyczy tylko instalacji używających dotenvx, dxrun i sudo;
+zachowaj wtedy tylko wymagane wartości wrażliwe:
 
 ```bash
 dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,MAIL_DSN docker compose up -d --force-recreate

@@ -26,7 +26,7 @@ procesu aplikacji i jego klucza.
 ## Osobny klucz
 
 Właściciel konfiguruje `USER_DATA_KEY`: 32 losowe bajty zapisane jako 64 znaki HEX,
-w swoim istniejącym, bezpiecznym mechanizmie środowiska uruchamianego przez `dxrun`.
+w swoim lokalnym pliku środowiska lub bezpiecznym środowisku procesu.
 Klucz ma być niezależny od `DB_HASH`; aplikacja i migrator odrzucają identyczne
 wartości tych kluczy. Nie wpisuj klucza do konfiguracji PHP, kodu, dokumentacji,
 argumentów polecenia ani czatu. Nie generuj nowego przy każdym uruchomieniu.
@@ -45,11 +45,15 @@ bazy zamiast istniejącego pliku przez pomyłkę.
 Po ustawieniu klucza uruchom z katalogu projektu:
 
 ```bash
-dxrun php bin/protect-user-data.php --apply
+php bin/protect-user-data.php --apply
 ```
 
-Migrator nie odczytuje plików środowiska. Pobiera klucz wyłącznie z procesu
-uruchomionego przez właściciela. Zachowuje dane, identyfikatory i hashe haseł.
+Migrator korzysta z tego samego src/settings.php co aplikacja: przy zwykłym lokalnym
+pliku środowiska wystarcza polecenie php powyżej. Środowisko procesu ma pierwszeństwo.
+Jeśli konkretna instalacja używa szyfrowania dotenvx, właściciel uruchamia to samo
+polecenie przez swój mechanizm odszyfrowania (np. dxrun); nie dotyczy to bieżącej
+instalacji z nieszyfrowanym plikiem. Agent nie odczytuje pliku ani wartości klucza.
+Migrator zachowuje dane, identyfikatory i hashe haseł.
 W jednej transakcji szyfruje istniejące wartości, hashuje tokeny potwierdzeń emaila,
 unieważnia wszystkie dotychczasowe sesje i zapisuje uwierzytelniony znacznik migracji.
 Niepowodzenie transakcji wycofuje wszystkie te zmiany. Ponowne wykonanie z tym samym
@@ -76,7 +80,7 @@ Nie trzeba usuwać istniejącej bazy, aby wykonać migrację.
 Bez klucza, z błędnym kluczem albo bez znacznika migracji istniejących danych aplikacja odmawia pracy
 z danymi i zwraca 503. Nie przechodzi na zapis jawny i nie migruje danych użytkowników
 automatycznie przy żądaniu HTTP. Migracja struktury tabel przy starcie nadal działa.
-Interaktywny reset hasła również wymaga `dxrun` i poprawnego `USER_DATA_KEY`.
+Interaktywny reset hasła również wymaga poprawnego `USER_DATA_KEY`.
 
 Przy HTTP 503 log inicjalizacji zawiera wyłącznie bezpieczny kod etapu `stage`;
 ten sam kod jest dostępny w nagłówku odpowiedzi `X-App-Error`:

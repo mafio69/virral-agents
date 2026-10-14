@@ -43,15 +43,36 @@ final class AuthController
 
         $result = $this->authService->login($input);
 
-        $secure = $request->getUri()->getScheme() === 'https' || ($_ENV['APP_ENV'] ?? 'dev') === 'prod';
-        $cookie = 'token='.rawurlencode($result->token)
-            .'; Expires='.gmdate('D, d M Y H:i:s', strtotime($result->expiresAt)).' GMT'
-            .'; Path=/; HttpOnly; SameSite='.($secure ? 'Strict' : 'Lax')
-            .($secure ? '; Secure' : '');
-
         return JsonResponder::respond($response, [
             'token' => $result->token,
-        ])->withAddedHeader('Set-Cookie', $cookie);
+        ])->withAddedHeader('Set-Cookie', $this->sessionCookie($request, $result->token, strtotime($result->expiresAt)));
+    }
+
+    public function logout(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        try {
+            $token = $this->resolveToken($request);
+        } catch (UnauthorizedException) {
+            $token = '';
+        }
+        $cookieToken = $request->getCookieParams()['token'] ?? '';
+        foreach (array_unique([$token, is_string($cookieToken) ? $cookieToken : '']) as $sessionToken) {
+            if ($sessionToken !== '') {
+                $this->authService->logout($sessionToken);
+            }
+        }
+        return $response->withStatus(204)
+            ->withHeader('Cache-Control', 'no-store')
+            ->withAddedHeader('Set-Cookie', $this->sessionCookie($request, '', 0));
+    }
+
+    private function sessionCookie(ServerRequestInterface $request, string $token, int $expiresAt): string
+    {
+        $secure = $request->getUri()->getScheme() === 'https' || ($_ENV['APP_ENV'] ?? 'dev') === 'prod';
+        return 'token='.rawurlencode($token)
+            .'; Expires='.gmdate('D, d M Y H:i:s', $expiresAt).' GMT'
+            .'; Path=/; HttpOnly; SameSite='.($secure ? 'Strict' : 'Lax')
+            .($secure ? '; Secure' : '');
     }
 
     public function verifyEmail(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

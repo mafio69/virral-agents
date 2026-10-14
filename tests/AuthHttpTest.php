@@ -47,10 +47,13 @@ final class AuthHttpTest extends TestCase
         (require __DIR__.'/../src/middleware.php')($this->app);
     }
 
-    private function request(string $method, string $path, ?array $body = null, array $cookies = [], string $scheme = 'http'): ResponseInterface
+    private function request(string $method, string $path, ?array $body = null, array $cookies = [], string $scheme = 'http', string $bearer = ''): ResponseInterface
     {
         $request = (new ServerRequestFactory())->createServerRequest($method, $scheme.'://fixture.example.invalid'.$path)
             ->withCookieParams($cookies);
+        if ($bearer !== '') {
+            $request = $request->withHeader('Authorization', 'Bearer '.$bearer);
+        }
         if ($body !== null) {
             $request = $request->withHeader('Content-Type', 'application/json');
             $request->getBody()->write(json_encode($body, JSON_THROW_ON_ERROR));
@@ -91,6 +94,22 @@ final class AuthHttpTest extends TestCase
         self::assertStringContainsString('SameSite=Strict; Secure', $response->getHeaderLine('Set-Cookie'));
     }
 
+    public function testLogoutRevokesOnlyPresentedSessionAndClearsHttpOnlyCookie(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        $first = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
+        $second = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
+        $logout = $this->request('POST', '/api/auth/logout', cookies: ['token' => $first], scheme: 'https');
+        self::assertSame(204, $logout->getStatusCode());
+        self::assertStringContainsString('token=; Expires=Thu, 01 Jan 1970', $logout->getHeaderLine('Set-Cookie'));
+        self::assertStringContainsString('HttpOnly; SameSite=Strict; Secure', $logout->getHeaderLine('Set-Cookie'));
+        self::assertSame('no-store', $logout->getHeaderLine('Cache-Control'));
+        self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $first])->getStatusCode());
+        self::assertSame(200, $this->request('GET', '/api/auth/me', cookies: ['token' => $second])->getStatusCode());
+        self::assertSame(204, $this->request('POST', '/api/auth/logout', cookies: ['token' => $first])->getStatusCode());
+        self::assertSame(204, $this->request('POST', '/api/auth/logout')->getStatusCode());
+    }
+
     public function testMailFailureKeepsAccountAvailableForLogin(): void
     {
         $this->mail->expects($this->once())->method('send')->willThrowException(new \RuntimeException('Fixture mail unavailable'));
@@ -98,6 +117,14 @@ final class AuthHttpTest extends TestCase
         self::assertSame(201, $response->getStatusCode());
         self::assertFalse($this->data($response)['confirmation_sent']);
         self::assertSame(200, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+    }
+
+    public function testLogoutClearsCookieSessionEvenWhenBrowserHasStaleBearer(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        $token = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
+        self::assertSame(204, $this->request('POST', '/api/auth/logout', cookies: ['token' => $token], bearer: 'stale-fixture')->getStatusCode());
+        self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $token])->getStatusCode());
     }
 
     public function testRegistrationTrimsEmailBeforeValidationAndStorage(): void

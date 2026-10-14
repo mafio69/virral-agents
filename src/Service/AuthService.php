@@ -80,6 +80,11 @@ final readonly class AuthService
         return (int)$session['user_id'];
     }
 
+    public function logout(string $token): void
+    {
+        $this->userRepository->deleteSession($token);
+    }
+
     public function verifyEmail(string $token): void
     {
         $user = $this->userRepository->findByVerificationToken($token);

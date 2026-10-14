@@ -186,6 +186,12 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - To szyfrowanie wybranych pól, nie całego pliku SQLite. Metadane pozostają jawne; serwer i wybrany dostawca AI mają dostęp do treści podczas działania. Bez ochrony przed przejęciem procesu/klucza i bez szyfrowania end-to-end.
 # 2026-10-14 — inicjalizacja pustej szyfrowanej bazy
 
+## Wylogowanie po stronie serwera
+
+- Naprawiono wylogowanie: backend unieważnia przekazane sesje i wygasza ciasteczko HttpOnly. Wcześniej UI próbowało usuwać je przez JavaScript, pozostawiając aktywną sesję.
+- UI raportuje nieudane wylogowanie i obsługuje niedostępny localStorage. Pozostałe sesje konta są zachowane.
+- PHP 82/82 (250 asercji), UI 28/28, składnia i kontrole diff/Composer poprawne.
+
 ## Lokalny reset hasła
 
 - Interaktywny reset hasła korzysta ze wspólnej konfiguracji HTTP/CLI i fabryki szyfratora; nieszyfrowany lokalny plik środowiska nie wymaga ręcznego eksportowania klucza.

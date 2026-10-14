@@ -19,6 +19,7 @@ async function fixture({ blockedStorage = false, restoreCookie = false, response
         document: { cookie: '', getElementById: id => elements.get(id) || null,
             querySelector: selector => buttons.get(selector.includes('register') ? 'register' : 'login') },
         localStorage: { getItem: () => { if (blockedStorage) throw new Error('Storage disabled'); return null; },
+            removeItem: () => { if (blockedStorage) throw new Error('Storage disabled'); },
             setItem: () => { if (blockedStorage) throw new Error('Storage disabled'); } },
         location: { hash: '' }, window: { addEventListener() {} },
         fetch: async (url, options) => {
@@ -85,4 +86,22 @@ test('cookie session restores dashboard even when storage is blocked', async () 
     const { elements } = await fixture({ blockedStorage: true, restoreCookie: true });
     assert.equal(elements.get('dashboard-view').classList.contains('hidden'), false);
     assert.equal(elements.get('user-email').textContent, 'fixture@example.invalid');
+});
+
+test('logout calls the server and hides dashboard even with blocked storage', async () => {
+    const { context, elements, requests } = await fixture({ blockedStorage: true, restoreCookie: true,
+        response: { ok: true, status: 204, data: null } });
+    await vm.runInContext('logout()', context);
+    assert.equal(requests[0].url, '/api/auth/logout');
+    assert.equal(requests[0].options.method, 'POST');
+    assert.equal(elements.get('dashboard-view').classList.contains('hidden'), true);
+    assert.equal(elements.get('landing-view').classList.contains('hidden'), false);
+});
+
+test('failed logout keeps dashboard visible and reports failure', async () => {
+    const { context, elements } = await fixture({ restoreCookie: true,
+        response: { ok: false, status: 500, data: null } });
+    await vm.runInContext('logout()', context);
+    assert.equal(elements.get('dashboard-view').classList.contains('hidden'), false);
+    assert.match(elements.get('auth-indicator').textContent, /Wylogowanie nie powiodło się/);
 });

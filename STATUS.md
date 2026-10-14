@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-14 — wylogowanie unieważniające sesję
+
+- POST /api/auth/logout usuwa sesje wskazane przez cookie i nagłówek Bearer, wygasza ciasteczko HttpOnly i zwraca 204/no-store. Wylogowanie jest idempotentne; pozostałe sesje konta pozostają aktywne.
+- Landing wylogowuje przez backend. Awaria nie ukrywa panelu ani nie udaje wylogowania; niedostępny localStorage nie blokuje poprawnego wylogowania.
+- PHP 82/82, 250 asercji; UI 28/28. Składnia, diff-check i kontrole Composer poprawne; istniejące ostrzeżenie o licencji. Testy HTTP na fikcyjnych kontach i SQLite w pamięci.
+- Nie wykonywano wylogowania/resetu rzeczywistego konta ani połączeń dostawców. Reset hasła właściciela pozostaje do lokalnego wykonania. Bez push.
+
 ## 2026-10-14 — lokalny reset hasła z konfiguracją aplikacji
 
 - bin/reset-password.php korzysta ze wspólnego src/settings.php i fabryki szyfratora DI, tak jak HTTP oraz migrator. Właściciel uruchamia zwykłe php w interaktywnym terminalu, bez sudo.

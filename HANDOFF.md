@@ -173,3 +173,11 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Poprawiono bin/reset-password.php: wspólne ustawienia i fabryka szyfratora DI, tak jak w migratorze. Właściciel uruchamia lokalnie php bin/reset-password.php bez sudo, podaje email i hasło dwukrotnie w ukrytym polu.
 - Dane użytkownika zachowane; reset unieważnia dotychczasowe sesje tego konta. Brak publicznego endpointu i utrwalania danych logowania w kodzie lub dokumentacji.
 - PHP 80/80, 240 asercji; UI 26/26; składnia, diff-check i kontrole Composer poprawne (istniejące ostrzeżenie o licencji). Reset na rzeczywistym koncie nadal wymaga wykonania przez właściciela; bez push.
+
+## 2026-10-14 — rzeczywiste wylogowanie
+
+- Podczas zgody na dalszą pracę sprawdzono przepływ konta. Poprawiono błąd: JavaScript nie może usunąć cookie HttpOnly, więc wcześniejsze wylogowanie pozostawiało aktywną sesję.
+- POST /api/auth/logout deleguje unieważnianie do AuthService/UserRepository, usuwa hashe wskazanych sesji i wygasza cookie odpowiedzią HTTP. Obsługuje brak/stary token oraz różne tokeny w Bearer i cookie; inne sesje konta są zachowane.
+- Landing wywołuje backend, czyści stan po sukcesie, a przy niepowodzeniu zachowuje panel i pokazuje komunikat. Działa również przy zablokowanym localStorage.
+- PHP 82/82, 250 asercji; UI 28/28; składnia i kontrole diff/Composer poprawne. Testy obejmują unieważnienie sesji, zachowanie drugiej sesji, Secure/HttpOnly, idempotencję, stary Bearer i awarię wylogowania w UI.
+- Nie uruchamiano resetu ani wylogowania rzeczywistego konta. Dane konta i sekrety nie były odczytywane. Bez push.

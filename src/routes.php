@@ -33,6 +33,7 @@ return function (App $app) {
         // Auth
         $group->post('/auth/register', [AuthController::class, 'register']);
         $group->post('/auth/login', [AuthController::class, 'login']);
+        $group->post('/auth/logout', [AuthController::class, 'logout']);
         $group->get('/auth/me', [AuthController::class, 'me']);
         $group->get('/auth/verify-email', [AuthController::class, 'verifyEmail']);
 

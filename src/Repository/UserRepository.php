@@ -76,6 +76,12 @@ final readonly class UserRepository
         $stmt->execute(['token' => hash('sha256', $token), 'id' => $userId]);
     }
 
+    public function deleteSession(string $token): void
+    {
+        $statement = $this->pdo->prepare('DELETE FROM sessions WHERE token = :token');
+        $statement->execute(['token' => hash('sha256', $token)]);
+    }
+
     public function findByVerificationToken(string $token): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE email_verification_token = :token');

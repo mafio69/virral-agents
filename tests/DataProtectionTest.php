@@ -64,14 +64,103 @@ final class DataProtectionTest extends TestCase
 
     public function testMissingKeyIsRejected(): void
     {
-        $this->expectException(DataProtectionException::class);
-        new SodiumDataCipher('');
+        try {
+            new SodiumDataCipher('');
+            self::fail('Missing key must be rejected');
+        } catch (DataProtectionException $error) {
+            self::assertSame(DataProtectionException::KEY_MISSING, $error->reason);
+        }
+    }
+
+    public function testInvalidKeyHasSafeDiagnosticCode(): void
+    {
+        try {
+            new SodiumDataCipher('invalid fixture');
+            self::fail('Invalid key must be rejected');
+        } catch (DataProtectionException $error) {
+            self::assertSame(DataProtectionException::KEY_INVALID, $error->reason);
+            self::assertStringNotContainsString('invalid fixture', $error->getMessage());
+        }
+    }
+
+    public function testDiagnosticReasonRejectsArbitraryValues(): void
+    {
+        $error = new DataProtectionException('private fixture');
+        self::assertNull($error->reason);
+        self::assertStringNotContainsString('private fixture', $error->getMessage());
     }
 
     public function testRepositoriesRequireMigration(): void
     {
         $this->expectException(DataProtectionException::class);
         new UserRepository($this->database(), $this->cipher());
+    }
+
+    public function testEmptyDatabaseStartupInitializesProtectionAndIsIdempotent(): void
+    {
+        $pdo = $this->database();
+        $cipher = $this->cipher();
+        $migration = new DataProtectionMigration($pdo, $cipher);
+        $migration->initializeEmptyDatabase();
+        $check = $pdo->query('SELECT key_check FROM data_protection_state')->fetchColumn();
+        $users = new UserRepository($pdo, $cipher);
+        $id = $users->createUser('startup@example.invalid', 'fixture hash');
+        $migration->initializeEmptyDatabase();
+        self::assertSame($check, $pdo->query('SELECT key_check FROM data_protection_state')->fetchColumn());
+        self::assertSame('startup@example.invalid', $users->findById($id)['email']);
+        self::assertNotSame('startup@example.invalid', $pdo->query('SELECT email FROM users')->fetchColumn());
+    }
+
+    public function testStartupDoesNotMigrateAnyExistingUserData(): void
+    {
+        $fixtures = [
+            'users' => "INSERT INTO users (email,password_hash,created_at) VALUES ('legacy@example.invalid','fixture hash','now')",
+            'chats' => "INSERT INTO chats (user_id,title,created_at) VALUES (1,'legacy title','now')",
+            'chat_messages' => "INSERT INTO chat_messages (chat_id,role,content,created_at) VALUES (1,'user','legacy message','now')",
+            'chat_message_images' => "INSERT INTO chat_message_images (message_id,data_url) VALUES (1,'legacy image')",
+            'tasks' => "INSERT INTO tasks (user_id,title,status,created_at,updated_at) VALUES (1,'legacy task','todo','now','now')",
+            'sessions' => "INSERT INTO sessions (user_id,token,created_at,expires_at) VALUES (1,'fixture session','now','later')",
+        ];
+        foreach ($fixtures as $table => $fixture) {
+            $pdo = $this->database();
+            $pdo->exec($fixture);
+            $before = $pdo->query('SELECT * FROM '.$table)->fetchAll();
+            try {
+                (new DataProtectionMigration($pdo, $this->cipher()))->initializeEmptyDatabase();
+                self::fail('Existing data must require an explicit migration');
+            } catch (DataProtectionException) {
+                self::assertSame(0, (int)$pdo->query('SELECT COUNT(*) FROM data_protection_state')->fetchColumn());
+                self::assertFalse($pdo->inTransaction());
+                self::assertSame($before, $pdo->query('SELECT * FROM '.$table)->fetchAll());
+            }
+        }
+    }
+
+    public function testStartupRejectsWrongKeyWithoutChangingProtectionState(): void
+    {
+        $pdo = $this->database();
+        (new DataProtectionMigration($pdo, $this->cipher()))->initializeEmptyDatabase();
+        $check = $pdo->query('SELECT key_check FROM data_protection_state')->fetchColumn();
+        try {
+            (new DataProtectionMigration($pdo, $this->cipher()))->initializeEmptyDatabase();
+            self::fail('Wrong key must be rejected');
+        } catch (DataProtectionException) {
+            self::assertSame($check, $pdo->query('SELECT key_check FROM data_protection_state')->fetchColumn());
+            self::assertFalse($pdo->inTransaction());
+        }
+    }
+
+    public function testFailedEmptyInitializationRollsBackMarker(): void
+    {
+        $pdo = $this->database();
+        $pdo->exec("CREATE TRIGGER fixture_failure BEFORE INSERT ON data_protection_state BEGIN SELECT RAISE(ABORT,'fixture failure'); END");
+        try {
+            (new DataProtectionMigration($pdo, $this->cipher()))->initializeEmptyDatabase();
+            self::fail('Initialization should fail');
+        } catch (\PDOException) {
+            self::assertSame(0, (int)$pdo->query('SELECT COUNT(*) FROM data_protection_state')->fetchColumn());
+            self::assertFalse($pdo->inTransaction());
+        }
     }
 
     public function testSensitiveFieldsNeverAppearInStoredRows(): void
@@ -251,7 +340,11 @@ final class DataProtectionTest extends TestCase
         $builder = new \DI\ContainerBuilder();
         (require __DIR__.'/../src/dependencies.php')($builder);
         $builder->addDefinitions(['settings' => ['user_data' => ['key' => $key], 'ai_registry' => ['key' => strtoupper($key)]]]);
-        $this->expectException(DataProtectionException::class);
-        $builder->build()->get(\App\Infrastructure\DataProtection\DataCipherInterface::class);
+        try {
+            $builder->build()->get(\App\Infrastructure\DataProtection\DataCipherInterface::class);
+            self::fail('Provider key must not protect user data');
+        } catch (DataProtectionException $error) {
+            self::assertSame(DataProtectionException::KEY_REUSED, $error->reason);
+        }
     }
 }

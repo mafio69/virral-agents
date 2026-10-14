@@ -1,5 +1,14 @@
 # STATUS
 
+## 2026-10-14 — start pustej bazy dev
+
+- Gałąź `codex/fix-dev-database-startup`, utworzona za zgodą z lokalnego develop bez fetch.
+- Start automatycznie przygotowuje znacznik szyfrowania tylko przy braku danych użytkowników i sesji, z poprawnym kluczem. Transakcja blokuje równoczesną inicjalizację; istniejące dane nadal wymagają jawnej migracji CLI.
+- Log i nagłówek X-App-Error zawierają zamknięty kod etapu/przyczyny, bez danych i treści wyjątku. Rozróżniane są brak klucza, błędny format, użycie klucza dostawców i brak sodium.
+- Weryfikacja przed commitem: PHP 80/80, 240 asercji; UI 26/26; składnia sześciu zmienionych PHP, diff-check i wymagania platformy Composer poprawne. Composer validate: poprawne pliki, dotychczasowe ostrzeżenie o braku licencji.
+- Lokalny HEAD na 127.0.0.1:8181 potwierdził 503 i user_data_key_missing. Poprawiono brak USER_DATA_KEY w przykładzie preserve-env w docs/KONFIGURACJA.md. Konfigurację klucza i odtworzenie kontenerów musi wykonać właściciel zgodnie z zakazem odczytu/modyfikacji sekretów.
+- Nie odczytywano sekretów ani rzeczywistej bazy, nie wykonywano migracji, odtworzenia kontenerów ani push. Właściciel zatwierdził domykanie etapów commitem po testach. Istniejące dane nadal wymagają jawnej migracji.
+
 Ostatnia aktualizacja: 2026-10-14. Gałąź pracy: `security/protect-user-data`; docelowa gałąź lokalnego scalenia: `develop`.
 
 Aktualne wyniki są w sekcji „ochrona danych użytkowników w SQLite” na końcu pliku. Starsze sekcje zachowano jako zapis poprzednich sesji.

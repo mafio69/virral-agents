@@ -60,12 +60,46 @@ final readonly class DataProtectionMigration
             }
             // Existing bearer credentials are invalidated rather than retained.
             $this->pdo->exec('DELETE FROM sessions');
-            $statement = $this->pdo->prepare('INSERT INTO data_protection_state (id, version, key_check) VALUES (1, 1, :check)');
-            $statement->execute(['check' => $this->cipher->encrypt(self::CHECK, 'migration.key_check')]);
+            $this->writeState();
             $this->pdo->commit();
         } catch (\Throwable $error) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $error;
         }
+    }
+
+    public function initializeEmptyDatabase(): void
+    {
+        if ($this->pdo->query('SELECT COUNT(*) FROM data_protection_state')->fetchColumn()) {
+            $this->assertReady();
+            return;
+        }
+        $this->pdo->beginTransaction();
+        try {
+            // Acquire the SQLite write lock before checking emptiness: concurrent
+            // startup requests must not initialize the same database twice.
+            $this->pdo->exec('UPDATE data_protection_state SET version = version WHERE id = 1');
+            if ($this->pdo->query('SELECT COUNT(*) FROM data_protection_state')->fetchColumn()) {
+                $this->assertReady();
+            } else {
+                foreach ([...array_keys(ProtectedFields::TABLES), 'sessions'] as $table) {
+                    if ($this->pdo->query('SELECT 1 FROM '.$table.' LIMIT 1')->fetchColumn() !== false) {
+                        throw new DataProtectionException();
+                    }
+                }
+                $this->writeState();
+                $this->assertReady();
+            }
+            $this->pdo->commit();
+        } catch (\Throwable $error) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
+        }
+    }
+
+    private function writeState(): void
+    {
+        $statement = $this->pdo->prepare('INSERT INTO data_protection_state (id, version, key_check) VALUES (1, 1, :check)');
+        $statement->execute(['check' => $this->cipher->encrypt(self::CHECK, 'migration.key_check')]);
     }
 }

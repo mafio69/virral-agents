@@ -23,7 +23,7 @@ return function (ContainerBuilder $containerBuilder) {
             $settings = $c->get('settings');
             $value = $settings['user_data']['key'];
             if ($value !== '' && hash_equals(strtolower($settings['ai_registry']['key']), strtolower($value))) {
-                throw new \App\Exception\DataProtectionException();
+                throw new \App\Exception\DataProtectionException(\App\Exception\DataProtectionException::KEY_REUSED);
             }
             return new \App\Infrastructure\DataProtection\SodiumDataCipher($value);
         },

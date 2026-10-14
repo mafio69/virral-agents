@@ -67,10 +67,25 @@ właściciel istniejącym sposobem uruchamiania; jeżeli używa `sudo`, musi zac
 również tę zmienną wraz z pozostałymi wymaganymi zmiennymi aplikacji.
 Po migracji i odtworzeniu kontenerów zaloguj się ponownie.
 
-Bez klucza, z błędnym kluczem albo bez znacznika migracji aplikacja odmawia pracy
+Nowa baza bez danych użytkowników jest przygotowywana automatycznie przy starcie,
+jeżeli proces otrzyma poprawny `USER_DATA_KEY`. Inicjalizacja zapisuje znacznik
+ochrony w transakcji, bez migracji istniejących treści. Baza zawierająca użytkowników,
+rozmowy, wiadomości, obrazy, zadania lub sesje nadal wymaga jawnej migracji CLI.
+Nie trzeba usuwać istniejącej bazy, aby wykonać migrację.
+
+Bez klucza, z błędnym kluczem albo bez znacznika migracji istniejących danych aplikacja odmawia pracy
 z danymi i zwraca 503. Nie przechodzi na zapis jawny i nie migruje danych użytkowników
 automatycznie przy żądaniu HTTP. Migracja struktury tabel przy starcie nadal działa.
 Interaktywny reset hasła również wymaga `dxrun` i poprawnego `USER_DATA_KEY`.
+
+Przy HTTP 503 log inicjalizacji zawiera wyłącznie bezpieczny kod etapu `stage`;
+ten sam kod jest dostępny w nagłówku odpowiedzi `X-App-Error`:
+`database_schema` oznacza połączenie lub strukturę bazy, `user_data_key` konfigurację
+klucza, a `user_data_readiness` przygotowanie pustej bazy lub weryfikację migracji
+i jej klucza. Kod etapu nie zawiera klucza, danych, treści wyjątku ani stosu wywołań.
+Dokładniejsze kody konfiguracji to `user_data_key_missing` (brak klucza),
+`user_data_key_invalid` (niepoprawny format), `user_data_key_reused` (użyto klucza
+rejestru dostawców) oraz `sodium_unavailable` (brak rozszerzenia PHP).
 
 ## Testy
 

@@ -184,3 +184,9 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Składnia 26 zmienionych/nowych PHP: OK. Kontrole diff, Composer validate i check-platform-reqs: OK (dotychczasowe ostrzeżenie o braku licencji). Inspekcje PhpStorm dla szyfratora i migratora bez błędów.
 - Właściciel potwierdził, że sam skonfiguruje klucz i uruchomi migrację lokalnie. Nie potwierdzono jej wykonania. Obecna baza nie została zmigrowana przez agenta. Instrukcja: docs/OCHRONA_DANYCH.md; polecenie właściciela: dxrun php bin/protect-user-data.php --apply po zatrzymaniu aplikacji. Następnie odtworzyć kontenery, przekazując także USER_DATA_KEY, i zalogować się ponownie.
 - To szyfrowanie wybranych pól, nie całego pliku SQLite. Metadane pozostają jawne; serwer i wybrany dostawca AI mają dostęp do treści podczas działania. Bez ochrony przed przejęciem procesu/klucza i bez szyfrowania end-to-end.
+# 2026-10-14 — inicjalizacja pustej szyfrowanej bazy
+
+- Naprawiono start nowej bazy: znacznik ochrony danych jest przygotowywany atomowo tylko przy braku danych użytkowników i sesji. Istniejące dane nie są migrowane przy żądaniu HTTP.
+- Dodano bezpieczny kod etapu i przyczyny błędu do logu 503 oraz X-App-Error, a także testy idempotencji, odmowy dla istniejących danych, błędnego klucza, rollback i zamkniętej listy kodów diagnostycznych.
+- Poprawiono przykład preserve-env o USER_DATA_KEY. Lokalna odpowiedź dev potwierdziła brak tego klucza w aplikacji; nie odczytywano jego wartości.
+- Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.

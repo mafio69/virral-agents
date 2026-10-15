@@ -43,6 +43,18 @@ test('a new conversation sends only its own draft with the chosen model', async 
     assert.equal(controller.state.messages.length, 2);
 });
 
+test('Gemini is the default while an explicit saved provider choice is preserved', async () => {
+    const connections = [{ id: 'ovh', name: 'OVH' }, { id: 'google', name: 'Gemini' }];
+    for (const remembered of ['', 'missing', 'ovh']) {
+        const controller = new ChatController(fixture({ listConnections: async () => connections }), () => {},
+            { read: () => ({ connection: remembered, models: {} }), save: () => {} });
+        await controller.load();
+        assert.equal(controller.state.selectedConnection, remembered === 'ovh' ? 'ovh' : 'google');
+        controller.newChat();
+        assert.equal(controller.state.selectedConnection, remembered === 'ovh' ? 'ovh' : 'google');
+    }
+});
+
 test('blank messages do not create a conversation', async () => {
     let calls = 0;
     const controller = new ChatController(fixture({

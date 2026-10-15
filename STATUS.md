@@ -1,5 +1,11 @@
 # STATUS
 
+## 2026-10-15 — nazwy kluczy i domyślne Gemini
+
+- Ustawienia, Compose i PHP-FPM używają OPEN_AI_KEY oraz GEMINI_KEY, zgodnie z nazwami właściciela. Zaktualizowano instrukcje; bez odczytu i zmiany wartości kluczy.
+- Nowy użytkownik czatu domyślnie wybiera Google/Gemini. Jawny zapamiętany wybór oraz dostawca istniejącej rozmowy są zachowane.
+- PHP 108/108 (403 asercje), UI 35/35, składnia ustawień/kontrolera i diff-check poprawne. Generowanie obrazów pozostaje osobnym etapem; obecna integracja obsługuje tekst i analizę obrazów wejściowych.
+
 ## 2026-10-15 — integracja Google i domknięcie trzech dostawców
 
 - Gałąź codex/integration-google: natywne Gemini generateContent, katalog z paginacją, GEMINI_API_KEY w DI i Compose/FPM. Klucz wyłącznie w nagłówku, systemInstruction i obrazy inlineData; bez narzędzi.

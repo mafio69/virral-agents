@@ -14,10 +14,16 @@ export class ChatController {
         this.selectionVersion = 0;
         this.uncertainDelivery = null;
         this.state = {
-            chats: [], models: [], connections: initialConnections, selectedConnection: initialConnections[0]?.id || '', modelsLoading: false, activeChat: null, messages: [], draft: '', images: [],
+            chats: [], models: [], connections: initialConnections, selectedConnection: this.preferredConnection(initialConnections)?.id || '', modelsLoading: false, activeChat: null, messages: [], draft: '', images: [],
             selectedModel: '', authenticated: null, loading: false, busy: false,
             pendingMessage: null, error: '', notice: '', deliveryUncertain: false,
         };
+    }
+
+    preferredConnection(connections) {
+        const remembered = this.preferences.read().connection;
+        return connections.find(item => item.id === remembered)
+            || connections.find(item => item.id === 'google') || connections[0];
     }
 
     update(changes) {
@@ -39,13 +45,11 @@ export class ChatController {
         const connections = this.api.listConnections().then(async items => {
             const prepared = items.filter(item => typeof item.id === 'string' && typeof item.name === 'string');
             this.update({ connections: prepared });
-            const remembered = this.preferences.read().connection;
-            const selected = prepared.find(item => item.id === remembered) || prepared[0];
+            const selected = this.preferredConnection(prepared);
             if (selected) await this.selectConnection(selected.id);
             else this.update({ notice: 'Brak przygotowanych połączeń AI.' });
         }).catch(async () => {
-            const remembered = this.preferences.read().connection;
-            const selected = this.state.connections.find(item => item.id === remembered) || this.state.connections[0];
+            const selected = this.preferredConnection(this.state.connections);
             if (selected) await this.selectConnection(selected.id);
             else this.update({ notice: 'Nie udało się pobrać połączeń AI. Odśwież stronę.' });
         });
@@ -112,9 +116,7 @@ export class ChatController {
             activeChat: null, messages: [], draft: '', images: [], loading: false,
             pendingMessage: null, error: '', notice: '', deliveryUncertain: false,
         });
-        const remembered = this.preferences.read().connection;
-        const connection = this.state.connections.find(item => item.id === remembered)?.id
-            || this.state.selectedConnection || this.state.connections[0]?.id;
+        const connection = this.preferredConnection(this.state.connections)?.id;
         if (connection) void this.selectConnection(connection);
         return true;
     }

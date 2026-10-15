@@ -2,7 +2,7 @@
 
 ## Google / Gemini
 
-- Klucz: `GEMINI_API_KEY`, przesyłany nagłówkiem `x-goog-api-key`, bez umieszczania w URL.
+- Klucz: `GEMINI_KEY`, przesyłany nagłówkiem `x-goog-api-key`, bez umieszczania w URL.
 - Katalog `GET https://generativelanguage.googleapis.com/v1beta/models` uwzględnia
   paginację i modele Gemini obsługujące generateContent; pomija warianty generowania obrazów i audio.
 - Rozmowa: `POST /v1beta/models/<model>:generateContent`, limit odpowiedzi 4096 tokenów.
@@ -22,7 +22,7 @@ Odpowiedzi modeli pozostają tekstem. Integracje nie udostępniają narzędzi wy
 
 ## OpenAI
 
-- Klucz: `OPENAI_API_KEY`, w istniejącym lokalnym środowisku właściciela.
+- Klucz: `OPEN_AI_KEY`, w istniejącym lokalnym środowisku właściciela.
 - Katalog: `GET https://api.openai.com/v1/models`; filtrowane są modele do rozmów,
   bez modeli audio, generowania obrazów i embeddingów. Bez klucza lista zgłasza brak konfiguracji.
 - Rozmowa: `POST https://api.openai.com/v1/responses`, `store:false`, limit odpowiedzi

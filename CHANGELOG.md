@@ -210,6 +210,11 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+## Domyślne Gemini i nazwy konfiguracji właściciela
+
+- Zmienne OPEN_AI_KEY i GEMINI_KEY zastępują wcześniejsze nazwy w kodzie i Compose/FPM.
+- Gemini domyślne przy braku zapamiętanego wyboru dostawcy; istniejące rozmowy zachowują powiązanie. PHP 108/108, UI 35/35, składnia i diff-check poprawne.
+
 ## Google — osobna integracja
 
 - Gałąź codex/integration-google: Gemini generateContent, katalog konta z paginacją, GEMINI_API_KEY, obsługa obrazów i historii google:... .

@@ -221,6 +221,8 @@ URL: http://localhost:8181/chat. Wykonane za zgodą: `node --test tests/ui/*.tes
 - Pełna weryfikacja: PHP 100/100, 347 asercji; UI 33/33; składnia pięciu PHP i diff/Composer poprawne. Ostrzeżenia Composer: dotychczasowy brak licencji i niedostępny cache; walidacja i wymagania platformy przechodzą.
 # 2026-10-15 — trzy integracje dostawców
 
+Aktualizacja: gałąź codex/gemini-default-and-key-names zmienia nazwy na OPEN_AI_KEY i GEMINI_KEY oraz wybiera Google domyślnie przy braku zapamiętanej preferencji. PHP 108/108 (403 asercje), UI 35/35, składnia i diff-check poprawne. Właściciel zlecił kolejny etap generowania obrazów Gemini; nie jest jeszcze zaimplementowany ani sprawdzony rzeczywistym wywołaniem.
+
 - Osobne etapy i gałęzie: codex/integration-openai (f64dd8c), codex/integration-anthropic (0543e46), codex/integration-google. Scalenia lokalne do develop, bez push.
 - Google korzysta z natywnego generateContent, GEMINI_API_KEY i katalogu z paginacją. Instrukcja: docs/AI_PROVIDERS.md; lista konfiguracji: docs/KONFIGURACJA.md.
 - Pełne testy PHP 108/108, 403 asercje; UI 34/34. Dodatkowy test sprawdza routing i rozdzielenie historii wszystkich trzech dostawców. Brak płatnych wywołań i odczytu sekretów; rzeczywiste uprawnienia kont niepotwierdzone.

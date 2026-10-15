@@ -1,5 +1,6 @@
 {
   "name": "mariusz/slim-ovh-ai",
+  "description": "Backend API built with Slim 4, PHP 8.4, and SQLite.",
   "type": "project",
   "require": {
     "php": "^8.4",

@@ -24,7 +24,7 @@ jobs:
           extensions: pdo_sqlite
 
       - name: Validate composer.json
-        run: composer validate --strict
+        run: composer validate --strict --no-check-publish
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress

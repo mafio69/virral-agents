@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-15 — generowanie obrazów Gemini
+
+- Gałąź codex/gemini-image-generation. Osobny kontrakt odpowiedzi multimodalnej, metadane generowania w katalogu, odbiór jednej grafiki do 8 MiB i szyfrowany zapis przez istniejące repozytorium. Brak migracji.
+- Podgląd i pobieranie grafiki asystenta, odrzucanie zdalnych źródeł/SVG, błędnego MIME, zbyt dużych obrazów i niekompletnych odpowiedzi. Historia grafiki nie jest odsyłana bez obsługi thought signatures; edycja poprzedniej grafiki pozostaje kolejnym etapem.
+- Testy obejmują protokół, szyfrowany zapis/odczyt i renderowanie/pobieranie. Bez rzeczywistego wywołania Gemini. OCR/PDF i pozostałe dokumenty pozostają do następnego etapu.
+- Pełna walidacja: PHP 111/111 (419 asercji), UI 36/36; składnia dziewięciu PHP i dwóch JS, diff-check i kontrole Composer poprawne. Dotychczasowe ostrzeżenie Composer o braku licencji.
+
 ## 2026-10-15 — nazwy kluczy i domyślne Gemini
 
 - Ustawienia, Compose i PHP-FPM używają OPEN_AI_KEY oraz GEMINI_KEY, zgodnie z nazwami właściciela. Zaktualizowano instrukcje; bez odczytu i zmiany wartości kluczy.

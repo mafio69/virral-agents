@@ -109,7 +109,10 @@ final readonly class ChatService
         foreach ($history as $msg) {
             $messageHistory[] = [
                 'role' => $msg['role'],
-                'content' => $this->modelContent($msg['content'], $msg['images'] ?? []),
+                // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
+                'content' => $msg['role'] === 'assistant' && !empty($msg['images'])
+                    ? ($msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.')
+                    : $this->modelContent($msg['content'], $msg['images'] ?? []),
             ];
         }
 
@@ -138,7 +141,10 @@ final readonly class ChatService
 
         // Add assistant message
         try {
-            $aiContent = $client->generate($messageHistory, $apiModel);
+            $reply = $client instanceof \App\Infrastructure\AI\MultimodalClientInterface
+                ? $client->generateReply($messageHistory, $apiModel)
+                : new \App\Dto\AI\AiReply($client->generate($messageHistory, $apiModel));
+            $aiContent = $reply->text;
         } catch (\Throwable $e) {
             $this->logger->error('AI call failed', ['chat_id' => $input->chatId]);
             throw $e;
@@ -148,6 +154,7 @@ final readonly class ChatService
             $input->chatId,
             'assistant',
             $aiContent,
+            $reply->images,
         );
         
         $assistantMessage = [
@@ -159,6 +166,7 @@ final readonly class ChatService
         ];
 
         // Return both messages
+        if ($reply->images !== []) $assistantMessage['images'] = $reply->images;
         return [$userMessage, $assistantMessage];
     }
 

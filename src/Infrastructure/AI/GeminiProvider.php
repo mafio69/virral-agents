@@ -6,7 +6,7 @@ namespace App\Infrastructure\AI;
 
 use App\Exception\AiConnectionException;
 
-final class GeminiProvider implements ChatProviderInterface
+final class GeminiProvider implements ChatProviderInterface, MultimodalClientInterface
 {
     private ?array $models = null;
 
@@ -30,9 +30,12 @@ final class GeminiProvider implements ChatProviderInterface
                 if (!preg_match('#^models/(gemini-[a-zA-Z0-9._-]{1,150})$#D', $name, $matches)) continue;
                 $methods = $entry['supportedGenerationMethods'] ?? [];
                 if (!is_array($methods)) throw new AiConnectionException('invalid_response');
-                if (!in_array('generateContent', $methods, true) || preg_match('/image|audio|tts|robotics/', $matches[1])) continue;
+                if (!in_array('generateContent', $methods, true) || preg_match('/audio|tts|robotics/', $matches[1])) continue;
                 $id = $matches[1];
-                $models[$id] = ['id' => $id, 'name' => is_string($entry['displayName'] ?? null) ? $entry['displayName'] : $id, 'supports_images' => true];
+                $imageOutput = self::generatesImages($id);
+                if (str_contains($id, 'image') && !$imageOutput) continue;
+                $models[$id] = ['id' => $id, 'name' => is_string($entry['displayName'] ?? null) ? $entry['displayName'] : $id,
+                    'supports_images' => true, 'generates_images' => $imageOutput];
             }
             $cursor = $body['nextPageToken'] ?? '';
             if ($cursor === '') return $this->models = array_values($models);
@@ -43,6 +46,16 @@ final class GeminiProvider implements ChatProviderInterface
     }
 
     public function generate(array $messages, ?string $model = null): string
+    {
+        return $this->generateReply($messages, $model)->text;
+    }
+
+    public static function generatesImages(string $model): bool
+    {
+        return preg_match('/^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash(?:-lite)?|pro)-image|nano-banana-2\.1)(?:-preview(?:-\d{2}-\d{2})?)?$/D', $model) === 1;
+    }
+
+    public function generateReply(array $messages, ?string $model = null): \App\Dto\AI\AiReply
     {
         if ($model === null || !preg_match('/^gemini-[a-zA-Z0-9._-]{1,150}$/D', $model)) throw new AiConnectionException('model_unavailable');
         $contents = [];
@@ -66,17 +79,36 @@ final class GeminiProvider implements ChatProviderInterface
                 throw new AiConnectionException('invalid_response');
             }
         }
+        $imageOutput = self::generatesImages($model);
         $body = $this->transport->request('POST', 'models/'.$model.':generateContent', [
-            'contents' => $contents, 'generationConfig' => ['maxOutputTokens' => 4096],
+            'contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $imageOutput ? 8192 : 4096,
+                ...($imageOutput ? ['responseModalities' => ['TEXT', 'IMAGE']] : [])],
             ...($system !== [] ? ['systemInstruction' => ['parts' => $system]] : []),
-        ]);
+        ], maxResponseBytes: $imageOutput ? 12582912 : 4194304);
         if (isset($body['error']) || isset($body['promptFeedback']['blockReason'])) throw new AiConnectionException('invalid_response');
         $text = [];
-        foreach ($body['candidates'][0]['content']['parts'] ?? [] as $part) {
-            if (($part['thought'] ?? false) !== true && is_string($part['text'] ?? null)) $text[] = $part['text'];
+        $images = [];
+        $candidate = $body['candidates'][0] ?? [];
+        if (isset($candidate['finishReason']) && $candidate['finishReason'] !== 'STOP') throw new AiConnectionException('invalid_response');
+        $parts = $candidate['content']['parts'] ?? [];
+        if (!is_array($parts) || !array_is_list($parts)) throw new AiConnectionException('invalid_response');
+        foreach ($parts as $part) {
+            if (!is_array($part)) throw new AiConnectionException('invalid_response');
+            if (($part['thought'] ?? false) === true) continue;
+            if (is_string($part['text'] ?? null)) $text[] = $part['text'];
+            if (isset($part['inlineData'])) {
+                $data = $part['inlineData'];
+                if (!$imageOutput || !is_array($data) || !is_string($data['mimeType'] ?? null) || !is_string($data['data'] ?? null)) throw new AiConnectionException('invalid_response');
+                $images[] = 'data:'.$data['mimeType'].';base64,'.$data['data'];
+            }
         }
         $result = implode("\n", $text);
-        if (trim($result) === '') throw new AiConnectionException('invalid_response');
-        return $result;
+        try {
+            $images = (new \App\Service\ChatImageValidator(8388608))->validate($images);
+        } catch (\App\Exception\ValidationException) {
+            throw new AiConnectionException('invalid_response');
+        }
+        if (trim($result) === '' && $images === []) throw new AiConnectionException('invalid_response');
+        return new \App\Dto\AI\AiReply($result, $images);
     }
 }

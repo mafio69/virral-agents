@@ -27,6 +27,7 @@ final readonly class ProviderRegistry implements MultiProviderRegistryInterface
             'id' => $connection.':'.$model['id'], 'name' => $provider->name().' — '.($model['name'] ?? $model['id']),
             'provider' => $connection, 'configured' => true, 'account_access_verified' => false,
             'supports_images' => $model['supports_images'] ?? false, 'is_default' => false,
+            'generates_images' => $model['generates_images'] ?? false,
             'description' => 'Katalog dostawcy; dostęp do modelu jest sprawdzany przy wysyłaniu.',
         ], $provider->listModels());
     }

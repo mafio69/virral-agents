@@ -210,6 +210,11 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Walidacja: PHP 80/80 (240 asercji), UI 26/26 przed kolejnymi zmianami backendu, składnia sześciu zmienionych PHP poprawna. Bez operacji na rzeczywistej bazie, sekretach, kontenerach i zdalnym repozytorium.
 # 2026-10-15 — minimalistyczna strona startowa i konto
 
+## Obrazy generowane przez Gemini
+
+- Dodano obsługę odpowiedzi tekst/obraz, walidację grafiki, szyfrowany zapis i podgląd z pobieraniem w historii czatu.
+- Modele generujące obrazy są oznaczone w katalogu; dotychczasowi dostawcy zachowują kontrakt tekstowy. Bez nowych zależności i migracji bazy.
+
 ## Domyślne Gemini i nazwy konfiguracji właściciela
 
 - Zmienne OPEN_AI_KEY i GEMINI_KEY zastępują wcześniejsze nazwy w kodzie i Compose/FPM.

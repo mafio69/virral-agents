@@ -20,6 +20,44 @@ final class GeminiProviderTest extends TestCase
 {
     private array $history = [];
 
+    private const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXfoAAAAASUVORK5CYII=';
+
+    public function testImageReplyAndCatalogueCapability(): void
+    {
+        $provider = $this->provider([
+            $this->response(['models' => [['name' => 'models/gemini-3.1-flash-image', 'supportedGenerationMethods' => ['generateContent']]]]),
+            $this->response(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [
+                ['thought' => true, 'inlineData' => ['mimeType' => 'image/png', 'data' => 'ignored']],
+                ['inlineData' => ['mimeType' => 'image/png', 'data' => self::PNG]],
+            ]]]]]),
+        ]);
+        self::assertTrue($provider->listModels()[0]['generates_images']);
+        $reply = $provider->generateReply([['role' => 'user', 'content' => 'Fixture drawing']], 'gemini-3.1-flash-image');
+        self::assertSame('', $reply->text);
+        self::assertSame(['data:image/png;base64,'.self::PNG], $reply->images);
+        $payload = json_decode((string)$this->history[1]['request']->getBody(), true);
+        self::assertSame(['TEXT', 'IMAGE'], $payload['generationConfig']['responseModalities']);
+        self::assertArrayNotHasKey('tools', $payload);
+    }
+
+    public function testUnsafeGeneratedImagesAndTruncatedResponsesAreRejected(): void
+    {
+        foreach ([
+            ['mimeType' => 'image/svg+xml', 'data' => base64_encode('<svg/>')],
+            ['mimeType' => 'image/jpeg', 'data' => self::PNG],
+            ['mimeType' => 'image/png', 'data' => 'broken'],
+        ] as $image) {
+            try {
+                $this->provider([$this->response(['candidates' => [['content' => ['parts' => [['inlineData' => $image]]]]]])])
+                    ->generateReply([['role' => 'user', 'content' => 'Fixture']], 'gemini-3.1-flash-image');
+                self::fail('Invalid image must fail');
+            } catch (AiConnectionException $error) { self::assertSame('invalid_response', $error->reason); }
+        }
+        $this->expectException(AiConnectionException::class);
+        $this->provider([$this->response(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [['text' => 'Partial']]]]]])])
+            ->generateReply([['role' => 'user', 'content' => 'Fixture']], 'gemini-3.1-flash-image');
+    }
+
     private function provider(array $responses): GeminiProvider
     {
         $handler = HandlerStack::create(new MockHandler($responses));

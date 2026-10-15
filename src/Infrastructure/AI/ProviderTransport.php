@@ -25,7 +25,7 @@ final readonly class ProviderTransport
         $this->http = $http ?? new Client(['base_uri' => $baseUri, 'connect_timeout' => 10]);
     }
 
-    public function request(string $method, string $path, ?array $payload = null, array $query = []): array
+    public function request(string $method, string $path, ?array $payload = null, array $query = [], int $maxResponseBytes = 4194304): array
     {
         if (trim($this->apiKey) === '' || str_starts_with($this->apiKey, 'encrypted:')) {
             throw new AiConnectionException('missing_configuration');
@@ -48,8 +48,8 @@ final readonly class ProviderTransport
         $stream = $response->getBody();
         try {
             $json = '';
-            while (!$stream->eof() && strlen($json) <= 4194304) $json .= $stream->read(8192);
-            if (strlen($json) > 4194304) throw new AiConnectionException('invalid_response');
+            while (!$stream->eof() && strlen($json) <= $maxResponseBytes) $json .= $stream->read(8192);
+            if (strlen($json) > $maxResponseBytes) throw new AiConnectionException('invalid_response');
             $body = json_decode($json, true, 128, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw new AiConnectionException('invalid_response');

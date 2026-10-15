@@ -2,6 +2,15 @@
 
 ## Google / Gemini
 
+### Generowanie obrazów
+
+- Modele Gemini Image oraz Nano Banana rozpoznane przez aplikację i dostępne w katalogu generateContent otrzymują oznaczenie „generowanie obrazów”. Modele tekstowe nadal analizują obrazy wejściowe.
+- Klient żąda TEXT/IMAGE, odbiera jeden obraz PNG/JPEG/WebP do 8 MiB i maksymalnie 4096 px na bok. Kontroluje MIME, rzeczywistą strukturę, wymiary oraz kompletność odpowiedzi. Uszkodzona lub zablokowana odpowiedź nie jest zapisywana jako sukces.
+- Grafika jest zapisywana w istniejącej szyfrowanej tabeli załączników wraz z odpowiedzią asystenta. Widok pokazuje obraz oraz „Pobierz obraz”; odczyt historii wymaga właściciela rozmowy.
+- Pierwszy etap nie odtwarza wygenerowanych obrazów jako kontekstu kolejnych żądań: edycja poprzedniego wyniku wymaga osobnej obsługi thought signatures. Kolejne polecenie tworzy nową grafikę.
+- Bez nowej migracji i zależności. Testy używają atrap HTTP i bazy w pamięci; rzeczywiste generowanie i dostęp konta wymagają sprawdzenia przez właściciela.
+- Protokół: [generateContent](https://ai.google.dev/api/generate-content), [generowanie obrazów](https://ai.google.dev/gemini-api/docs/image-generation).
+
 - Klucz: `GEMINI_KEY`, przesyłany nagłówkiem `x-goog-api-key`, bez umieszczania w URL.
 - Katalog `GET https://generativelanguage.googleapis.com/v1beta/models` uwzględnia
   paginację i modele Gemini obsługujące generateContent; pomija warianty generowania obrazów i audio.

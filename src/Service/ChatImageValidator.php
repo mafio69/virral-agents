@@ -10,6 +10,8 @@ final readonly class ChatImageValidator
 {
     public const MAX_BYTES = 524288;
 
+    public function __construct(private int $maxBytes = self::MAX_BYTES) {}
+
     /** @return list<string> Validated inline images; never fetch remote URLs. */
     public function validate(mixed $images): array
     {
@@ -17,13 +19,13 @@ final readonly class ChatImageValidator
             throw new ValidationException('Do wiadomości można dodać jeden obraz.');
         }
         foreach ($images as $image) {
-            if (!is_string($image) || strlen($image) > 700000
+            if (!is_string($image) || strlen($image) > (int)ceil($this->maxBytes / 3) * 4 + 64
                 || !preg_match('~^data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$~D', $image, $match)) {
                 throw new ValidationException('Dozwolone są tylko obrazy PNG, JPEG i WebP.');
             }
             $bytes = base64_decode($match[2], true);
-            if ($bytes === false || strlen($bytes) > self::MAX_BYTES) {
-                throw new ValidationException('Obraz przekracza limit 512 KiB.');
+            if ($bytes === false || strlen($bytes) > $this->maxBytes) {
+                throw new ValidationException('Obraz przekracza dozwolony rozmiar.');
             }
             $info = @getimagesizefromstring($bytes);
             if ($info === false || ($info['mime'] ?? '') !== $match[1]

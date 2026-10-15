@@ -4,6 +4,32 @@ export function isInlineImage(value) {
         && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
 }
 
+export function isGeneratedImage(value) {
+    return typeof value === 'string' && value.length <= Math.ceil(8388608 / 3) * 4 + 64
+        && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+}
+
+export function appendMessageImages(body, message, documentApi = document) {
+    const assistant = message.role === 'assistant';
+    if (!Array.isArray(message.images)) return;
+    message.images.filter(assistant ? isGeneratedImage : isInlineImage).slice(0, 1).forEach(source => {
+        const picture = documentApi.createElement('img');
+        picture.className = 'message-image';
+        picture.src = source;
+        picture.alt = assistant ? 'Obraz wygenerowany przez AI' : 'Obraz przesłany do analizy';
+        picture.loading = 'lazy';
+        body.append(picture);
+        if (assistant) {
+            const download = documentApi.createElement('a');
+            download.className = 'btn-ghost';
+            download.href = source;
+            download.download = 'obraz-ai.' + source.slice(11, source.indexOf(';')).replace('jpeg', 'jpg');
+            download.textContent = 'Pobierz obraz';
+            body.append(download);
+        }
+    });
+}
+
 /** Decode locally and re-encode: smaller payload, no original metadata or filename. */
 export async function prepareImage(file) {
     if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)

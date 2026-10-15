@@ -2,7 +2,7 @@ import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { ChatApi } from './chat-api.js?v=20261013-6';
 import { ChatController, handleComposerKey } from './chat-controller.js?v=20261013-6';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
-import { prepareImage, isInlineImage } from './chat-images.js?v=20261013-6';
+import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
 let preparingImage = false;
 
@@ -48,15 +48,7 @@ function messageNode(message) {
     const body = element('div', 'body');
     const prose = element('div', 'prose');
     markdown.renderInto(prose, message.content);
-    if (!assistant && Array.isArray(message.images)) {
-        message.images.filter(isInlineImage).slice(0, 1).forEach(source => {
-            const picture = element('img', 'message-image');
-            picture.src = source;
-            picture.alt = 'Obraz przesłany do analizy';
-            picture.loading = 'lazy';
-            body.append(picture);
-        });
-    }
+    appendMessageImages(body, message);
     body.append(prose);
     if (assistant) {
         const avatar = element('div', 'avatar');
@@ -151,7 +143,7 @@ function render(state) {
     if (renderedModels !== state.models || renderedModel !== state.selectedModel || renderedModelsLoading !== state.modelsLoading) {
         model.replaceChildren();
         state.models.forEach(item => {
-            const label = (item.name || item.id) + (item.supports_images ? ' · tekst i obrazy' : '');
+            const label = (item.name || item.id) + (item.generates_images ? ' · generowanie obrazów' : item.supports_images ? ' · tekst i obrazy' : '');
             const option = new Option(label, item.id);
             option.title = item.description || '';
             model.append(option);

@@ -2,11 +2,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ChatApi } from '../../public/ui/chat/chat-api.js';
 import { ChatController } from '../../public/ui/chat/chat-controller.js';
-import { isInlineImage } from '../../public/ui/chat/chat-images.js';
+import { isInlineImage, isGeneratedImage, appendMessageImages } from '../../public/ui/chat/chat-images.js';
 
 import { chatFixture } from './chat-fixture.mjs';
 
 const image = 'data:image/png;base64,YWJj';
+
+test('assistant image renders with a download link; remote and SVG sources never render', () => {
+    const nodes = [];
+    const body = { append: node => nodes.push(node) };
+    const dom = { createElement: tag => ({ tag }) };
+    appendMessageImages(body, { role: 'assistant', images: [image] }, dom);
+    assert.equal(nodes[0].tag, 'img');
+    assert.equal(nodes[0].src, image);
+    assert.equal(nodes[1].download, 'obraz-ai.png');
+    assert.equal(nodes[1].href, image);
+    appendMessageImages(body, { role: 'assistant', images: ['https://example.invalid/image', 'data:image/svg+xml;base64,YQ=='] }, dom);
+    assert.equal(nodes.length, 2);
+    const large = 'data:image/png;base64,' + 'A'.repeat(800000);
+    assert.equal(isInlineImage(large), false);
+    assert.equal(isGeneratedImage(large), true);
+    assert.equal(isGeneratedImage('data:image/png;base64,' + 'A'.repeat(12000000)), false);
+});
 const conversation = { id: 1, title: 'Obraz', model: 'Qwen3.6-27B', messages: [] };
 const pair = [{ id: 1, role: 'user', content: '', images: [image] }, { id: 2, role: 'assistant', content: 'Opis' }];
 const fixture = overrides => chatFixture({

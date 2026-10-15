@@ -82,6 +82,11 @@ function render(state) {
     app.dataset.state = state.authenticated === false ? 'loggedout' : state.busy ? 'pending'
         : !state.messages.length && !state.pendingMessage ? 'empty' : 'chat';
     byId('chat-title').textContent = state.activeChat?.title || 'Nowa rozmowa';
+    const confirmedModel = !state.modelsLoading && state.authenticated === true
+        ? state.models.find(item => item.id === (state.activeChat?.model || state.selectedModel)) : null;
+    const modelLabel = byId('composer-model');
+    modelLabel.hidden = !confirmedModel;
+    modelLabel.textContent = confirmedModel ? `Model: ${confirmedModel.name || confirmedModel.id}` : '';
     input.disabled = preparingImage || state.busy || state.loading;
     if (input.value !== state.draft) { input.value = state.draft; autosize(); }
     send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);

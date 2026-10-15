@@ -140,6 +140,7 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 #chat-status[data-kind=error]{color:var(--danger)}
 #chat-status[data-kind=busy]::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid #4a5056;border-top-color:var(--accent);animation:spin .8s linear infinite}
 .composer{display:flex;align-items:flex-end;gap:8px;padding:8px 8px 8px 16px;background:var(--field);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:border-color .15s,box-shadow .15s}
+.composer-model{margin:0 0 6px 16px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
 .composer:focus-within{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft),0 8px 24px rgba(0,0,0,.25)}
 #chat-input{flex:1;min-width:0;min-height:40px;max-height:200px;padding:8px 0;resize:none;border:0;outline:0;background:transparent;font-size:15.5px;line-height:24px;overflow-y:auto;scrollbar-width:thin}
 #chat-input::placeholder{color:#8f8b83}
@@ -337,6 +338,7 @@ echo "Cześć";
 
         <div id="image-preview" class="image-preview" aria-live="polite"></div>
         <input type="file" id="image-file" accept="image/png,image/jpeg,image/webp" hidden>
+        <p id="composer-model" class="composer-model" role="status" aria-live="polite" hidden></p>
         <form id="chat-form" class="composer" autocomplete="off">
           <button type="button" id="attach-image" class="btn btn-sm" disabled title="Wybierz model obsługujący obrazy">Obraz</button>
           <label class="sr-only" for="chat-input">Wiadomość</label>
@@ -366,6 +368,6 @@ echo "Cześć";
 
 <script src="/ui/lib/marked.umd.js"></script>
 <script src="/ui/lib/purify.min.js"></script>
-<script type="module" src="/ui/chat/chat-app.js?v=20261015-picker"></script>
+<script type="module" src="/ui/chat/chat-app.js?v=20261015-model-label"></script>
 </body>
 </html>

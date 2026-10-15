@@ -1,4 +1,5 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
+import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
 import { ChatApi } from './chat-api.js?v=20261013-6';
 import { ChatController, handleComposerKey } from './chat-controller.js?v=20261013-6';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
@@ -220,6 +221,7 @@ byId('new-chat').addEventListener('click', () => {
 });
 connection.addEventListener('change', () => controller.selectConnection(connection.value));
 model.addEventListener('change', () => controller.selectModel(model.value));
+enhanceModelPicker(model);
 input.addEventListener('input', () => { controller.setDraft(input.value); autosize(); });
 async function sendDraft() {
     if (preparingImage) return;

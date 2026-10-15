@@ -67,7 +67,7 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 .demo div{display:flex;flex-wrap:wrap;gap:6px}
 
 /* nagłówek rozmowy */
-.top{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 76px 10px 20px;border-bottom:1px solid var(--line-soft)}
+.top{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 20px;border-bottom:1px solid var(--line-soft)}
 .open-side{display:none}
 #app[data-sidebar=closed] .open-side{display:inline-flex}
 #chat-title{flex:1;min-width:0;margin:0;font-size:15.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -80,6 +80,12 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 .select .caret{position:absolute;right:8px;width:14px;height:14px;pointer-events:none}
 .select.conn{width:176px}
 .select.model{width:min(280px,32vw)}
+.model-picker-button{display:block;min-width:0;width:100%;height:100%;padding:0 18px 0 0;border:0;background:transparent;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px;cursor:pointer}
+.model-picker-popup{position:fixed;z-index:100;overflow:auto;padding:6px;border:1px solid var(--metal-edge);border-radius:10px;background:#1f2124;box-shadow:0 8px 28px #0008}
+.model-picker-popup[hidden]{display:none}
+.model-picker-popup button{display:block;width:100%;padding:10px;border:0;border-radius:6px;background:transparent;color:var(--text);text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.model-picker-popup button:hover,.model-picker-popup button:focus{background:var(--accent-soft);outline:2px solid var(--accent);outline-offset:-2px}
+.model-picker-popup button[aria-selected=true]{font-weight:700}
 
 /* rozmowa */
 #chat-messages{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#3a3e44 transparent}
@@ -360,6 +366,6 @@ echo "Cześć";
 
 <script src="/ui/lib/marked.umd.js"></script>
 <script src="/ui/lib/purify.min.js"></script>
-<script type="module" src="/ui/chat/chat-app.js?v=20261015-images"></script>
+<script type="module" src="/ui/chat/chat-app.js?v=20261015-picker"></script>
 </body>
 </html>

@@ -108,3 +108,7 @@ Aktualizuj `REPO.md` w tym samym commicie, gdy zmienia się architektura, urucha
 - `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez przekierowań, cookies i JS. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
 - `WebToolClientInterface` daje natywne prośby AI o search/fetch; wywołanie tworzy oczekującą decyzję, nigdy zgodę. Modele generujące obrazy Gemini nie otrzymują tools.
 - `chat-research.js` zbiera źródła między wyszukiwaniami; checkbox nie oznacza zgody na fetch. Szczegóły API i testów w `docs/MCP-USAGE.md`.
+
+### Licencja i walidacja Composer
+
+Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validate --strict --no-check-publish`, zgodnie z GitHub Actions; walidacja bez --strict przepuszcza ostrzeżenia, które blokują CI.

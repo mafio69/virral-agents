@@ -1,5 +1,9 @@
 # STATUS
 
+## 2026-10-17 — licencja MIT i walidacja CI
+
+Właściciel wybrał MIT. Dodano deklarację w composer.json i pełny tekst LICENSE. Walidacja musi używać `composer validate --strict --no-check-publish`, jak GitHub Actions; poprzednia kontrola bez --strict przeoczyła brak licencji. Pełne testy PHP 139/139 (601 asercji), UI 54/54, wymagania platformy i diff poprawne. Bez push; lokalne PHP 8.5, wersja 8.4 wymaga ponownego CI.
+
 ## 2026-10-17 — kontynuacja po błędzie strony
 
 Błąd pobrania strony nie zatrzymuje Fetch all ani oczekującego polecenia. AI otrzymuje dostępne treści i status failed dla niepobranych stron. Niepewny stan po utracie połączenia z aplikacją nadal wymaga odświeżenia, bez automatycznego ponawiania. Testy regresji: pojedynczy nieudany fetch i błąd pierwszej strony paczki; UI 54/54, PHP 139/139 (601 asercji). Bez rzeczywistego WWW i push.

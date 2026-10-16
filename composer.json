@@ -1,6 +1,7 @@
 {
   "name": "mariusz/slim-ovh-ai",
   "type": "project",
+  "license": "MIT",
   "require": {
     "php": "^8.4",
     "slim/slim": "^4.15",

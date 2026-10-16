@@ -51,6 +51,7 @@ return function (App $app) {
         
         // AI Models
         $group->get('/ai-connections', [ChatController::class, 'listConnections']);
+        $group->get('/search/status', [ChatController::class, 'searchStatus']);
         $group->get('/ai-models', [ChatController::class, 'listModels']);
     });
 };

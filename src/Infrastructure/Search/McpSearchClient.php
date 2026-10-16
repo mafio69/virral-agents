@@ -51,7 +51,7 @@ final class McpSearchClient implements SearchClientInterface
                     ], 'required' => ['query'], 'additionalProperties' => false],
                 ]];
             }
-        } catch (\Throwable) { throw new SearchException(); }
+        } catch (\Throwable $error) { throw $this->safeError($error, 'definition'); }
         throw new SearchException();
     }
 
@@ -61,12 +61,12 @@ final class McpSearchClient implements SearchClientInterface
         $this->definition();
         try {
             $result = $this->exchange('tools/call', ['name' => 'web_search', 'arguments' => ['query' => $query, 'max_results' => $maxResults]]);
-            if (($result['isError'] ?? false) !== false) throw new SearchException();
+            if (($result['isError'] ?? false) !== false) throw new SearchException('tool_error');
             foreach ($result['content'] ?? [] as $block) {
                 if (($block['type'] ?? null) !== 'text' || !is_string($block['text'] ?? null)) continue;
                 $body = json_decode($block['text'], true, 32, JSON_THROW_ON_ERROR);
                 if (!is_array($body) || !in_array($body['source'] ?? null, ['searxng', 'perplexity-fast'], true)
-                    || !is_array($body['results'] ?? null) || !array_is_list($body['results'])) throw new SearchException();
+                    || !is_array($body['results'] ?? null) || !array_is_list($body['results'])) throw new SearchException('provider_response');
                 $results = [];
                 foreach (array_slice($body['results'], 0, $maxResults) as $entry) {
                     $url = $entry['url'] ?? null;
@@ -78,7 +78,7 @@ final class McpSearchClient implements SearchClientInterface
                 }
                 return ['source' => $body['source'], 'results' => $results];
             }
-        } catch (\Throwable) { throw new SearchException(); }
+        } catch (\Throwable $error) { throw $this->safeError($error, 'search_result'); }
         throw new SearchException();
     }
 
@@ -101,6 +101,17 @@ final class McpSearchClient implements SearchClientInterface
 
     private function exchange(string $method, array $params, bool $notification = false): array
     {
+        try { return $this->exchangeRaw($method, $params, $notification); }
+        catch (\Throwable $error) {
+            throw $this->safeError($error, match ($method) {
+                'initialize' => 'initialize', 'notifications/initialized' => 'initialized',
+                'tools/list' => 'tools_list', 'tools/call' => 'tools_call', default => 'unknown',
+            });
+        }
+    }
+
+    private function exchangeRaw(string $method, array $params, bool $notification = false): array
+    {
         $id = ++$this->id;
         $response = $this->http->request('POST', $this->url, [
             'headers' => $this->headers(), 'json' => ['jsonrpc' => '2.0', ...(!$notification ? ['id' => $id] : []),
@@ -109,7 +120,7 @@ final class McpSearchClient implements SearchClientInterface
         ]);
         $stream = $response->getBody();
         try {
-            if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) throw new SearchException();
+            if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) throw new SearchException('http_error');
             if ($method === 'initialize' && $response->hasHeader('Mcp-Session-Id')) {
                 $session = $response->getHeaderLine('Mcp-Session-Id');
                 if (!preg_match('/^[\x21-\x7e]{1,256}$/D', $session)) throw new SearchException();
@@ -144,5 +155,25 @@ final class McpSearchClient implements SearchClientInterface
         if (!is_array($message) || ($message['jsonrpc'] ?? null) !== '2.0' || ($message['id'] ?? null) !== $id
             || isset($message['error']) || !is_array($message['result'] ?? null)) throw new SearchException();
         return $message['result'];
+    }
+
+    /** Safe codes only: never expose transport messages, sessions or server responses. */
+    private function safeError(\Throwable $error, string $stage): SearchException
+    {
+        if ($error instanceof SearchException) return $error->stage === 'unknown' ? new SearchException($error->reason, $stage) : $error;
+        if ($error instanceof \GuzzleHttp\Exception\ConnectException) {
+            $reason = match ($error->getHandlerContext()['errno'] ?? 0) {
+                6 => 'dns_failed', 7 => 'connection_refused', 28 => 'timeout', default => 'connection_failed',
+            };
+            // PHP StreamHandler has no cURL errno. Inspect internally; never return its message.
+            if ($reason === 'connection_failed') {
+                $message = strtolower($error->getMessage());
+                if (str_contains($message, 'getaddrinfo') || str_contains($message, 'php_network_getaddresses')) $reason = 'dns_failed';
+                elseif (str_contains($message, 'connection refused')) $reason = 'connection_refused';
+                elseif (str_contains($message, 'timed out')) $reason = 'timeout';
+            }
+            return new SearchException($reason, $stage);
+        }
+        return new SearchException($error instanceof \GuzzleHttp\Exception\RequestException ? 'http_error' : 'protocol_error', $stage);
     }
 }

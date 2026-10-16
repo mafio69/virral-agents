@@ -1,3 +1,11 @@
+## 2026-10-17 — debug niedostępnego MCP
+
+- Gałąź `codex/mcp-connection-diagnostics` zawiera lokalny commit pieska `8df1f01` z develop. Nie wykonywano push tych zmian.
+- W `ChatReplyGenerator` usunięto utratę przyczyny wyjątku: odpowiedź `search` zawiera `status`, `reason`, `stage`; logger zapisuje tylko dozwolone kody. Transport nie ujawnia komunikatów, sesji i surowych odpowiedzi. Odpowiedzi historyczne pozostają bez zmian.
+- Test z rzeczywistego procesu aplikacji `GET /api/search/status` (sesja użytkownika, bez odczytu cookies) zwrócił `available:false,target:docker-service,reason:dns_failed,stage:initialize,searched:false`. Nazwa kontenera MCP jest nierozpoznawalna dla aplikacji. Wcześniejszy domyślny loopback też był błędny; zmieniono fallback aplikacji na `mcp-search:8000/mcp`.
+- Dalszy krok: właściciel potwierdza dołączenie `slim_ovh_ai_app` i `mcp-search` do wspólnej sieci (instrukcja `ai`); sprawdzić alias. Potem powtórzyć tylko inicjalizację, bez wyszukania WWW. Każde nowe wyszukanie wymaga nowej zgody.
+- PHP 127/127 (521 asercji), UI 47/47, składnia/Composer/diff poprawne. Rzeczywistego wyszukania nie powtarzano. Większe zadanie źródeł nadal w stashu opisanym poniżej.
+
 ## 2026-10-16 — piesek i diagnostyka niedostępnego MCP
 
 - Gałąź `codex/search-sniffing-dog`. Wprowadzono lokalny SVG pieska z animacją węszenia podczas pracy i statyczną pozycją siedzącą po zakończeniu; reduced-motion wyłącza ruch.

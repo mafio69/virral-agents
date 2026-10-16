@@ -13,16 +13,28 @@ use App\Infrastructure\Search\SearchException;
 
 final readonly class ChatReplyGenerator implements ChatReplyGeneratorInterface
 {
-    public function __construct(private ?SearchClientInterface $searchClient = null) {}
+    public function __construct(private ?SearchClientInterface $searchClient = null, private ?\Psr\Log\LoggerInterface $logger = null) {}
 
     public function generate(AiClientInterface $client, array $messages, string $model, SearchOptions $search): AiReply
     {
         if ($search->engine === 'off') return $this->reply($client, $messages, $model);
 
         try {
-            $result = ($this->searchClient ?? throw new SearchException())->search($search->query, 5);
-        } catch (SearchException) {
-            return new AiReply('Wyszukiwanie WWW jest chwilowo niedostępne. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie. Kolejna próba wymaga ponownej zgody.', search: ['status' => 'unavailable']);
+            $result = ($this->searchClient ?? throw new SearchException('missing_configuration', 'definition'))->search($search->query, 5);
+        } catch (SearchException $error) {
+            $this->logger?->warning('MCP search failed', ['reason' => $error->reason, 'stage' => $error->stage]);
+            $detail = match ($error->reason) {
+                'dns_failed' => 'Aplikacja nie rozpoznaje nazwy serwera MCP. Sprawdź wspólną sieć kontenerów.',
+                'connection_refused' => 'Serwer MCP odmawia połączenia. Sprawdź adres, port i uruchomienie usługi.',
+                'connection_failed' => 'Aplikacja nie może połączyć się z serwerem MCP.',
+                'timeout' => 'Upłynął czas oczekiwania na MCP.',
+                'http_error' => 'Serwer MCP zwrócił błąd HTTP.',
+                'tool_error', 'provider_response' => 'MCP nie zwróciło poprawnego wyniku wyszukiwarki.',
+                'protocol_error' => 'Odpowiedź serwera nie jest zgodna z oczekiwanym protokołem MCP.',
+                'missing_configuration' => 'Brakuje konfiguracji klienta MCP.',
+                default => 'Wyszukiwanie WWW jest chwilowo niedostępne.',
+            };
+            return new AiReply($detail.' Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie. Kolejna próba wymaga ponownej zgody.', search: ['status' => 'unavailable', 'reason' => $error->reason, 'stage' => $error->stage]);
         } finally {
             $this->searchClient?->close();
         }

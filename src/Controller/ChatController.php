@@ -20,6 +20,7 @@ final readonly class ChatController
         private readonly AddChatMessageInputMapper $addChatMessageInputMapper,
         private readonly ChatService $chatService,
         private readonly AuthService $authService,
+        private readonly ?\App\Service\SearchDiagnosticsInterface $searchDiagnostics = null,
     ) {
     }
 
@@ -84,6 +85,13 @@ final readonly class ChatController
     public function listConnections(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         return JsonResponder::respond($response, $this->chatService->getConnections());
+    }
+
+    public function searchStatus(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $this->getUserId($request);
+        $status = $this->searchDiagnostics?->status() ?? ['available' => false, 'reason' => 'missing_configuration', 'searched' => false];
+        return JsonResponder::respond($response, $status);
     }
 
     public function listModels(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

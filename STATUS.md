@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-17 — debug `search.status: unavailable`
+
+- `ChatReplyGenerator` zachowuje przyczynę i etap w `search.reason` / `search.stage`; loguje wyłącznie dozwolone kody. MCP rozróżnia DNS, odmowę połączenia, timeout, HTTP, protokół i odpowiedź dostawcy. Bez surowych wyjątków, treści zapytania i sesji.
+- Dodano chroniony `GET /api/search/status`: inicjalizacja/lista narzędzi z procesu PHP, bez wyszukiwania. Poprawiono domyślny adres aplikacji z loopback na nazwę usługi Docker; instalacja na hoście wymaga jawnego MCP_SEARCH_URL.
+- Rzeczywisty wynik z lokalnej aplikacji: `available:false, target:docker-service, reason:dns_failed, stage:initialize, searched:false`. PHP nie rozpoznaje `mcp-search`; do sprawdzenia wspólna sieć i alias kontenerów. Użytkownik zadeklarował podłączenie w Portainerze; brak potwierdzenia zakończenia tej czynności.
+- Pełne testy: PHP 127/127 (521 asercji), UI 47/47, składnia/Composer/diff poprawne; istniejące ostrzeżenie o licencji. Bez nowego wyszukania WWW i bez wywołania modelu.
+
 ## 2026-10-16 — piesek sygnalizujący pracę WWW
 
 - Lokalny SVG pieska przy wyszukiwarce: węszenie i ruch ogona podczas oczekiwania na wyszukanie/odpowiedź; spokojne siedzenie po zakończeniu; zatrzymanie z komunikatem przy błędzie. Bez zewnętrznych zasobów. Uwzględniono prefers-reduced-motion.

@@ -32,7 +32,10 @@ Bez pola `search` wyszukiwanie jest wyłączone dla danego żądania.
 Nie jest to automatyczna pętla function calling: użytkownik zatwierdza zapytanie
 przed wysłaniem wiadomości, a wspólny serwis przekazuje wynik do modelu.
 
-Lokalnie backend domyślnie używa `http://127.0.0.1:8890/mcp`.
+Backend aplikacji domyślnie używa `http://mcp-search:8000/mcp`, ponieważ jest
+uruchamiany w Dockerze. Przy uruchomieniu PHP bez Dockera operator ustawia
+`MCP_SEARCH_URL=http://127.0.0.1:8890/mcp`. Samodzielny skrypt diagnostyczny
+poniżej zachowuje domyślny adres hosta.
 Compose ustawia `MCP_SEARCH_URL=http://mcp-search:8000/mcp`, przekazuje tę zmienną
 do FPM i dołącza `app` do istniejącej zewnętrznej sieci `ai`.
 Sieć oraz serwis `mcp-search` muszą być uruchomione przez operatora.
@@ -44,6 +47,17 @@ Diagnostyka bez odczytu konfiguracji aplikacji, sekretów i bazy:
 ```bash
 php bin/check-mcp-search.php
 ```
+
+Po zalogowaniu `GET /api/search/status` sprawdza połączenie **z procesu aplikacji**:
+tylko inicjalizacja MCP i `tools/list`, bez wyszukiwania. Zwraca `available`, kategorię
+celu (`loopback`, `docker-service`, `custom`), a przy błędzie `reason` i `stage`.
+Nie ujawnia URL konfiguracji, sesji ani surowych odpowiedzi/wyjątków.
+`dns_failed` przy `docker-service` oznacza, że PHP nie rozpoznaje `mcp-search`;
+sprawdź wspólną sieć i alias kontenerów. Sam port hosta 8890 nie potwierdza tej ścieżki.
+
+W odpowiedzi czatu `search.status: unavailable` zawiera również bezpieczne
+`reason` i `stage`. Log `MCP search failed` zapisuje tylko te kody — bez zapytania,
+historii, sesji i pełnego wyjątku. Dawne zapisane wiadomości nie są aktualizowane.
 
 To wykonuje tylko inicjalizację i `tools/list`. Dopiero po osobnej zgodzie na
 konkretne publiczne zapytanie można wykonać:

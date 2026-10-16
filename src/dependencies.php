@@ -122,7 +122,18 @@ return function (ContainerBuilder $containerBuilder) {
             return new \App\Infrastructure\Search\McpSearchClient($c->get('settings')['search']['mcp_url']);
         },
         \App\Service\ChatReplyGeneratorInterface::class => function (ContainerInterface $c) {
-            return new \App\Service\ChatReplyGenerator($c->get(\App\Infrastructure\Search\SearchClientInterface::class));
+            return new \App\Service\ChatReplyGenerator($c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get(LoggerInterface::class));
+        },
+        \App\Service\SearchDiagnosticsInterface::class => function (ContainerInterface $c) {
+            return new \App\Service\SearchDiagnostics($c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get('settings')['search']['mcp_url']);
+        },
+        \App\Controller\ChatController::class => function (ContainerInterface $c) {
+            return new \App\Controller\ChatController(
+                $c->get(\App\Mapper\Chat\CreateChatInputMapper::class),
+                $c->get(\App\Mapper\Chat\AddChatMessageInputMapper::class),
+                $c->get(ChatService::class), $c->get(AuthService::class),
+                $c->get(\App\Service\SearchDiagnosticsInterface::class),
+            );
         },
         TaskService::class => function (ContainerInterface $c) {
             return new TaskService(

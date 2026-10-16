@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-17 — jawna diagnostyka błędów MCP
+
+- `status: unavailable` zachowuje bezpieczną przyczynę i etap zamiast ukrywać szczegóły każdego błędu. Dodano komunikaty o DNS/połączeniu i logowanie wyłącznie dozwolonych kodów.
+- Chroniony test połączenia MCP z procesu aplikacji nie wykonuje wyszukiwania. Domyślny adres backendu odpowiada środowisku Docker zamiast wskazywać loopback kontenera.
+
 ## 2026-10-16 — piesek podczas wyszukiwania
 
 - Dodano lokalną animację SVG i tekst statusu dla trwającego wyszukiwania/odpowiedzi. Piesek zatrzymuje się po zakończeniu lub błędzie; ograniczenie ruchu jest respektowane.

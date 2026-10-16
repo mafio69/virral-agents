@@ -87,8 +87,13 @@ Dodaj wpis tutaj dopiero, gdy informacja jest trwała, zweryfikowana i oszczędz
   timeout wywołania/odczytu 45 s. Nie otrzymuje kluczy dostawców AI.
 - Domyślny tryb WWW to ASK. Zgoda dotyczy jednego jawnego zapytania i nie przechodzi
   na kolejną wiadomość. Zwykłe wysyłanie nie używa WWW. Fetch nie jest udostępniony.
-- `MCP_SEARCH_URL`: lokalnie `http://127.0.0.1:8890/mcp`; Compose/FPM używają
-  `http://mcp-search:8000/mcp`. Wymagana istniejąca sieć Docker `ai`.
+- `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp`.
+  PHP uruchomione na hoście wymaga jawnego `http://127.0.0.1:8890/mcp`.
+  Samodzielny skrypt diagnostyczny nadal domyślnie używa adresu hosta.
+  Wymagana wspólna sieć Docker `ai`; działające kontenery trzeba do niej podłączyć.
+- Chroniony `GET /api/search/status` sprawdza tylko inicjalizację i narzędzie, bez WWW.
+  `search.status: unavailable` zawiera bezpieczne kody `reason`/`stage`; te same kody
+  są logowane bez zapytań, historii, sesji i surowych wyjątków.
 - `bin/check-mcp-search.php` sprawdza protokół bez wczytywania konfiguracji,
   sekretów i bazy. Wyszukanie wymaga jawnego `--query` i `--approve-search`.
 - Szczegóły: `docs/MCP-USAGE.md`. Testy: `McpSearchClientTest`, `ChatSearchTest`,

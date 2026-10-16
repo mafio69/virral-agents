@@ -1,7 +1,8 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
 import { ChatApi } from './chat-api.js?v=20261016-inline-consent';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261016-inline-consent';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261016-sniffing';
+import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
 import { bindSearchControls, createSearchApproval } from './chat-search.js?v=20261016-inline-consent';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
@@ -16,6 +17,7 @@ const input = byId('chat-input'), send = byId('send-button'), model = byId('chat
 const connection = byId('chat-connection');
 const status = byId('chat-status'), mobile = matchMedia('(max-width: 860px)');
 const markdown = new MarkdownRenderer();
+const searchDog = mountSearchDog(byId('search-dog'));
 const element = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -93,6 +95,7 @@ function render(state) {
     if (input.value !== state.draft) { input.value = state.draft; autosize(); }
     send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);
     searchControls?.update(state);
+    searchDog.update(state.authenticated === true ? state.searchActivity : 'idle');
     const supportsImages = controller.canAttachImage();
     byId('attach-image').disabled = blocked || state.deliveryUncertain || !supportsImages;
     byId('attach-image').title = supportsImages ? 'Dodaj PNG, JPEG lub WebP do analizy' : 'Wybierz model oznaczony tekst i obrazy';
@@ -103,7 +106,7 @@ function render(state) {
     model.title = state.activeChat ? 'Aby zmienić model, rozpocznij nową rozmowę.' : 'Model nowej rozmowy';
     byId('new-chat').disabled = state.busy;
 
-    status.replaceChildren(element('span', '', state.busy ? 'Model przygotowuje odpowiedź…'
+    status.replaceChildren(element('span', '', state.busy ? state.searchActivity === 'searching' ? 'Szukam źródeł i przygotowuję odpowiedź…' : 'Model przygotowuje odpowiedź…'
         : state.loading ? 'Wczytywanie rozmów…' : state.modelsLoading ? 'Pobieranie modeli…' : [state.error, state.notice].filter(Boolean).join(' ')));
     status.dataset.kind = state.error ? 'error' : state.busy || state.loading ? 'busy' : '';
     if (!state.modelsLoading && !state.models.length && state.selectedConnection && !state.activeChat) {

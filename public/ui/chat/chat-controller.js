@@ -16,7 +16,7 @@ export class ChatController {
         this.state = {
             chats: [], models: [], connections: initialConnections, selectedConnection: this.preferredConnection(initialConnections)?.id || '', modelsLoading: false, activeChat: null, messages: [], draft: '', images: [],
             selectedModel: '', authenticated: null, loading: false, busy: false,
-            pendingMessage: null, error: '', notice: '', deliveryUncertain: false,
+            pendingMessage: null, error: '', notice: '', deliveryUncertain: false, searchActivity: 'idle',
         };
     }
 
@@ -113,7 +113,7 @@ export class ChatController {
         this.selectionVersion++;
         this.uncertainDelivery = null;
         this.update({
-            activeChat: null, messages: [], draft: '', images: [], loading: false,
+            activeChat: null, messages: [], draft: '', images: [], loading: false, searchActivity: 'idle',
             pendingMessage: null, error: '', notice: '', deliveryUncertain: false,
         });
         const connection = this.preferredConnection(this.state.connections)?.id;
@@ -131,7 +131,7 @@ export class ChatController {
             this.uncertainDelivery = null;
             this.update({
                 activeChat: chat, messages: chat.messages, selectedModel: chat.model || '',
-                draft: '', images: [], loading: false, deliveryUncertain: false, notice: '',
+                draft: '', images: [], loading: false, deliveryUncertain: false, notice: '', searchActivity: 'idle',
             });
             const namespace = chat.model?.split(':', 1)[0];
             const connection = namespace === 'db' ? 'zai'
@@ -166,7 +166,7 @@ export class ChatController {
         }
         const previousIds = new Set(this.state.messages.map(message => message.id));
         let messageRequestStarted = false;
-        this.update({ busy: true, error: '', notice: '', pendingMessage: { role: 'user', content, images } });
+        this.update({ busy: true, error: '', notice: '', pendingMessage: { role: 'user', content, images }, searchActivity: search ? 'searching' : 'idle' });
         try {
             if (!this.state.activeChat) {
                 const title = Array.from((content || 'Analiza obrazu').split(/\r?\n/, 1)[0]).slice(0, 72).join('');
@@ -179,11 +179,12 @@ export class ChatController {
             }
             messageRequestStarted = true;
             const messages = await this.api.sendMessage(this.state.activeChat.id, content, images, ...(search ? [search] : []));
-            this.update({ messages: [...this.state.messages, ...messages], draft: '', images: [], pendingMessage: null });
+            this.update({ messages: [...this.state.messages, ...messages], draft: '', images: [], pendingMessage: null, searchActivity: search ? 'done' : 'idle' });
             return true;
         } catch (error) {
             this.update({
                 pendingMessage: null,
+                searchActivity: search ? 'error' : 'idle',
                 authenticated: error.status === 401 ? false : this.state.authenticated,
                 error: error.status === 401 ? '' : aiFailureMessage(error) || 'Nie udało się odebrać odpowiedzi. Treść wiadomości została zachowana.',
             });

@@ -1,5 +1,10 @@
 # STATUS
 
+## 2026-10-16 — piesek sygnalizujący pracę WWW
+
+- Lokalny SVG pieska przy wyszukiwarce: węszenie i ruch ogona podczas oczekiwania na wyszukanie/odpowiedź; spokojne siedzenie po zakończeniu; zatrzymanie z komunikatem przy błędzie. Bez zewnętrznych zasobów. Uwzględniono prefers-reduced-motion.
+- PHP 120/120 (497 asercji), UI 47/47, Composer, składnia i diff poprawne. Test przeglądarkowy: `dog-sniff` w stanie searching oraz brak animacji po done. Zrzut: `artifacts/search-dog-working-2026-10-16.png`. API atrapowe, bez WWW.
+
 ## 2026-10-16 — hotfix widocznej zgody WWW
 
 - Zastąpiono natywny `window.confirm` panelem zgody w stronie: dokładne zapytanie, odbiorcy, Allow / Deny. Przeglądarka osadzona nie musi otwierać systemowego popupu. Odmowa daje jawny komunikat.

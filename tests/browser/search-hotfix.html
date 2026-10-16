@@ -1,10 +1,13 @@
 <!doctype html>
 <html lang="pl"><meta charset="utf-8"><title>Test przycisku WWW — dane fikcyjne</title>
 <style>body{font:18px system-ui;max-width:850px;margin:50px auto;background:#202325;color:#eee}input,textarea,button{font:inherit;padding:12px;margin:8px}textarea{display:block;width:90%}pre{white-space:pre-wrap}button:disabled{opacity:.4}</style>
+<link rel="stylesheet" href="/ui/chat/chat-search-dog.css">
 <h1>Test przycisku WWW — bez usług zewnętrznych</h1>
 <p>Model testowy. Odpowiedzi API są atrapami. Poniżej prawdziwe kontrolki i moduły czatu.</p>
 <label>Zapytanie WWW <input id="query" aria-label="Zapytanie WWW"></label>
 <button id="search" disabled>Wyszukaj i wyślij…</button>
+<div id="dog" hidden></div>
+<button id="finish" hidden>Zakończ odpowiedź testową</button>
 <section id="approval" hidden aria-label="Zgoda na wyszukanie">
   <h2>Zgoda na jedno wyszukanie WWW</h2>
   <p>Zapytanie: <b id="approval-query"></b></p>
@@ -16,7 +19,11 @@
 <script type="module">
 import { ChatController } from '/ui/chat/chat-controller.js';
 import { bindSearchControls, createSearchApproval } from '/ui/chat/chat-search.js';
+import { mountSearchDog } from '/ui/chat/chat-search-dog.js';
 const requests = [];
+let finishReply;
+const dog = mountSearchDog(document.getElementById('dog'));
+document.getElementById('finish').addEventListener('click', () => { finishReply?.(); document.getElementById('finish').hidden = true; });
 const api = {
     listConnections: async () => [{id:'ovh',name:'OVH fixture'}],
     listModels: async () => [{id:'fixture-model'}], listChats: async () => [],
@@ -24,6 +31,8 @@ const api = {
     sendMessage: async (id, content, images, search) => {
         requests.push({id,content,search});
         document.getElementById('result').textContent = JSON.stringify(requests, null, 2);
+        document.getElementById('finish').hidden = false;
+        await new Promise(resolve => { finishReply = resolve; });
         return [{id:1,role:'user',content},{id:2,role:'assistant',content:'Odpowiedź testowa.'}];
     },
 };
@@ -32,6 +41,6 @@ await controller.load();
 const approval = createSearchApproval({ panel:document.getElementById('approval'),queryText:document.getElementById('approval-query'),allow:document.getElementById('allow'),deny:document.getElementById('deny') });
 const controls = bindSearchControls({query:document.getElementById('query'),button:document.getElementById('search'),controller,
     approve: text => approval.request(text)});
-controller.onChange = state => controls.update(state);
+controller.onChange = state => { controls.update(state); dog.update(state.searchActivity); };
 document.getElementById('message').addEventListener('input', event => controller.setDraft(event.target.value));
 </script></html>

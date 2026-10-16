@@ -160,3 +160,27 @@ test('a changed conversation invalidates a pending consent', async () => {
     assert.equal(sends, 0);
     assert.match(controller.state.notice, /ponownie/);
 });
+
+test('search activity runs while awaiting a reply and stops on completion or failure', async () => {
+    for (const fail of [false, true]) {
+        let finish;
+        const response = new Promise((resolve, reject) => { finish = () => fail ? reject(new Error('fixture offline')) : resolve([
+            { id: 1, role: 'user', content: 'Public query' }, { id: 2, role: 'assistant', content: 'Answer' },
+        ]); });
+        const controller = new ChatController(chatFixture({
+            createChat: async () => ({ id: 1, model: 'fixture-model' }),
+            sendMessage: () => response,
+            getChat: async () => ({ id: 1, model: 'fixture-model', messages: [] }),
+        }));
+        await controller.load();
+        const pending = controller.send(approveSearch('Public query', () => true));
+        assert.equal(controller.state.searchActivity, 'searching');
+        assert.equal(controller.state.busy, true);
+        finish();
+        await pending;
+        assert.equal(controller.state.searchActivity, fail ? 'error' : 'done');
+        assert.equal(controller.state.busy, false);
+        controller.newChat();
+        assert.equal(controller.state.searchActivity, 'idle');
+    }
+});

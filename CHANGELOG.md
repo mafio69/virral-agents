@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-16 — piesek podczas wyszukiwania
+
+- Dodano lokalną animację SVG i tekst statusu dla trwającego wyszukiwania/odpowiedzi. Piesek zatrzymuje się po zakończeniu lub błędzie; ograniczenie ruchu jest respektowane.
+
 ## 2026-10-16 — zgoda WWW bez natywnego popupu
 
 - „Wyszukaj i wyślij…” pokazuje panel Allow / Deny w stronie. Usunięto zależność od `window.confirm`, którego brak powodował zakończenie handlera bez żądania.

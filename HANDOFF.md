@@ -1,3 +1,10 @@
+## 2026-10-16 — piesek i diagnostyka niedostępnego MCP
+
+- Gałąź `codex/search-sniffing-dog`. Wprowadzono lokalny SVG pieska z animacją węszenia podczas pracy i statyczną pozycją siedzącą po zakończeniu; reduced-motion wyłącza ruch.
+- PHP 120/120 (497 asercji), UI 47/47, składnia/Composer/diff poprawne. W przeglądarce potwierdzono `dog-sniff` podczas oczekiwania oraz `none` po odpowiedzi. Zrzut `artifacts/search-dog-working-2026-10-16.png`; żadnych rzeczywistych zapytań WWW/AI.
+- Użytkownik potwierdził błąd backendu „Wyszukiwanie WWW jest chwilowo niedostępne”. Zgoda i wysyłka już działają. Należy zdiagnozować połączenie z MCP z procesu aplikacji, bez kolejnego wyszukania i bez odczytu sekretów. Zawsze wykonuje twarde odświeżenie — nie zakładać jego braku.
+- Rozpoczęte zbieranie źródeł w stashu `research-source-selection: paused for sniffing dog indicator`, poza tą gałęzią; wcześniejsze kopie zachowano.
+
 ## 2026-10-16 — hotfix panelu Allow / Deny
 
 - Gałąź `codex/fix-inline-search-consent`: poprawka niewidocznej zgody. Lokalna strona serwowała poprzedni hotfix, lecz handler nadal polegał na natywnym `confirm`. Użytkownik potwierdził brak okna i brak żądań.

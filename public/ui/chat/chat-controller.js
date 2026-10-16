@@ -149,7 +149,7 @@ export class ChatController {
         }
     }
 
-    async send() {
+    async send(search = null) {
         const content = this.state.draft.trim();
         const images = this.state.images;
         if ((!content && !images.length) || this.state.busy || this.state.loading
@@ -177,7 +177,7 @@ export class ChatController {
                 });
             }
             messageRequestStarted = true;
-            const messages = await this.api.sendMessage(this.state.activeChat.id, content, images);
+            const messages = await this.api.sendMessage(this.state.activeChat.id, content, images, ...(search ? [search] : []));
             this.update({ messages: [...this.state.messages, ...messages], draft: '', images: [], pendingMessage: null });
             return true;
         } catch (error) {

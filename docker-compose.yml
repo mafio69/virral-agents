@@ -19,8 +19,12 @@ services:
       OPEN_AI_KEY: ${OPEN_AI_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_KEY: ${GEMINI_KEY:-}
+      MCP_SEARCH_URL: http://mcp-search:8000/mcp
       MAIL_DSN: ${MAIL_DSN:-}
       PHP_IDE_CONFIG: serverName=slim-ovh-ai
+    networks:
+      - default
+      - ai
 
   nginx:
     image: nginx:1.27-alpine
@@ -32,3 +36,7 @@ services:
       - ./docker/nginx:/etc/nginx/conf.d
     depends_on:
       - app
+
+networks:
+  ai:
+    external: true

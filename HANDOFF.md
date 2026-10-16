@@ -1,3 +1,16 @@
+## 2026-10-16 — MCP Search, ASK; oczekiwanie na usługę
+
+- Na istniejącej gałęzi `codex/mcp-search-agents` zastano częściową implementację MCP. Domknięto DI, wspólny serwis odpowiedzi i UI; przygotowano lokalny commit po powtórzeniu pełnych testów. Istniejące zmiany `.gitignore` i nieużywany szkic `GroundedClientInterface` pozostają poza commitem. Push wykonuje właściciel.
+- WWW domyślnie ASK, osobna zgoda za każdym razem, także dla ewentualnego przyszłego fetch. Obecnie serwer nie oferuje fetch. Model nie może sam wykonywać WWW. Użytkownik zatwierdza jawne zapytanie przed wysłaniem wiadomości; brak automatycznej pętli function calling.
+- `ChatReplyGenerator` wykonuje jedno wyszukanie i przekazuje JSON do aktualnego klienta AI; zapisuje źródła w tekście odpowiedzi przez istniejące szyfrowane repozytorium. Zwykłe Wyślij zachowuje poprzedni przepływ bez MCP.
+- PHP 120/120 (497 asercji), UI 41/41, składnia i diff-check poprawne; kontrole Composer poprawne z dotychczasowym ostrzeżeniem licencji. Testy protokołu, zgody, własności rozmowy, braku automatycznego ponowienia, źródeł i trzech natywnych API z atrapami.
+- **Następny krok:** właściciel uruchamia/sprawdza MCP lub podaje aktualny URL. Końcowa ponowna próba: `127.0.0.1:8890` odmawia TCP (errno 111), Docker API niedostępne dla konta procesu również po wyjściu z piaskownicy. Nie wykonano wyszukania na żywo. Nie uznawać wdrożenia za zweryfikowane na podstawie samych testów z atrapami.
+- Właściciel zgodził się na jedno `web_search` z „MCP Streamable HTTP”, max_results 3. Można użyć `php bin/check-mcp-search.php --query='MCP Streamable HTTP' --approve-search` po sygnale o gotowości. Samo `php bin/check-mcp-search.php` robi tylko inicjalizację i listę narzędzi. Skrypt nie wczytuje konfiguracji, sekretów ani bazy.
+- Compose wymaga zewnętrznej sieci `ai`, ustawia `MCP_SEARCH_URL=http://mcp-search:8000/mcp` i przekazuje je do FPM. Zmiana wymaga zastosowania konfiguracji kontenera przez operatora; nie wykonywano przebudowy/restartu.
+- Pełny test czatu z rzeczywistym dostawcą AI nadal wymaga osobnej zgody na wysyłkę publicznej testowej wiadomości i wyników do wybranego API lub wykonania przez właściciela. Nie otwierać sekretów ani istniejącej prywatnej historii.
+
+---
+
 Sesja: 2026-10-12 (Sol / Codex)
 
 ## Co właśnie zrobiłem

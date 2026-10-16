@@ -100,8 +100,8 @@ export class ChatApi {
         return chat;
     }
 
-    async sendMessage(id, content, images = []) {
-        const messages = await this.request('POST', '/chats/' + this.chatId(id) + '/messages', { content, ...(images.length ? { images } : {}) });
+    async sendMessage(id, content, images = [], search = null) {
+        const messages = await this.request('POST', '/chats/' + this.chatId(id) + '/messages', { content, ...(images.length ? { images } : {}), ...(search ? { search } : {}) });
         if (!Array.isArray(messages) || messages.length !== 2
             || messages[0]?.role !== 'user' || messages[1]?.role !== 'assistant'
             || messages.some(message => !Number.isInteger(message.id) || typeof message.content !== 'string')) {

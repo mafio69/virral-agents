@@ -18,6 +18,6 @@ final readonly class AddChatMessageInputMapper
             throw new ValidationException('Message content is required');
         }
 
-        return new AddChatMessageInput($chatId, $userId, trim($content), $images);
+        return new AddChatMessageInput($chatId, $userId, trim($content), $images, \App\Dto\Chat\SearchOptions::fromInput($data['search'] ?? []));
     }
 }

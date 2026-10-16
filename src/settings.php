@@ -26,6 +26,7 @@ return function (ContainerBuilder $containerBuilder) {
     $settings['openai'] = ['key' => $sensitiveValue('OPEN_AI_KEY')];
     $settings['anthropic'] = ['key' => $sensitiveValue('ANTHROPIC_API_KEY')];
     $settings['google'] = ['key' => $sensitiveValue('GEMINI_KEY')];
+    $settings['search'] = ['mcp_url' => $sensitiveValue('MCP_SEARCH_URL', 'http://127.0.0.1:8890/mcp')];
     $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
     $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);
 

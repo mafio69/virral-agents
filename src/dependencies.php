@@ -115,7 +115,14 @@ return function (ContainerBuilder $containerBuilder) {
                 ovhAiClient: $c->get(OvhAiClient::class),
                 modelRegistry: $c->get(\App\Infrastructure\AI\ChatModelRegistryInterface::class),
                 logger: $c->get(LoggerInterface::class),
+                replyGenerator: $c->get(\App\Service\ChatReplyGeneratorInterface::class),
             );
+        },
+        \App\Infrastructure\Search\SearchClientInterface::class => function (ContainerInterface $c) {
+            return new \App\Infrastructure\Search\McpSearchClient($c->get('settings')['search']['mcp_url']);
+        },
+        \App\Service\ChatReplyGeneratorInterface::class => function (ContainerInterface $c) {
+            return new \App\Service\ChatReplyGenerator($c->get(\App\Infrastructure\Search\SearchClientInterface::class));
         },
         TaskService::class => function (ContainerInterface $c) {
             return new TaskService(

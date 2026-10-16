@@ -11,7 +11,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
 
-final readonly class OpenAiCompatClient implements AiClientInterface
+final readonly class OpenAiCompatClient implements ToolCallingClientInterface
 {
     private ClientInterface $httpClient;
 
@@ -42,6 +42,17 @@ final readonly class OpenAiCompatClient implements AiClientInterface
             throw new AiConnectionException('invalid_response');
         }
         return $content;
+    }
+
+    public function generateWithTools(array $messages, array $tools, ?string $model = null): array
+    {
+        $body = $this->decode($this->request('POST', 'chat/completions', [
+            'model' => $model ?? $this->defaultModel, 'messages' => $messages,
+            'tools' => $tools, 'tool_choice' => $tools === [] ? 'none' : 'auto',
+        ]));
+        $message = $body['choices'][0]['message'] ?? null;
+        if (!is_array($message) || ($message['role'] ?? 'assistant') !== 'assistant') throw new AiConnectionException('invalid_response');
+        return $message;
     }
 
     /** @return list<array<string, mixed>> */

@@ -1,5 +1,15 @@
 # STATUS
 
+## 2026-10-16 — MCP Search i jawna zgoda ASK
+
+- `ChatService` korzysta z `ChatReplyGeneratorInterface`; jedno zatwierdzone zapytanie MCP poprzedza odpowiedź wybranego modelu. Wyniki sprawdzone z atrapami natywnych OpenAI, Anthropic i Gemini oraz OVH. Bez automatycznej pętli narzędzi i bez fetch.
+- UI ma osobne zapytanie WWW i przycisk „Wyszukaj i wyślij…”. Dokładna treść/odbiorcy są pokazywani przy każdej zgodzie. Zwykłe Wyślij nie uruchamia WWW. Backend wymaga zgody, zapytania i limitu 1; zgoda nie jest zapamiętywana.
+- MCP obsługuje JSON/SSE, sesję, schemat narzędzia, błędy i walidację URL. Brak wyników/awaria nie uruchamiają zastępczej odpowiedzi modelu. Źródła są dopisywane do szyfrowanego tekstu historii.
+- Compose dołącza aplikację do zewnętrznej sieci `ai`; `MCP_SEARCH_URL` przekazywane do FPM. Diagnostyka bez konfiguracji/sekretów: `bin/check-mcp-search.php`.
+- Weryfikacja: PHP 120/120, 497 asercji; UI 41/41 (`--test-isolation=none`), składnia zmienionych PHP i JS oraz diff-check poprawne. Composer validate/platform poprawne; istniejące ostrzeżenie o braku licencji.
+- Ponowna końcowa walidacja: PHP 120/120 (497 asercji), UI 41/41 i kontrole Composer/diff poprawne. Lokalny commit implementacji; push wykonuje właściciel.
+- Test rzeczywistego MCP nadal niewykonany: ponowne połączenie z portem hosta 8890 odrzucone (TCP errno 111), konto procesu nie ma dostępu do Docker API. Potrzebne uruchomienie usługi lub aktualny adres od właściciela. Zgoda dotyczy jednego zapytania „MCP Streamable HTTP”, maks. 3 wyniki; dotąd żadne wyszukanie nie dotarło do MCP. Bez wywołań modeli na żywo i odczytu sekretów.
+
 ## 2026-10-15 — generowanie obrazów Gemini
 
 - Gałąź codex/gemini-image-generation. Osobny kontrakt odpowiedzi multimodalnej, metadane generowania w katalogu, odbiór jednej grafiki do 8 MiB i szyfrowany zapis przez istniejące repozytorium. Brak migracji.

@@ -223,6 +223,9 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 .image-preview img{width:88px;height:72px;object-fit:contain;border-radius:6px}
 .message-image{display:block;max-width:min(100%,420px);max-height:360px;object-fit:contain;margin:0 0 12px;border-radius:10px}
 #attach-image{flex:none;min-height:40px}
+.search-controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--muted)}
+.search-controls input{flex:1;min-width:150px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--field)}
+.search-controls small{flex-basis:100%}
 </style>
 <link rel="stylesheet" href="/ui/theme.css">
 </head>
@@ -339,6 +342,12 @@ echo "Cześć";
         <div id="image-preview" class="image-preview" aria-live="polite"></div>
         <input type="file" id="image-file" accept="image/png,image/jpeg,image/webp" hidden>
         <p id="composer-model" class="composer-model" role="status" aria-live="polite" hidden></p>
+        <div class="search-controls">
+          <label for="search-query">WWW · ASK — zapytanie do wyszukiwarki</label>
+          <input id="search-query" type="text" maxlength="1000" placeholder="Tylko publiczne informacje" autocomplete="off">
+          <button id="search-send" type="button" class="btn btn-sm" disabled>Wyszukaj i wyślij…</button>
+          <small>Każde wyszukanie wymaga zgody. Zwykłe Wyślij nie korzysta z WWW.</small>
+        </div>
         <form id="chat-form" class="composer" autocomplete="off">
           <button type="button" id="attach-image" class="btn btn-sm" disabled title="Wybierz model obsługujący obrazy">Obraz</button>
           <label class="sr-only" for="chat-input">Wiadomość</label>
@@ -368,6 +377,6 @@ echo "Cześć";
 
 <script src="/ui/lib/marked.umd.js"></script>
 <script src="/ui/lib/purify.min.js"></script>
-<script type="module" src="/ui/chat/chat-app.js?v=20261015-model-label"></script>
+<script type="module" src="/ui/chat/chat-app.js?v=20261016-mcp-ask"></script>
 </body>
 </html>

@@ -1,7 +1,8 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261013-6';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261013-6';
+import { ChatApi } from './chat-api.js?v=20261016-mcp-ask';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261016-mcp-ask';
+import { approveSearch } from './chat-search.js?v=20261016-mcp-ask';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
@@ -90,6 +91,8 @@ function render(state) {
     input.disabled = preparingImage || state.busy || state.loading;
     if (input.value !== state.draft) { input.value = state.draft; autosize(); }
     send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);
+    byId('search-send').disabled = send.disabled;
+    byId('search-query').disabled = blocked;
     const supportsImages = controller.canAttachImage();
     byId('attach-image').disabled = blocked || state.deliveryUncertain || !supportsImages;
     byId('attach-image').title = supportsImages ? 'Dodaj PNG, JPEG lub WebP do analizy' : 'Wybierz model oznaczony tekst i obrazy';
@@ -237,6 +240,19 @@ input.addEventListener('keydown', event => handleComposerKey(event, sendDraft));
 byId('chat-form').addEventListener('submit', event => {
     event.preventDefault();
     sendDraft();
+});
+byId('search-send').addEventListener('click', async () => {
+    if (send.disabled || preparingImage) return;
+    const query = byId('search-query').value.trim();
+    if (!query || new TextEncoder().encode(query).length > 1000) {
+        controller.update({ error: 'Wpisz publiczne zapytanie do wyszukiwarki (maksymalnie 1000 bajtów).' });
+        byId('search-query').focus();
+        return;
+    }
+    const search = approveSearch(query);
+    if (!search) return;
+    if (await controller.send(search)) byId('search-query').value = '';
+    if (!input.disabled) input.focus();
 });
 render(controller.state);
 await controller.load();

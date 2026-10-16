@@ -23,6 +23,7 @@ final readonly class ChatService
         private readonly OvhAiClient $ovhAiClient,
         private readonly LoggerInterface $logger,
         private readonly ?ChatModelRegistryInterface $modelRegistry = null,
+        private readonly ?ChatReplyGeneratorInterface $replyGenerator = null,
     ) {
     }
 
@@ -141,9 +142,7 @@ final readonly class ChatService
 
         // Add assistant message
         try {
-            $reply = $client instanceof \App\Infrastructure\AI\MultimodalClientInterface
-                ? $client->generateReply($messageHistory, $apiModel)
-                : new \App\Dto\AI\AiReply($client->generate($messageHistory, $apiModel));
+            $reply = ($this->replyGenerator ?? new ChatReplyGenerator())->generate($client, $messageHistory, $apiModel, $input->search);
             $aiContent = $reply->text;
         } catch (\Throwable $e) {
             $this->logger->error('AI call failed', ['chat_id' => $input->chatId]);
@@ -167,6 +166,7 @@ final readonly class ChatService
 
         // Return both messages
         if ($reply->images !== []) $assistantMessage['images'] = $reply->images;
+        if ($reply->search !== null) $assistantMessage['search'] = $reply->search;
         return [$userMessage, $assistantMessage];
     }
 

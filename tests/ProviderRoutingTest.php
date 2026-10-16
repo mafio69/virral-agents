@@ -90,4 +90,31 @@ final class ProviderRoutingTest extends TestCase
             }
         }
     }
+
+    public function testApprovedMcpResultsReachAllThreeNativeProviders(): void
+    {
+        $fixtures = [
+            [OpenAiProvider::class, 'gpt-6-astra', ['output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'Fixture answer']]]]], 'input'],
+            [AnthropicProvider::class, 'claude-sonnet-5-5', ['content' => [['type' => 'text', 'text' => 'Fixture answer']]], 'messages'],
+            [GeminiProvider::class, 'gemini-3-flash', ['candidates' => [['content' => ['parts' => [['text' => 'Fixture answer']]]]]], 'contents'],
+        ];
+        foreach ($fixtures as [$class, $model, $answer, $historyKey]) {
+            $requests = [];
+            $handler = HandlerStack::create(new MockHandler([new Response(200, [], json_encode($answer))]));
+            $handler->push(Middleware::history($requests));
+            $provider = new $class(new ProviderTransport('https://example.invalid/', 'dummy-fixture', http: new Client(['base_uri' => 'https://example.invalid/', 'handler' => $handler])));
+            $search = $this->createMock(\App\Infrastructure\Search\SearchClientInterface::class);
+            $search->expects(self::once())->method('search')->with('Public query', 5)->willReturn(['source' => 'searxng', 'results' => [
+                ['title' => 'Fixture', 'url' => 'https://example.org/source', 'snippet' => 'Public fixture'],
+            ]]);
+            $search->expects(self::once())->method('close');
+            $reply = (new \App\Service\ChatReplyGenerator($search))->generate($provider, [['role' => 'user', 'content' => 'Private fixture question']], $model,
+                new \App\Dto\Chat\SearchOptions('mcp', 1, 'Public query', true));
+            self::assertStringContainsString('https://example.org/source', $reply->text);
+            $payload = json_decode((string)$requests[0]['request']->getBody(), true);
+            self::assertStringContainsString('https://example.org/source', json_encode($payload[$historyKey], JSON_UNESCAPED_SLASHES));
+            self::assertStringContainsString('Private fixture question', json_encode($payload[$historyKey]));
+            self::assertArrayNotHasKey('tools', $payload);
+        }
+    }
 }

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pl"><meta charset="utf-8"><title>Test przycisku WWW — dane fikcyjne</title>
+<style>body{font:18px system-ui;max-width:850px;margin:50px auto;background:#202325;color:#eee}input,textarea,button{font:inherit;padding:12px;margin:8px}textarea{display:block;width:90%}pre{white-space:pre-wrap}button:disabled{opacity:.4}</style>
+<h1>Test przycisku WWW — bez usług zewnętrznych</h1>
+<p>Model testowy. Odpowiedzi API są atrapami. Poniżej prawdziwe kontrolki i moduły czatu.</p>
+<label>Decyzja testowa <select id="decision" aria-label="Decyzja testowa"><option value="deny">Deny</option><option value="allow">Allow</option></select></label>
+<label>Zapytanie WWW <input id="query" aria-label="Zapytanie WWW"></label>
+<button id="search" disabled>Wyszukaj i wyślij…</button>
+<label>Wiadomość <textarea id="message" aria-label="Wiadomość"></textarea></label>
+<pre id="result">Brak wysłanych żądań.</pre>
+<script type="module">
+import { ChatController } from '/ui/chat/chat-controller.js';
+import { bindSearchControls, approveSearch } from '/ui/chat/chat-search.js';
+const requests = [];
+const api = {
+    listConnections: async () => [{id:'ovh',name:'OVH fixture'}],
+    listModels: async () => [{id:'fixture-model'}], listChats: async () => [],
+    createChat: async () => ({id:1,model:'fixture-model'}),
+    sendMessage: async (id, content, images, search) => {
+        requests.push({id,content,search});
+        document.getElementById('result').textContent = JSON.stringify(requests, null, 2);
+        return [{id:1,role:'user',content},{id:2,role:'assistant',content:'Odpowiedź testowa.'}];
+    },
+};
+const controller = new ChatController(api);
+await controller.load();
+const controls = bindSearchControls({query:document.getElementById('query'),button:document.getElementById('search'),controller,
+    approve: text => approveSearch(text, () => document.getElementById('decision').value === 'allow')});
+controller.onChange = state => controls.update(state);
+document.getElementById('message').addEventListener('input', event => controller.setDraft(event.target.value));
+</script></html>

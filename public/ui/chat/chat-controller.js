@@ -150,7 +150,8 @@ export class ChatController {
     }
 
     async send(search = null) {
-        const content = this.state.draft.trim();
+        const content = this.state.draft.trim()
+            || (search?.approved === true && typeof search.query === 'string' ? search.query.trim() : '');
         const images = this.state.images;
         if ((!content && !images.length) || this.state.busy || this.state.loading
             || this.state.deliveryUncertain || this.state.authenticated !== true || this.state.modelsLoading) return false;

@@ -1,3 +1,10 @@
+## 2026-10-16 — hotfix przycisku WWW
+
+- Gałąź `codex/fix-search-query-only` z develop. Usunięto zależność przycisku od dolnego pola; wspólne `bindSearchControls` / `canSearch` obsługują aktualizację i zgodę. `ChatController` używa zatwierdzonego zapytania jako wiadomości przy pustym polu.
+- PHP 120/120 (497 asercji), UI 44/44, Composer i diff-check poprawne. Test przeglądarkowy na izolowanym routerze `tests/browser/router.php` potwierdził query-only, Deny bez wysyłki oraz Allow z pojedynczym żądaniem. Zrzut: `artifacts/search-query-hotfix-2026-10-16.png`. Testy nie wysyłają nic do WWW ani API modelu. Brak dostępu narzędziowego do Chrome; użyto przeglądarki w aplikacji.
+- Większe zadanie nadal osobno: `codex/research-source-selection`. Jego rozpoczęte zmiany zachowano w lokalnym stashu o opisie `research-source-selection: work paused for search button hotfix`, z dokładną listą plików; `.gitignore` i wcześniejszy `GroundedClientInterface` nie zostały schowane ani zmienione. Przed wznowieniem przenieść hotfix na gałąź badania i przywrócić tylko ten stash.
+- Nowa funkcja zbierania źródeł nie jest częścią hotfixu. Ta poprawka zachowuje dotychczasowe wyszukanie przed odpowiedzią AI; nie dodaje checkboxów ani samodzielnej listy wyników.
+
 ## 2026-10-16 — MCP Search, ASK; wyszukiwanie na żywo potwierdzone
 
 - Na istniejącej gałęzi `codex/mcp-search-agents` zastano częściową implementację MCP. Domknięto DI, wspólny serwis odpowiedzi i UI; przygotowano lokalny commit po powtórzeniu pełnych testów. Istniejące zmiany `.gitignore` i nieużywany szkic `GroundedClientInterface` pozostają poza commitem. Push wykonuje właściciel.

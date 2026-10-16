@@ -1,5 +1,12 @@
 # STATUS
 
+## 2026-10-16 — hotfix wyszukiwania bez wiadomości
+
+- Osobna gałąź `codex/fix-search-query-only`. Przycisk WWW zależy od poprawnego zapytania, sesji i modelu, a nie od treści dolnego pola. Zmiana zapytania natychmiast aktualizuje dostępność przycisku.
+- Po zgodzie samo zapytanie jest treścią wiadomości, jeśli użytkownik nie wpisał osobnego polecenia. Deny nie tworzy rozmowy ani nie wysyła wiadomości. Busy, brak modelu/sesji i niepewny zapis nadal blokują wysłanie.
+- PHP 120/120 (497 asercji), UI 44/44; Composer, składnia JS/PHP i diff-check poprawne (istniejące ostrzeżenie licencji). Izolowany test przeglądarkowy z prawdziwymi modułami i atrapami API potwierdził aktywację, Deny i jedno wysłanie po Allow. Chrome niedostępne narzędziowo; użyto przeglądarki w aplikacji.
+- Dowód: `artifacts/search-query-hotfix-2026-10-16.png`. Bez rzeczywistych wywołań WWW lub AI. Rozpoczęte zmiany zbierania źródeł zachowane w lokalnym stashu, poza hotfixem.
+
 ## 2026-10-16 — MCP Search i jawna zgoda ASK
 
 - `ChatService` korzysta z `ChatReplyGeneratorInterface`; jedno zatwierdzone zapytanie MCP poprzedza odpowiedź wybranego modelu. Wyniki sprawdzone z atrapami natywnych OpenAI, Anthropic i Gemini oraz OVH. Bez automatycznej pętli narzędzi i bez fetch.

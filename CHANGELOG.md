@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-16 — naprawa zablokowanego przycisku WWW
+
+- Zapytanie w polu WWW wystarcza do odblokowania „Wyszukaj i wyślij…”, bez dodatkowej wiadomości. Po zgodzie jest używane jako polecenie dla modelu; osobno wpisane polecenie zachowuje pierwszeństwo.
+- Testy regresji sprawdzają zdarzenia kontrolek, odmowę bez wysyłki, pojedyncze wysłanie oraz zachowanie blokad sesji/modelu. Wersje importów JS zmienione, aby przeglądarka pobrała poprawiony kod.
+
 ## 2026-10-16 — wyszukiwarka MCP w czacie, tryb ASK
 
 - Wspólny serwis odpowiedzi łączy zatwierdzone wyszukiwanie MCP z wybranym dostawcą AI; wyniki nie wymagają natywnego function calling danego dostawcy.

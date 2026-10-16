@@ -1,9 +1,9 @@
 ## 2026-10-17 — debug niedostępnego MCP
 
-- Gałąź `codex/mcp-connection-diagnostics` zawiera lokalny commit pieska `8df1f01` z develop. Nie wykonywano push tych zmian.
+- Gałąź `codex/mcp-connection-diagnostics` zawiera commit diagnostyki `cfd5015` i commit pieska `8df1f01` z develop. Właściciel zlecił końcowe testy, commit dokumentacji, lokalne scalenie do develop i push.
 - W `ChatReplyGenerator` usunięto utratę przyczyny wyjątku: odpowiedź `search` zawiera `status`, `reason`, `stage`; logger zapisuje tylko dozwolone kody. Transport nie ujawnia komunikatów, sesji i surowych odpowiedzi. Odpowiedzi historyczne pozostają bez zmian.
-- Test z rzeczywistego procesu aplikacji `GET /api/search/status` (sesja użytkownika, bez odczytu cookies) zwrócił `available:false,target:docker-service,reason:dns_failed,stage:initialize,searched:false`. Nazwa kontenera MCP jest nierozpoznawalna dla aplikacji. Wcześniejszy domyślny loopback też był błędny; zmieniono fallback aplikacji na `mcp-search:8000/mcp`.
-- Dalszy krok: właściciel potwierdza dołączenie `slim_ovh_ai_app` i `mcp-search` do wspólnej sieci (instrukcja `ai`); sprawdzić alias. Potem powtórzyć tylko inicjalizację, bez wyszukania WWW. Każde nowe wyszukanie wymaga nowej zgody.
+- Przyczyna: aplikacja była wyłącznie w `virralai_default`, MCP w `ai`. Właściciel wykonał `docker network connect ai slim_ovh_ai_app`. Potem rzeczywisty test `GET /api/search/status` zwrócił `available:true,target:docker-service,tool:web_search,searched:false`. Sieć i inicjalizacja potwierdzone; pełnego wyszukania nie ponawiano.
+- Compose deklaruje obie sieci aplikacji, więc odtworzenie jej zgodnie z plikiem zachowa wspólną sieć MCP. Kolejne rzeczywiste wyszukanie wymaga nowej zgody; test połączenia jej nie zużywa. Pełnej odpowiedzi rzeczywistego modelu nadal nie potwierdzano.
 - PHP 127/127 (521 asercji), UI 47/47, składnia/Composer/diff poprawne. Rzeczywistego wyszukania nie powtarzano. Większe zadanie źródeł nadal w stashu opisanym poniżej.
 
 ## 2026-10-16 — piesek i diagnostyka niedostępnego MCP

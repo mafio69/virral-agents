@@ -4,6 +4,7 @@
 
 - `status: unavailable` zachowuje bezpieczną przyczynę i etap zamiast ukrywać szczegóły każdego błędu. Dodano komunikaty o DNS/połączeniu i logowanie wyłącznie dozwolonych kodów.
 - Chroniony test połączenia MCP z procesu aplikacji nie wykonuje wyszukiwania. Domyślny adres backendu odpowiada środowisku Docker zamiast wskazywać loopback kontenera.
+- Potwierdzono połączenie z procesu PHP po dołączeniu aplikacji do wspólnej sieci `ai`: inicjalizacja i narzędzie `web_search` dostępne. Bez powtarzania wyszukania WWW.
 
 ## 2026-10-16 — piesek podczas wyszukiwania
 

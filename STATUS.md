@@ -4,7 +4,7 @@
 
 - `ChatReplyGenerator` zachowuje przyczynę i etap w `search.reason` / `search.stage`; loguje wyłącznie dozwolone kody. MCP rozróżnia DNS, odmowę połączenia, timeout, HTTP, protokół i odpowiedź dostawcy. Bez surowych wyjątków, treści zapytania i sesji.
 - Dodano chroniony `GET /api/search/status`: inicjalizacja/lista narzędzi z procesu PHP, bez wyszukiwania. Poprawiono domyślny adres aplikacji z loopback na nazwę usługi Docker; instalacja na hoście wymaga jawnego MCP_SEARCH_URL.
-- Rzeczywisty wynik z lokalnej aplikacji: `available:false, target:docker-service, reason:dns_failed, stage:initialize, searched:false`. PHP nie rozpoznaje `mcp-search`; do sprawdzenia wspólna sieć i alias kontenerów. Użytkownik zadeklarował podłączenie w Portainerze; brak potwierdzenia zakończenia tej czynności.
+- Przyczyna potwierdzona: aplikacja należała tylko do `virralai_default`, MCP do `ai`. Właściciel dołączył `slim_ovh_ai_app` do `ai`, zachowując dotychczasową sieć. Ponowny test z procesu aplikacji zwrócił `available:true,target:docker-service,tool:web_search,searched:false`. DNS i inicjalizacja MCP działają; nie wykonano nowego wyszukania WWW.
 - Pełne testy: PHP 127/127 (521 asercji), UI 47/47, składnia/Composer/diff poprawne; istniejące ostrzeżenie o licencji. Bez nowego wyszukania WWW i bez wywołania modelu.
 
 ## 2026-10-16 — piesek sygnalizujący pracę WWW

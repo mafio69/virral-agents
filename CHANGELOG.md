@@ -5,7 +5,7 @@
 - Wspólny serwis odpowiedzi łączy zatwierdzone wyszukiwanie MCP z wybranym dostawcą AI; wyniki nie wymagają natywnego function calling danego dostawcy.
 - Osobne publiczne zapytanie i zgoda na każdą operację WWW. Zwykłe wysłanie wiadomości nie korzysta z wyszukiwarki; fetch nie jest udostępniany.
 - Obsługa sesji MCP, JSON/SSE, walidacji wyników, niedostępności i pustych odpowiedzi; źródła zachowane w szyfrowanej historii.
-- Konfiguracja DI/Compose/FPM, diagnostyka bez sekretów, testy protokołu i przepływu do trzech natywnych API. Rzeczywisty test usługi pozostaje do potwierdzenia po uruchomieniu MCP przez właściciela.
+- Konfiguracja DI/Compose/FPM, diagnostyka bez sekretów, testy protokołu i przepływu do trzech natywnych API. Po uruchomieniu kontenera potwierdzono rzeczywiste `web_search`: 3 wyniki SearXNG dla zatwierdzonego zapytania, bez fetch i Perplexity. Pełnego czatu z rzeczywistym API modelu nie wywoływano.
 
 ## 2026-08-30 — start tasku: multi-AI providers (branch `feature/multi-ai-providers`)
 

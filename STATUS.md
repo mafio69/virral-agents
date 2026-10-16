@@ -8,7 +8,7 @@
 - Compose dołącza aplikację do zewnętrznej sieci `ai`; `MCP_SEARCH_URL` przekazywane do FPM. Diagnostyka bez konfiguracji/sekretów: `bin/check-mcp-search.php`.
 - Weryfikacja: PHP 120/120, 497 asercji; UI 41/41 (`--test-isolation=none`), składnia zmienionych PHP i JS oraz diff-check poprawne. Composer validate/platform poprawne; istniejące ostrzeżenie o braku licencji.
 - Ponowna końcowa walidacja: PHP 120/120 (497 asercji), UI 41/41 i kontrole Composer/diff poprawne. Lokalny commit implementacji; push wykonuje właściciel.
-- Test rzeczywistego MCP nadal niewykonany: ponowne połączenie z portem hosta 8890 odrzucone (TCP errno 111), konto procesu nie ma dostępu do Docker API. Potrzebne uruchomienie usługi lub aktualny adres od właściciela. Zgoda dotyczy jednego zapytania „MCP Streamable HTTP”, maks. 3 wyniki; dotąd żadne wyszukanie nie dotarło do MCP. Bez wywołań modeli na żywo i odczytu sekretów.
+- Po uruchomieniu kontenera przez właściciela test rzeczywistego MCP zakończył się sukcesem: `php bin/check-mcp-search.php --query='MCP Streamable HTTP' --approve-search` potwierdził `web_search` i zwrócił 3 wyniki `source: searxng`. Jednorazowa zgoda została wykorzystana; bez Perplexity i bez fetch stron. Nie wykonywano wywołania rzeczywistego modelu AI ani odczytu sekretów. Zastosowanie nowej konfiguracji kontenera aplikacji i pełna odpowiedź w UI pozostają do potwierdzenia przez właściciela.
 
 ## 2026-10-15 — generowanie obrazów Gemini
 

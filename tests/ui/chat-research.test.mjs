@@ -82,18 +82,32 @@ test('Fetch all requires confirmation and approves only the displayed selected f
     assert.equal(actions[2].status, 'pending');
     assert.equal(actions[3].status, 'pending');
 });
-test('Fetch all stops after failure and never retries remaining pages automatically', async () => {
+test('Fetch all continues after page failure and resumes the requested synthesis', async () => {
     const actions = ['one', 'two'].map(id => ({ id, origin: 'user', status: 'pending', request: { kind: 'fetch', url: `https://example.org/${id}` } }));
     const sources = actions.map(a => ({ id: a.id, url: a.request.url, page: { status: 'unread' } }));
     const calls = [];
     const panel = fixture({ research: async (operation, scope, payload) => {
-        if (operation === 'decide') { calls.push(payload.id); actions[0].status = 'failed'; }
+        if (operation === 'decide') { calls.push(payload.id); actions.find(a => a.id === payload.id).status = payload.id === 'one' ? 'failed' : 'done'; }
         return state(sources, actions);
     } });
     await panel.setScope(0);
+    let resumed = 0;
+    panel.onResume = () => { resumed++; };
+    panel.resume = true;
     panel.bulkApproval = panel.pendingFetches();
     await panel.fetchAll();
-    assert.deepEqual(calls, ['one']);
+    assert.deepEqual(calls, ['one', 'two']);
+    assert.equal(resumed, 1);
     assert.equal(panel.bulkApproval, null);
-    assert.equal(actions[1].status, 'pending');
+    assert.equal(actions[1].status, 'done');
+});
+
+test('a failed individual fetch still resumes the waiting command', async () => {
+    const action = { id: 'one', origin: 'user', status: 'pending', request: { kind: 'fetch', url: 'https://example.org/one' } };
+    let resumed = 0;
+    const panel = fixture({ research: async operation => state([], [{ ...action, status: operation === 'state' ? 'pending' : 'failed' }]) }, { onResume: () => { resumed++; } });
+    await panel.setScope(0);
+    panel.resume = true;
+    await panel.decide(action, true);
+    assert.equal(resumed, 1);
 });

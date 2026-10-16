@@ -1,5 +1,9 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-17 — kontynuacja po błędzie strony
+
+Błąd pobrania strony nie zatrzymuje Fetch all ani oczekującego polecenia. AI otrzymuje dostępne treści i status failed dla niepobranych stron. Niepewny stan po utracie połączenia z aplikacją nadal wymaga odświeżenia, bez automatycznego ponawiania. Testy regresji: pojedynczy nieudany fetch i błąd pierwszej strony paczki; UI 54/54, PHP 139/139 (601 asercji). Bez rzeczywistego WWW i push.
+
 ## 2026-10-17 — Fetch all
 
 Przy oczekujących pobraniach dodano Fetch all z podglądem dokładnej listy i jednym jawnym Allow dla tej listy. Bez zgody nic nie pobiera; nie obejmuje nowych stron ani wyszukiwania, zatrzymuje się po błędzie. Testy UI 53/53; PHP 139/139 (601 asercji), Composer i składnia poprawne. Bez rzeczywistego WWW i push.

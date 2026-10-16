@@ -104,10 +104,10 @@ export class ResearchPanel {
         const ok = await this.run('decide', { id: action.id, allow });
         this.onActivity(ok && allow ? this.state.actions.find(item => item.id === action.id)?.status === 'failed' ? 'error' : 'done' : 'idle');
         if (!ok) return;
-        if (this.state.actions.find(item => item.id === action.id)?.status === 'failed') {
-            this.resume = false;
+        const failed = this.state.actions.find(item => item.id === action.id)?.status === 'failed';
+        if (failed) {
             this.onNotice('Operacja WWW nie powiodła się. Sprawdź stan poniżej; ponowienie wymaga nowej zgody.', true);
-            return;
+            if (action.request.kind !== 'fetch') return;
         }
         const waiting = this.state.actions.some(item => ['pending', 'running'].includes(item.status));
         if (this.resume && !waiting) {
@@ -115,7 +115,7 @@ export class ResearchPanel {
             await this.onResume();
         } else if (action.origin === 'ai' && action.request.kind === 'fetch' && !waiting) {
             await this.onAgent(allow);
-        } else if (allow && action.request.kind === 'search') {
+        } else if (allow && action.request.kind === 'search' && !failed) {
             this.onNotice(this.state.results.length ? 'Zaznacz strony do listy źródeł. Możesz wpisać kolejne zapytanie i szukać dalej.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
         } else if (!allow) this.onNotice('Odmowa zapisana. Operacja WWW nie została wykonana.');
     }
@@ -130,18 +130,20 @@ export class ResearchPanel {
         const approved = this.bulkApproval, version = this.version;
         this.bulkApproval = null;
         this.onActivity('searching');
+        let failures = 0;
         for (const action of approved) {
             if (version !== this.version) return;
             if (!this.pendingFetches().some(item => item.id === action.id && item.request.url === action.request.url)) continue;
-            if (!await this.run('decide', { id: action.id, allow: true })
-                || this.state.actions.find(item => item.id === action.id)?.status !== 'done') {
+            if (!await this.run('decide', { id: action.id, allow: true })) {
                 this.resume = false;
                 this.onActivity('error');
-                this.onNotice('Fetch all zatrzymany. Sprawdź błąd; pozostałe strony wymagają ponownej zgody.', true);
+                this.onNotice('Nie można potwierdzić stanu operacji. Odśwież listę przed kontynuacją.', true);
                 return;
             }
+            if (this.state.actions.find(item => item.id === action.id)?.status === 'failed') failures++;
         }
         this.onActivity('done');
+        if (failures) this.onNotice(`Nie udało się pobrać ${failures} stron. Opracowanie może korzystać z pozostałych przeczytanych źródeł.`);
         if (this.resume && !this.state.actions.some(item => ['pending', 'running'].includes(item.status))) {
             this.resume = false;
             await this.onResume();

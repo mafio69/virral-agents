@@ -1,9 +1,9 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261017-fetch-all';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261017-fetch-all';
+import { ChatApi } from './chat-api.js?v=20261017-fetch-continue';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261017-fetch-continue';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchPanel } from './chat-research.js?v=20261017-fetch-all';
+import { ResearchPanel } from './chat-research.js?v=20261017-fetch-continue';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 

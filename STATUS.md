@@ -1,5 +1,9 @@
 # STATUS
 
+## 2026-10-17 — checkboxy i badanie źródeł
+
+Gałąź `codex/research-source-selection`. Osobne wyszukiwanie, trwały koszyk 3+2 stron, osobne decyzje fetch oraz prośby AI. Test przeglądarkowy na atrapach potwierdził pięć źródeł po odświeżeniu, odmowę jednego pobrania i opracowanie z czterema przeczytanymi adresami. Prośba AI pojawiła się jako Allow / Deny; odmowa zapisana. Bez rzeczywistego WWW i płatnych API. Pełne testy: PHP 139/139 (601 asercji), UI 51/51. Weryfikacja rzeczywistych dostawców pozostaje do osobno zatwierdzonej próby. Bez push.
+
 ## 2026-10-17 — debug `search.status: unavailable`
 
 - `ChatReplyGenerator` zachowuje przyczynę i etap w `search.reason` / `search.stage`; loguje wyłącznie dozwolone kody. MCP rozróżnia DNS, odmowę połączenia, timeout, HTTP, protokół i odpowiedź dostawcy. Bez surowych wyjątków, treści zapytania i sesji.

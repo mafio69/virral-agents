@@ -6,7 +6,7 @@ namespace App\Infrastructure\AI;
 
 use App\Exception\AiConnectionException;
 
-final class OpenAiProvider implements ChatProviderInterface
+final class OpenAiProvider implements ChatProviderInterface, WebToolClientInterface
 {
     private ?array $models = null;
 
@@ -34,6 +34,16 @@ final class OpenAiProvider implements ChatProviderInterface
 
     public function generate(array $messages, ?string $model = null): string
     {
+        return $this->reply($messages, $model, false)->text;
+    }
+
+    public function generateWebReply(array $messages, string $model): \App\Dto\AI\AiReply
+    {
+        return $this->reply($messages, $model, true);
+    }
+
+    private function reply(array $messages, ?string $model, bool $web): \App\Dto\AI\AiReply
+    {
         $input = [];
         foreach ($messages as $message) {
             $content = $message['content'];
@@ -49,9 +59,12 @@ final class OpenAiProvider implements ChatProviderInterface
         $body = $this->transport->request('POST', 'responses', [
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
             'input' => $input, 'store' => false, 'max_output_tokens' => 4096,
+            ...($web ? ['tools' => array_map(static fn(array $tool): array => ['type' => 'function', ...$tool], WebTools::definitions()), 'parallel_tool_calls' => false] : []),
         ]);
+        if (isset($body['error'])) throw new AiConnectionException('invalid_response');
         $text = [];
         foreach ($body['output'] ?? [] as $item) {
+            if ($web && ($item['type'] ?? '') === 'function_call') return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($item['name'] ?? '', $item['arguments'] ?? null));
             if (($item['type'] ?? '') !== 'message') continue;
             foreach ($item['content'] ?? [] as $part) {
                 if (($part['type'] ?? '') === 'output_text' && is_string($part['text'] ?? null)) $text[] = $part['text'];
@@ -59,6 +72,6 @@ final class OpenAiProvider implements ChatProviderInterface
         }
         $result = implode("\n", $text);
         if (trim($result) === '' || isset($body['error'])) throw new AiConnectionException('invalid_response');
-        return $result;
+        return new \App\Dto\AI\AiReply($result);
     }
 }

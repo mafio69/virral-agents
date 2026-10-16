@@ -29,7 +29,7 @@ export function mountSearchDog(container) {
             container.hidden = activity === 'idle';
             container.dataset.activity = activity;
             label.textContent = activity === 'searching' ? 'Węszę… Szukam źródeł i przygotowuję odpowiedź.'
-                : activity === 'done' ? 'Gotowe — odpowiedź jest w rozmowie.'
+                : activity === 'done' ? 'Gotowe — możesz przejrzeć wyniki.'
                     : 'Zatrzymałem się — sprawdź komunikat przy wiadomości.';
         },
     };

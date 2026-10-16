@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-17 — wybór źródeł do badania
+
+Checkboxy wyników i szyfrowany koszyk zachowują wybór między wyszukiwaniami oraz po odświeżeniu. Wyszukiwanie nie wymaga wiadomości. Pobranie każdej strony oraz prośby AI wymagają osobnego Allow / Deny. Opracowanie otrzymuje treść wyłącznie wybranych i pobranych stron; jawne odmowy, błędy i skrócenia. HTML/tekst publicznych stron, bez PDF/JS/przekierowań.
+
 ## 2026-10-17 — jawna diagnostyka błędów MCP
 
 - `status: unavailable` zachowuje bezpieczną przyczynę i etap zamiast ukrywać szczegóły każdego błędu. Dodano komunikaty o DNS/połączeniu i logowanie wyłącznie dozwolonych kodów.

@@ -52,6 +52,11 @@ return function (App $app) {
         // AI Models
         $group->get('/ai-connections', [ChatController::class, 'listConnections']);
         $group->get('/search/status', [ChatController::class, 'searchStatus']);
+        $group->get('/research', [ChatController::class, 'researchState']);
+        $group->post('/research/actions', [ChatController::class, 'researchPropose']);
+        $group->post('/research/decisions', [ChatController::class, 'researchDecide']);
+        $group->put('/research/sources', [ChatController::class, 'researchSelect']);
+        $group->post('/research/prepare', [ChatController::class, 'researchPrepare']);
         $group->get('/ai-models', [ChatController::class, 'listModels']);
     });
 };

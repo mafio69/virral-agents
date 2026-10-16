@@ -11,7 +11,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
 
-final readonly class OpenAiCompatClient implements ToolCallingClientInterface
+final readonly class OpenAiCompatClient implements ToolCallingClientInterface, WebToolClientInterface
 {
     private ClientInterface $httpClient;
 
@@ -53,6 +53,16 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface
         $message = $body['choices'][0]['message'] ?? null;
         if (!is_array($message) || ($message['role'] ?? 'assistant') !== 'assistant') throw new AiConnectionException('invalid_response');
         return $message;
+    }
+
+    public function generateWebReply(array $messages, string $model): \App\Dto\AI\AiReply
+    {
+        $message = $this->generateWithTools($messages, WebTools::compat(), $model);
+        $call = $message['tool_calls'][0]['function'] ?? null;
+        if ($call !== null) return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['arguments'] ?? null));
+        $text = $message['content'] ?? null;
+        if (!is_string($text) || trim($text) === '') throw new AiConnectionException('invalid_response');
+        return new \App\Dto\AI\AiReply($text);
     }
 
     /** @return list<array<string, mixed>> */

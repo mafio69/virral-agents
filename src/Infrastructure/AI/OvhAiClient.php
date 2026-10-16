@@ -6,7 +6,7 @@ namespace App\Infrastructure\AI;
 
 use GuzzleHttp\ClientInterface;
 
-final readonly class OvhAiClient implements AiClientInterface
+final readonly class OvhAiClient implements WebToolClientInterface
 {
     private OpenAiCompatClient $client;
 
@@ -33,6 +33,11 @@ final readonly class OvhAiClient implements AiClientInterface
     public function generate(array $messages, ?string $model = null): string
     {
         return $this->client->generate($messages, $this->resolveModel($model));
+    }
+
+    public function generateWebReply(array $messages, string $model): \App\Dto\AI\AiReply
+    {
+        return $this->client->generateWebReply($messages, $this->resolveModel($model));
     }
 
     /** @return list<array<string, mixed>> */

@@ -21,6 +21,7 @@ final readonly class ChatController
         private readonly ChatService $chatService,
         private readonly AuthService $authService,
         private readonly ?\App\Service\SearchDiagnosticsInterface $searchDiagnostics = null,
+        private readonly ?\App\Service\ResearchServiceInterface $research = null,
     ) {
     }
 
@@ -92,6 +93,20 @@ final readonly class ChatController
         $this->getUserId($request);
         $status = $this->searchDiagnostics?->status() ?? ['available' => false, 'reason' => 'missing_configuration', 'searched' => false];
         return JsonResponder::respond($response, $status);
+    }
+
+    public function researchState(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('state', $request, $response); }
+    public function researchPropose(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('propose', $request, $response); }
+    public function researchDecide(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('decide', $request, $response); }
+    public function researchSelect(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('select', $request, $response); }
+    public function researchPrepare(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('prepare', $request, $response); }
+
+    private function researchCall(string $operation, ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $userId = $this->getUserId($request);
+        [$scope, $args] = (new \App\Mapper\Chat\ResearchInputMapper())->map($operation, $request->getQueryParams(), (array)$request->getParsedBody());
+        $service = $this->research ?? throw new \App\Exception\ValidationException('Badanie źródeł jest niedostępne.');
+        return JsonResponder::respond($response, $service->{$operation}($userId, $scope, ...$args));
     }
 
     public function listModels(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

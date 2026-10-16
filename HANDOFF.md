@@ -1,3 +1,11 @@
+# 2026-10-17 — koszyk źródeł
+
+Praca na `codex/research-source-selection`: checklisty wyników, trwały szyfrowany koszyk, każda operacja WWW osobno ASK, natywne prośby AI i opracowanie pobranych stron. Instrukcja API/ograniczeń w docs/MCP-USAGE.md.
+
+Testy offline PHP 139/139 (601 asercji), UI 51/51. Przeglądarka na syntetycznej bazie: 3+2 zaznaczenia zachowane po reload, cztery fetch Allow + jeden Deny, opracowanie z czterema adresami; prośba AI pokazuje panel i respektuje Deny. Dowody w artifacts/research-*.png. Rzeczywiste WWW i dostawcy nie były wywoływane w tym etapie. Nie pobierano dokumentacji Gemini (odmowa właściciela).
+
+Nie włączać do commitu cudzej zmiany .gitignore ani nieśledzonego GroundedClientInterface.php. Router tests/browser/research-router.php służy tylko do lokalnych testów na fikcyjnych danych, bez logowania/sieci. Bez push nowej funkcji.
+
 ## 2026-10-17 — debug niedostępnego MCP
 
 - Gałąź `codex/mcp-connection-diagnostics` zawiera commit diagnostyki `cfd5015` i commit pieska `8df1f01` z develop. Właściciel zlecił końcowe testy, commit dokumentacji, lokalne scalenie do develop i push.

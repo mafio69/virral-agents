@@ -1,14 +1,16 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261016-inline-consent';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261016-sniffing';
+import { ChatApi } from './chat-api.js?v=20261017-sources';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261017-sources';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { bindSearchControls, createSearchApproval } from './chat-search.js?v=20261016-inline-consent';
+import { ResearchPanel } from './chat-research.js?v=20261017-sources';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
 let preparingImage = false;
-let searchControls;
+let researchPanel;
+let researchBusy = false;
+let researchActivity = 'idle';
 
 const byId = id => document.getElementById(id);
 const app = byId('app'), sidebar = byId('sidebar'), list = byId('chat-list');
@@ -81,7 +83,7 @@ function messageNode(message) {
 let renderedMessages, renderedPending, renderedBusy, renderedChats, renderedChatId;
 let renderedModels, renderedModel, renderedImages, renderedConnections, renderedConnection, renderedModelsLoading;
 function render(state) {
-    const blocked = preparingImage || state.busy || state.loading || state.authenticated !== true;
+    const blocked = preparingImage || researchBusy || state.busy || state.loading || state.authenticated !== true;
     const currentId = state.activeChat?.id;
     app.dataset.state = state.authenticated === false ? 'loggedout' : state.busy ? 'pending'
         : !state.messages.length && !state.pendingMessage ? 'empty' : 'chat';
@@ -94,17 +96,19 @@ function render(state) {
     input.disabled = preparingImage || state.busy || state.loading;
     if (input.value !== state.draft) { input.value = state.draft; autosize(); }
     send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);
-    searchControls?.update(state);
-    searchDog.update(state.authenticated === true ? state.searchActivity : 'idle');
+    researchPanel?.setScope(state.authenticated === true ? currentId || 0 : null);
+    if (researchPanel) { researchPanel.updateButton(); researchPanel.search.disabled ||= preparingImage || state.busy || state.loading; }
+    searchDog.update(state.authenticated === true ? researchBusy ? researchActivity : state.searchActivity !== 'idle' ? state.searchActivity : researchActivity : 'idle');
     const supportsImages = controller.canAttachImage();
     byId('attach-image').disabled = blocked || state.deliveryUncertain || !supportsImages;
     byId('attach-image').title = supportsImages ? 'Dodaj PNG, JPEG lub WebP do analizy' : 'Wybierz model oznaczony tekst i obrazy';
     send.setAttribute('aria-busy', String(state.busy));
-    connection.disabled = state.busy || state.loading || Boolean(state.activeChat) || !state.connections.length;
-    model.disabled = state.busy || state.modelsLoading || Boolean(state.activeChat) || !state.models.length;
+    connection.disabled = researchBusy || state.busy || state.loading || Boolean(state.activeChat) || !state.connections.length;
+    model.disabled = researchBusy || state.busy || state.modelsLoading || Boolean(state.activeChat) || !state.models.length;
     connection.title = state.activeChat ? 'Aby zmienić połączenie, rozpocznij nową rozmowę.' : 'Wybierz dostawcę AI';
     model.title = state.activeChat ? 'Aby zmienić model, rozpocznij nową rozmowę.' : 'Model nowej rozmowy';
-    byId('new-chat').disabled = state.busy;
+    byId('new-chat').disabled = researchBusy || state.busy;
+    byId('research-mode').disabled = researchBusy || state.busy;
 
     status.replaceChildren(element('span', '', state.busy ? state.searchActivity === 'searching' ? 'Szukam źródeł i przygotowuję odpowiedź…' : 'Model przygotowuje odpowiedź…'
         : state.loading ? 'Wczytywanie rozmów…' : state.modelsLoading ? 'Pobieranie modeli…' : [state.error, state.notice].filter(Boolean).join(' ')));
@@ -143,7 +147,7 @@ function render(state) {
         renderedChats = state.chats;
         renderedChatId = currentId;
     }
-    list.querySelectorAll('button').forEach(button => { button.disabled = state.busy; });
+    list.querySelectorAll('button').forEach(button => { button.disabled = state.busy || researchBusy; });
 
     if (renderedConnections !== state.connections || renderedConnection !== state.selectedConnection) {
         connection.replaceChildren(...state.connections.map(item => new Option(item.name, item.id)));
@@ -235,8 +239,11 @@ model.addEventListener('change', () => controller.selectModel(model.value));
 enhanceModelPicker(model);
 input.addEventListener('input', () => { controller.setDraft(input.value); autosize(); });
 async function sendDraft() {
-    if (preparingImage) return;
-    await controller.send();
+    if (preparingImage || researchBusy || controller.state.busy || !controller.state.draft.trim() && !controller.state.images.length) return;
+    const useResearch = byId('research-mode').checked;
+    if (useResearch && !await researchPanel.beforeSend()) { byId('research-panel').open = true; return; }
+    await controller.send(null, useResearch);
+    if (useResearch) await researchPanel.refresh();
     if (!input.disabled) input.focus();
 }
 input.addEventListener('keydown', event => handleComposerKey(event, sendDraft));
@@ -244,15 +251,20 @@ byId('chat-form').addEventListener('submit', event => {
     event.preventDefault();
     sendDraft();
 });
-const searchApproval = createSearchApproval({
-    panel: byId('search-approval'), queryText: byId('search-approval-query'),
-    allow: byId('search-allow'), deny: byId('search-deny'),
-});
-searchControls = bindSearchControls({
-    query: byId('search-query'), button: byId('search-send'), controller,
-    approve: query => searchApproval.request(query),
-    isPreparing: () => preparingImage,
-    onSent: () => { if (!input.disabled) input.focus(); },
+researchPanel = new ResearchPanel(controller.api, {
+    query: byId('search-query'), search: byId('search-send'), body: byId('research-body'), summary: byId('research-summary'),
+    onBusy: busy => { researchBusy = busy; render(controller.state); },
+    onNotice: (text, error = false) => {
+        byId('research-panel').open = true;
+        controller.update(error ? { error: text, notice: '' } : { notice: text, error: '' });
+    },
+    onActivity: activity => { researchActivity = activity; render(controller.state); },
+    onResume: () => sendDraft(),
+    onAgent: async allow => {
+        if (controller.state.draft.trim()) { controller.update({ notice: 'Decyzja zapisana. Wyślij polecenie, aby kontynuować badanie.' }); return; }
+        controller.setDraft(allow ? 'Kontynuuj poprzednie zadanie na podstawie zaakceptowanych źródeł.' : 'Kontynuuj poprzednie zadanie, respektując odmowę WWW.');
+        await sendDraft();
+    },
 });
 render(controller.state);
 await controller.load();

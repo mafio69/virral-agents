@@ -86,7 +86,7 @@ Dodaj wpis tutaj dopiero, gdy informacja jest trwała, zweryfikowana i oszczędz
   protokołu, sesję, `tools/list`, `tools/call` i zamknięcie sesji; limit odpowiedzi 1 MiB,
   timeout wywołania/odczytu 45 s. Nie otrzymuje kluczy dostawców AI.
 - Domyślny tryb WWW to ASK. Zgoda dotyczy jednego jawnego zapytania i nie przechodzi
-  na kolejną wiadomość. Zwykłe wysyłanie nie używa WWW. Fetch nie jest udostępniony.
+  na kolejną wiadomość. Wyszukiwanie jest oddzielne od wiadomości; checkboxy zbierają źródła. Fetch wymaga osobnego Allow dla każdego adresu.
 - `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp`.
   PHP uruchomione na hoście wymaga jawnego `http://127.0.0.1:8890/mcp`.
   Samodzielny skrypt diagnostyczny nadal domyślnie używa adresu hosta.
@@ -100,3 +100,11 @@ Dodaj wpis tutaj dopiero, gdy informacja jest trwała, zweryfikowana i oszczędz
   `ProviderRoutingTest` i `tests/ui/chat-search.test.mjs`.
 
 Aktualizuj `REPO.md` w tym samym commicie, gdy zmienia się architektura, uruchamianie, trwały mechanizm, limit, struktura katalogów albo znana pułapka. Nie wpisuj statusu zadania, doraźnych obejść ani sekretów.
+
+### Badanie wybranych źródeł
+
+- `ResearchService` zarządza wyborem i jednorazowymi decyzjami, a `ResearchReplyGenerator` przekazuje wyłącznie treść pobranych, zaznaczonych źródeł. Kontroler tylko mapuje wejście.
+- `ResearchRepositoryInterface` i szyfrowana tabela `research_workspaces` przechowują wyniki, koszyk oraz decyzje per użytkownik/rozmowa; scope 0 jest szkicem przenoszonym przy utworzeniu czatu.
+- `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez przekierowań, cookies i JS. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
+- `WebToolClientInterface` daje natywne prośby AI o search/fetch; wywołanie tworzy oczekującą decyzję, nigdy zgodę. Modele generujące obrazy Gemini nie otrzymują tools.
+- `chat-research.js` zbiera źródła między wyszukiwaniami; checkbox nie oznacza zgody na fetch. Szczegóły API i testów w `docs/MCP-USAGE.md`.

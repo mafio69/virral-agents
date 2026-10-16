@@ -6,7 +6,7 @@ namespace App\Infrastructure\AI;
 
 use App\Exception\AiConnectionException;
 
-final class AnthropicProvider implements ChatProviderInterface
+final class AnthropicProvider implements ChatProviderInterface, WebToolClientInterface
 {
     private ?array $models = null;
 
@@ -43,6 +43,16 @@ final class AnthropicProvider implements ChatProviderInterface
 
     public function generate(array $messages, ?string $model = null): string
     {
+        return $this->reply($messages, $model, false)->text;
+    }
+
+    public function generateWebReply(array $messages, string $model): \App\Dto\AI\AiReply
+    {
+        return $this->reply($messages, $model, true);
+    }
+
+    private function reply(array $messages, ?string $model, bool $web): \App\Dto\AI\AiReply
+    {
         $system = [];
         $conversation = [];
         foreach ($messages as $message) {
@@ -68,13 +78,16 @@ final class AnthropicProvider implements ChatProviderInterface
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
             'max_tokens' => 4096, 'messages' => $conversation,
             ...($system !== [] ? ['system' => $system] : []),
+            ...($web ? ['tools' => array_map(static fn(array $tool): array => ['name' => $tool['name'], 'description' => $tool['description'], 'input_schema' => $tool['parameters']], WebTools::definitions()), 'tool_choice' => ['type' => 'auto', 'disable_parallel_tool_use' => true]] : []),
         ]);
+        if (isset($body['error'])) throw new AiConnectionException('invalid_response');
         $text = [];
         foreach ($body['content'] ?? [] as $part) {
+            if ($web && ($part['type'] ?? '') === 'tool_use') return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($part['name'] ?? '', $part['input'] ?? null));
             if (($part['type'] ?? '') === 'text' && is_string($part['text'] ?? null)) $text[] = $part['text'];
         }
         $result = implode("\n", $text);
         if (trim($result) === '' || isset($body['error'])) throw new AiConnectionException('invalid_response');
-        return $result;
+        return new \App\Dto\AI\AiReply($result);
     }
 }

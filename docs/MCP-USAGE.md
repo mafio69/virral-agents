@@ -2,35 +2,54 @@
 
 ## Integracja w VirralAI — tryb ASK
 
-Backend korzysta z `McpSearchClient` i wspólnego `ChatReplyGeneratorInterface`.
-Wyszukanie poprzedza generowanie odpowiedzi: wynik MCP jest przekazywany
-do aktualnie wybranego modelu, również w natywnych klientach Gemini, Claude i OpenAI.
-Model nie otrzymuje uprawnienia do samodzielnych kolejnych wywołań WWW.
+W widoku czatu „Szukaj stron…” działa niezależnie od wiadomości i modelu.
+Każde wyszukanie pokazuje dokładne zapytanie i osobne Allow / Deny. Zatwierdzone
+zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wyników.
 
-- Zwykłe **Wyślij** / Enter nie uruchamia wyszukiwania.
-- Wpisz wiadomość oraz osobne, publiczne zapytanie WWW. **Wyszukaj i wyślij…**
-  pokazuje dokładną treść i odbiorców, wymagając zgody za każdym razem.
-- Zgoda obejmuje jedno wywołanie `web_search` (5 wyników), wraz z fallbackiem
-  po stronie serwera. Nie jest zapamiętywana dla następnej wiadomości ani ponownej próby.
-- Backend odrzuca wyszukiwanie bez `approved: true`, bez zapytania lub z limitem
-  innym niż 1. Zapytanie ma maksymalnie 1000 bajtów. Historia rozmowy i obrazy
-  nie trafiają do MCP; trafia wyłącznie zatwierdzone zapytanie.
-- Wyniki trafiają do dostawcy AI wybranego dla rozmowy. Serwis dopisuje otrzymane
-  URL do odpowiedzi; tekst wraz ze źródłami zapisuje istniejące szyfrowane repozytorium.
-- Puste wyniki i niedostępność MCP dają jawny komunikat, bez zastępczej odpowiedzi
-  modelu sugerującej udane wyszukanie. Nie ma automatycznej ponownej próby.
-- **Fetch również wymaga osobnej zgody.** Obecny MCP udostępnia tylko wyszukiwanie;
-  integracja nie pobiera pełnych stron i nie udostępnia modelowi fetch.
+1. Zaznacz checkboxy przy interesujących wynikach i wyszukuj dalej. Lista zachowuje
+   wcześniejsze zaznaczenia, usuwa duplikaty URL i mieści maksymalnie 20 stron.
+2. Lista jest szyfrowana w bazie, oddzielna dla użytkownika i rozmowy. Przed pierwszą
+   wiadomością jest szkicem; utworzenie rozmowy przenosi do niej szkic. Odświeżenie
+   i ponowne otwarcie rozmowy zachowują wybór oraz decyzje.
+3. Checkbox nie pobiera strony. „Przeczytaj wybrane strony…” lub wysłanie polecenia
+   przygotowuje osobne Allow / Deny dla każdego nieprzeczytanego adresu.
+4. Po rozstrzygnięciu zgód wyślij polecenie, np. „Na podstawie wybranych stron
+   opracuj temat”. Polecenie oczekujące w otwartej stronie jest wysyłane po decyzjach.
+   Po przeładowaniu wpisz je ponownie. Odmówione/nieudane strony nie mają treści.
+5. Domyślnie zaznaczony tryb badania przekazuje wybrane źródła do dostawcy AI
+   rozmowy. Wyłączenie trybu pozwala wysłać zwykłą wiadomość bez tych źródeł.
+   AI może proponować jedno wyszukanie lub fetch na odpowiedź; propozycja sama
+   niczego nie wykonuje. Panel pokazuje „AI prosi o zgodę” i Allow / Deny.
+   Wyniki propozycji wyszukania również wymagają wyboru checkboxami.
 
-Przykład pola `search` w `POST /api/chats/{id}/messages`, po zgodzie użytkownika:
+Fetch wykonuje backend VirralAI, nie serwer MCP: wyłącznie publiczny HTML/tekst,
+bez cookies, autoryzacji, JS i zasobów podrzędnych. Adresy lokalne/prywatne są
+blokowane; DNS jest sprawdzany, a połączenie przypięte do zweryfikowanego IPv4.
+Przekierowania nie są śledzone: trzeba osobno wskazać i zatwierdzić adres docelowy.
+PDF, strony wymagające JS/logowania i IPv6 nie są obecnie obsługiwane.
+Limit: odpowiedź 1 MiB, tekst 16 000 znaków na stronę, 100 000 znaków kontekstu.
+Skrócenie oraz odmowa/błąd są jawne. Ponowienie wymaga nowej prośby i zgody.
 
-```json
-{"engine":"mcp","query":"publiczne zapytanie","approved":true,"max_calls":1}
-```
+API chronione istniejącą sesją:
+- `GET /api/research?chat_id=0` — szkic; identyfikator rozmowy zamiast 0 wybiera jej listę.
+- `POST /api/research/actions?chat_id=0` — `{request:{kind:"search",query}}`
+  lub `{request:{kind:"fetch",url}}`; tworzy oczekującą prośbę.
+- `POST /api/research/decisions?chat_id=0` — `{id,allow:true|false}`; decyzja jednorazowa.
+- `PUT /api/research/sources?chat_id=0` — `{id,selected:true|false}`.
+- `POST /api/research/prepare?chat_id=0` — `{}`; przygotowuje zgody, nie pobiera.
+- `POST /api/chats/{id}/messages` z `research:true` — opracowanie wybranych źródeł.
 
-Bez pola `search` wyszukiwanie jest wyłączone dla danego żądania.
-Nie jest to automatyczna pętla function calling: użytkownik zatwierdza zapytanie
-przed wysłaniem wiadomości, a wspólny serwis przekazuje wynik do modelu.
+Prośba AI kończy bieżącą odpowiedź komunikatem zgody. Kontynuacja jest nową turą
+z rzeczywistymi źródłami i decyzjami; nie odtwarzamy surowych tool calls ani nie
+uruchamiamy pętli samodzielnych operacji. Dawny kontrakt `search:{engine:"mcp",
+query,approved:true,max_calls:1}` pozostaje dla zgodności API; nowy widok używa
+oddzielnego panelu źródeł. Zapytania mają maksymalnie 1000 bajtów.
+
+Testy izolowane: `ResearchServiceTest`, `ResearchAgentTest`, `PublicWebPageFetcherTest`,
+`tests/ui/chat-research.test.mjs`. Pełny widok z atrapami bez sieci można uruchomić
+lokalnie: `php -S 127.0.0.1:8192 tests/browser/research-router.php`, następnie `/chat`.
+Fixture tworzy wyłącznie własną syntetyczną bazę `tests/browser/research-fixture.sqlite`.
+Nie wystawiać routera testowego publicznie; nie obsługuje rzeczywistego logowania.
 
 Backend aplikacji domyślnie używa `http://mcp-search:8000/mcp`, ponieważ jest
 uruchamiany w Dockerze. Przy uruchomieniu PHP bez Dockera operator ustawia

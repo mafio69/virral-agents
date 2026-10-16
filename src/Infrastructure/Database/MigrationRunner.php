@@ -60,6 +60,15 @@ CREATE TABLE IF NOT EXISTS chat_message_images (
     FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS research_workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    chat_id INTEGER NOT NULL DEFAULT 0,
+    payload TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (user_id, chat_id)
+);
+
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

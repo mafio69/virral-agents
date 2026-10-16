@@ -24,6 +24,8 @@ final readonly class ChatService
         private readonly LoggerInterface $logger,
         private readonly ?ChatModelRegistryInterface $modelRegistry = null,
         private readonly ?ChatReplyGeneratorInterface $replyGenerator = null,
+        private readonly ?ResearchServiceInterface $research = null,
+        private readonly ?ResearchReplyGeneratorInterface $researchReply = null,
     ) {
     }
 
@@ -32,6 +34,7 @@ final readonly class ChatService
         $model = $this->resolveModel($input->model);
         if ($this->usesRegistry($model)) $this->registry()->resolve($model);
         $id = $this->chatRepository->create($input->userId, $input->title, $model);
+        $this->research?->adoptDraft($input->userId, $id);
 
         $this->logger->info('Chat created', ['chat_id' => $id, 'user_id' => $input->userId]);
 
@@ -105,6 +108,10 @@ final readonly class ChatService
             throw new ValidationException('Wybrany model nie obsługuje obrazów. Rozpocznij rozmowę z modelem tekst i obrazy.');
         }
         $history = $this->chatRepository->findMessagesByChatId($input->chatId);
+        if ($input->research) {
+            if ($this->researchReply === null) throw new ValidationException('Badanie źródeł jest niedostępne.');
+            $this->research?->evidence($input->userId, $input->chatId);
+        }
 
         $messageHistory = [];
         foreach ($history as $msg) {
@@ -142,7 +149,8 @@ final readonly class ChatService
 
         // Add assistant message
         try {
-            $reply = ($this->replyGenerator ?? new ChatReplyGenerator())->generate($client, $messageHistory, $apiModel, $input->search);
+            $reply = $input->research ? $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId)
+                : ($this->replyGenerator ?? new ChatReplyGenerator())->generate($client, $messageHistory, $apiModel, $input->search);
             $aiContent = $reply->text;
         } catch (\Throwable $e) {
             $this->logger->error('AI call failed', ['chat_id' => $input->chatId]);

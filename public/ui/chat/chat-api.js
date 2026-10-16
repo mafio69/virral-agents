@@ -100,8 +100,8 @@ export class ChatApi {
         return chat;
     }
 
-    async sendMessage(id, content, images = [], search = null) {
-        const messages = await this.request('POST', '/chats/' + this.chatId(id) + '/messages', { content, ...(images.length ? { images } : {}), ...(search ? { search } : {}) });
+    async sendMessage(id, content, images = [], search = null, research = false) {
+        const messages = await this.request('POST', '/chats/' + this.chatId(id) + '/messages', { content, ...(images.length ? { images } : {}), ...(search ? { search } : {}), ...(research ? { research: true } : {}) });
         if (!Array.isArray(messages) || messages.length !== 2
             || messages[0]?.role !== 'user' || messages[1]?.role !== 'assistant'
             || messages.some(message => !Number.isInteger(message.id) || typeof message.content !== 'string')) {
@@ -113,5 +113,15 @@ export class ChatApi {
     chatId(id) {
         if (!Number.isInteger(id) || id <= 0) throw new ChatApiError('Nieprawidłowa rozmowa.');
         return id;
+    }
+
+    async research(operation, scope, payload) {
+        if (!Number.isInteger(scope) || scope < 0) throw new ChatApiError('Nieprawidłowe badanie.');
+        const routes = { state: ['GET', ''], propose: ['POST', '/actions'], decide: ['POST', '/decisions'], select: ['PUT', '/sources'], prepare: ['POST', '/prepare'] };
+        const route = routes[operation];
+        if (!route) throw new ChatApiError('Nieznana operacja badania.');
+        const data = await this.request(route[0], '/research' + route[1] + '?chat_id=' + scope, payload);
+        if (!data || !Array.isArray(data.results) || !Array.isArray(data.sources) || !Array.isArray(data.actions)) throw new ChatApiError('Nieprawidłowy stan źródeł.');
+        return data;
     }
 }

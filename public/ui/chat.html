@@ -348,6 +348,14 @@ echo "Cześć";
           <button id="search-send" type="button" class="btn btn-sm" disabled>Wyszukaj i wyślij…</button>
           <small>Każde wyszukanie wymaga zgody. Zwykłe Wyślij nie korzysta z WWW.</small>
         </div>
+        <section id="search-approval" class="alert" role="region" aria-labelledby="search-approval-title" hidden>
+          <div>
+            <strong id="search-approval-title">Zgoda na jedno wyszukanie WWW</strong>
+            <p>Zapytanie: <b id="search-approval-query"></b></p>
+            <p>Odbiorcy: MCP Search → SearXNG; po błędzie lub braku wyników Perplexity. Wyniki trafią do wybranego dostawcy AI. Strony nie będą pobierane przez fetch. Nie wysyłaj danych prywatnych.</p>
+            <div><button type="button" id="search-allow" class="btn btn-sm">Allow — zezwól</button> <button type="button" id="search-deny" class="btn btn-sm">Deny — odmów</button></div>
+          </div>
+        </section>
         <form id="chat-form" class="composer" autocomplete="off">
           <button type="button" id="attach-image" class="btn btn-sm" disabled title="Wybierz model obsługujący obrazy">Obraz</button>
           <label class="sr-only" for="chat-input">Wiadomość</label>
@@ -377,6 +385,6 @@ echo "Cześć";
 
 <script src="/ui/lib/marked.umd.js"></script>
 <script src="/ui/lib/purify.min.js"></script>
-<script type="module" src="/ui/chat/chat-app.js?v=20261016-query-hotfix"></script>
+<script type="module" src="/ui/chat/chat-app.js?v=20261016-inline-consent"></script>
 </body>
 </html>

@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-16 — zgoda WWW bez natywnego popupu
+
+- „Wyszukaj i wyślij…” pokazuje panel Allow / Deny w stronie. Usunięto zależność od `window.confirm`, którego brak powodował zakończenie handlera bez żądania.
+- Odmowa jest widoczna w statusie; równoczesne kliknięcia i zgody dla zmienionej rozmowy nie uruchamiają wyszukiwania. Testy UI 46/46 oraz izolowany test w przeglądarce z faktycznymi kliknięciami panelu.
+
 ## 2026-10-16 — naprawa zablokowanego przycisku WWW
 
 - Zapytanie w polu WWW wystarcza do odblokowania „Wyszukaj i wyślij…”, bez dodatkowej wiadomości. Po zgodzie jest używane jako polecenie dla modelu; osobno wpisane polecenie zachowuje pierwszeństwo.

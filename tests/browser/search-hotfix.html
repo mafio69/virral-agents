@@ -3,14 +3,19 @@
 <style>body{font:18px system-ui;max-width:850px;margin:50px auto;background:#202325;color:#eee}input,textarea,button{font:inherit;padding:12px;margin:8px}textarea{display:block;width:90%}pre{white-space:pre-wrap}button:disabled{opacity:.4}</style>
 <h1>Test przycisku WWW — bez usług zewnętrznych</h1>
 <p>Model testowy. Odpowiedzi API są atrapami. Poniżej prawdziwe kontrolki i moduły czatu.</p>
-<label>Decyzja testowa <select id="decision" aria-label="Decyzja testowa"><option value="deny">Deny</option><option value="allow">Allow</option></select></label>
 <label>Zapytanie WWW <input id="query" aria-label="Zapytanie WWW"></label>
 <button id="search" disabled>Wyszukaj i wyślij…</button>
+<section id="approval" hidden aria-label="Zgoda na wyszukanie">
+  <h2>Zgoda na jedno wyszukanie WWW</h2>
+  <p>Zapytanie: <b id="approval-query"></b></p>
+  <p>MCP → SearXNG, awaryjnie Perplexity; wyniki do wybranego AI. W tym widoku API są atrapami i nie ma sieci zewnętrznej.</p>
+  <button id="allow">Allow — zezwól</button><button id="deny">Deny — odmów</button>
+</section>
 <label>Wiadomość <textarea id="message" aria-label="Wiadomość"></textarea></label>
 <pre id="result">Brak wysłanych żądań.</pre>
 <script type="module">
 import { ChatController } from '/ui/chat/chat-controller.js';
-import { bindSearchControls, approveSearch } from '/ui/chat/chat-search.js';
+import { bindSearchControls, createSearchApproval } from '/ui/chat/chat-search.js';
 const requests = [];
 const api = {
     listConnections: async () => [{id:'ovh',name:'OVH fixture'}],
@@ -24,8 +29,9 @@ const api = {
 };
 const controller = new ChatController(api);
 await controller.load();
+const approval = createSearchApproval({ panel:document.getElementById('approval'),queryText:document.getElementById('approval-query'),allow:document.getElementById('allow'),deny:document.getElementById('deny') });
 const controls = bindSearchControls({query:document.getElementById('query'),button:document.getElementById('search'),controller,
-    approve: text => approveSearch(text, () => document.getElementById('decision').value === 'allow')});
+    approve: text => approval.request(text)});
 controller.onChange = state => controls.update(state);
 document.getElementById('message').addEventListener('input', event => controller.setDraft(event.target.value));
 </script></html>

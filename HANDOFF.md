@@ -1,3 +1,10 @@
+## 2026-10-16 — hotfix panelu Allow / Deny
+
+- Gałąź `codex/fix-inline-search-consent`: poprawka niewidocznej zgody. Lokalna strona serwowała poprzedni hotfix, lecz handler nadal polegał na natywnym `confirm`. Użytkownik potwierdził brak okna i brak żądań.
+- `createSearchApproval` obsługuje jawny panel w stronie; `bindSearchControls` czeka na decyzję, blokuje podwójne kliknięcie i odrzuca zgodę po zmianie rozmowy/modelu/zapytania. Deny pokazuje komunikat zamiast cichego powrotu.
+- PHP 120/120 (497 asercji), UI 46/46, Composer/składnia/diff poprawne. W izolowanej przeglądarce potwierdzono panel, Deny bez żądania i Allow z jednym żądaniem. Zrzut `artifacts/search-inline-consent-2026-10-16.png`. Bez nowych rzeczywistych wywołań WWW i AI.
+- Własna praca nad źródłami ponownie odłożona do stasha `research-source-selection: paused for inline consent hotfix`; przed wznowieniem włączyć tę poprawkę do `codex/research-source-selection` i przywrócić ten stash. Wcześniejszy stash również zachowany jako kopia. Pliki `.gitignore` i `GroundedClientInterface` nietknięte.
+
 ## 2026-10-16 — hotfix przycisku WWW
 
 - Gałąź `codex/fix-search-query-only` z develop. Usunięto zależność przycisku od dolnego pola; wspólne `bindSearchControls` / `canSearch` obsługują aktualizację i zgodę. `ChatController` używa zatwierdzonego zapytania jako wiadomości przy pustym polu.

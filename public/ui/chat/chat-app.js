@@ -1,8 +1,8 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261016-query-hotfix';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261016-query-hotfix';
-import { bindSearchControls } from './chat-search.js?v=20261016-query-hotfix';
+import { ChatApi } from './chat-api.js?v=20261016-inline-consent';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261016-inline-consent';
+import { bindSearchControls, createSearchApproval } from './chat-search.js?v=20261016-inline-consent';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
@@ -241,8 +241,13 @@ byId('chat-form').addEventListener('submit', event => {
     event.preventDefault();
     sendDraft();
 });
+const searchApproval = createSearchApproval({
+    panel: byId('search-approval'), queryText: byId('search-approval-query'),
+    allow: byId('search-allow'), deny: byId('search-deny'),
+});
 searchControls = bindSearchControls({
     query: byId('search-query'), button: byId('search-send'), controller,
+    approve: query => searchApproval.request(query),
     isPreparing: () => preparingImage,
     onSent: () => { if (!input.disabled) input.focus(); },
 });

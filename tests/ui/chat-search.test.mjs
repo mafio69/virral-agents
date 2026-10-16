@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { approveSearch, canSearch, bindSearchControls } from '../../public/ui/chat/chat-search.js';
+import { approveSearch, canSearch, bindSearchControls, createSearchApproval } from '../../public/ui/chat/chat-search.js';
 import { ChatApi } from '../../public/ui/chat/chat-api.js';
 import { ChatController } from '../../public/ui/chat/chat-controller.js';
 import { chatFixture } from './chat-fixture.mjs';
@@ -107,4 +107,56 @@ test('a separate question remains the model message when a query is supplied', a
     controller.setDraft('Porównaj wyniki.');
     await controller.send(approveSearch('Public query', () => true));
     assert.equal(sent, 'Porównaj wyniki.');
+});
+
+test('visible inline Allow / Deny gates all sends without native browser dialogs', async () => {
+    const node = () => ({ value: '', hidden: true, disabled: false, handlers: {}, focus() {}, addEventListener(type, handler) { this.handlers[type] = handler; } });
+    const panel = node(), queryText = node(), allow = node(), deny = node(), query = node(), button = node();
+    let sends = 0;
+    const controller = new ChatController(chatFixture({
+        createChat: async () => ({ id: 1, model: 'fixture-model' }),
+        sendMessage: async (_id, content) => { sends++; return [{ id: 1, role: 'user', content }, { id: 2, role: 'assistant', content: 'Answer' }]; },
+    }));
+    await controller.load();
+    const approval = createSearchApproval({ panel, queryText, allow, deny });
+    const controls = bindSearchControls({ query, button, controller, approve: text => approval.request(text) });
+    controller.onChange = state => controls.update(state);
+    query.value = 'Llama ai rozwój';
+    query.handlers.input();
+    const first = button.handlers.click();
+    assert.equal(panel.hidden, false);
+    assert.equal(queryText.textContent, 'Llama ai rozwój');
+    assert.equal(sends, 0);
+    assert.equal(button.disabled, true);
+    await button.handlers.click();
+    deny.handlers.click();
+    await first;
+    assert.equal(panel.hidden, true);
+    assert.equal(sends, 0);
+    assert.equal(button.disabled, false);
+    assert.match(controller.state.notice, /anulowane/);
+    const second = button.handlers.click();
+    assert.equal(sends, 0);
+    allow.handlers.click();
+    await second;
+    assert.equal(sends, 1);
+    assert.equal(panel.hidden, true);
+    assert.equal(query.value, '');
+    assert.equal(approveSearch('query'), null);
+});
+
+test('a changed conversation invalidates a pending consent', async () => {
+    let resolve;
+    let sends = 0;
+    const controller = new ChatController(chatFixture({ sendMessage: async () => { sends++; } }));
+    await controller.load();
+    const node = () => ({ value: 'Public query', handlers: {}, addEventListener(type, handler) { this.handlers[type] = handler; } });
+    const query = node(), button = node();
+    bindSearchControls({ query, button, controller, approve: () => new Promise(done => { resolve = done; }) });
+    const pending = button.handlers.click();
+    controller.newChat();
+    resolve(approveSearch('Public query', () => true));
+    await pending;
+    assert.equal(sends, 0);
+    assert.match(controller.state.notice, /ponownie/);
 });

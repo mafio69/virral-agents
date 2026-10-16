@@ -1,5 +1,11 @@
 # STATUS
 
+## 2026-10-16 — hotfix widocznej zgody WWW
+
+- Zastąpiono natywny `window.confirm` panelem zgody w stronie: dokładne zapytanie, odbiorcy, Allow / Deny. Przeglądarka osadzona nie musi otwierać systemowego popupu. Odmowa daje jawny komunikat.
+- Blokada ponownego kliknięcia podczas zgody, ponowna walidacja rozmowy/modelu/zapytania przed wysyłką i widoczny komunikat nieoczekiwanego błędu. Zmiana rozmowy unieważnia starą zgodę.
+- PHP 120/120 (497 asercji), UI 46/46, Composer, składnia JS i diff-check poprawne. Test w przeglądarce w aplikacji z prawdziwym panelem: widoczna zgoda, zero wysyłek przed decyzją i po Deny, jedna po Allow. API atrapowe, bez WWW i rzeczywistego modelu. Zrzut: `artifacts/search-inline-consent-2026-10-16.png`.
+
 ## 2026-10-16 — hotfix wyszukiwania bez wiadomości
 
 - Osobna gałąź `codex/fix-search-query-only`. Przycisk WWW zależy od poprawnego zapytania, sesji i modelu, a nie od treści dolnego pola. Zmiana zapytania natychmiast aktualizuje dostępność przycisku.

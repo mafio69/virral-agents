@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-17 — Fetch all
+
+Przy oczekujących pobraniach dodano Fetch all z podglądem dokładnej listy i jednym jawnym Allow dla tej listy. Bez zgody nic nie pobiera; nie obejmuje nowych stron ani wyszukiwania, zatrzymuje się po błędzie. Testy UI 53/53; PHP 139/139 (601 asercji), Composer i składnia poprawne. Bez rzeczywistego WWW i push.
+
 ## 2026-10-17 — wybór źródeł do badania
 
 Checkboxy wyników i szyfrowany koszyk zachowują wybór między wyszukiwaniami oraz po odświeżeniu. Wyszukiwanie nie wymaga wiadomości. Pobranie każdej strony oraz prośby AI wymagają osobnego Allow / Deny. Opracowanie otrzymuje treść wyłącznie wybranych i pobranych stron; jawne odmowy, błędy i skrócenia. HTML/tekst publicznych stron, bez PDF/JS/przekierowań.

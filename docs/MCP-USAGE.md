@@ -13,6 +13,9 @@ zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wynik�
    i ponowne otwarcie rozmowy zachowują wybór oraz decyzje.
 3. Checkbox nie pobiera strony. „Przeczytaj wybrane strony…” lub wysłanie polecenia
    przygotowuje osobne Allow / Deny dla każdego nieprzeczytanego adresu.
+   Przy oczekujących pobraniach „Fetch all…” pokazuje dokładną listę adresów.
+   Jedno „Allow — pobierz całą listę” zatwierdza wyłącznie tę listę; kolejne strony
+   wymagają nowej zgody. Pobieranie jest sekwencyjne i zatrzymuje się po błędzie.
 4. Po rozstrzygnięciu zgód wyślij polecenie, np. „Na podstawie wybranych stron
    opracuj temat”. Polecenie oczekujące w otwartej stronie jest wysyłane po decyzjach.
    Po przeładowaniu wpisz je ponownie. Odmówione/nieudane strony nie mają treści.

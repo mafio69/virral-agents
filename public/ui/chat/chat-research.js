@@ -17,6 +17,7 @@ export class ResearchPanel {
         this.state = empty();
         this.resume = false;
         this.refreshQueued = false;
+        this.bulkApproval = null;
         query.addEventListener('input', () => this.updateButton());
         search.addEventListener('click', () => {
             const text = query.value.trim();
@@ -35,6 +36,7 @@ export class ResearchPanel {
         if (scope === this.scope) return;
         const version = ++this.version;
         this.scope = scope;
+        this.bulkApproval = null;
         this.resume = false;
         this.ready = false;
         this.state = empty();
@@ -118,6 +120,34 @@ export class ResearchPanel {
         } else if (!allow) this.onNotice('Odmowa zapisana. Operacja WWW nie została wykonana.');
     }
 
+    pendingFetches() {
+        const selected = new Set(this.state.sources.map(source => source.url));
+        return this.state.actions.filter(action => action.status === 'pending' && action.request.kind === 'fetch' && selected.has(action.request.url));
+    }
+
+    async fetchAll() {
+        if (this.busy || !this.bulkApproval) return;
+        const approved = this.bulkApproval, version = this.version;
+        this.bulkApproval = null;
+        this.onActivity('searching');
+        for (const action of approved) {
+            if (version !== this.version) return;
+            if (!this.pendingFetches().some(item => item.id === action.id && item.request.url === action.request.url)) continue;
+            if (!await this.run('decide', { id: action.id, allow: true })
+                || this.state.actions.find(item => item.id === action.id)?.status !== 'done') {
+                this.resume = false;
+                this.onActivity('error');
+                this.onNotice('Fetch all zatrzymany. Sprawdź błąd; pozostałe strony wymagają ponownej zgody.', true);
+                return;
+            }
+        }
+        this.onActivity('done');
+        if (this.resume && !this.state.actions.some(item => ['pending', 'running'].includes(item.status))) {
+            this.resume = false;
+            await this.onResume();
+        }
+    }
+
     render() {
         this.updateButton();
         this.summary.textContent = `Źródła do badania (${this.state.sources.length}/20)`;
@@ -128,6 +158,24 @@ export class ResearchPanel {
         this.body.append(refresh);
         if (!this.ready) this.body.append(node('p', this.busy ? 'Wczytywanie źródeł…' : 'Zaloguj się, aby zbierać źródła.'));
         const pending = this.state.actions.filter(action => action.status === 'pending');
+        const fetches = this.pendingFetches();
+        if (fetches.length) {
+            const all = node('button', `Fetch all… (${fetches.length})`, 'btn btn-sm');
+            all.type = 'button'; all.disabled = this.busy;
+            all.addEventListener('click', () => { this.bulkApproval = this.pendingFetches().map(action => ({ ...action, request: { ...action.request } })); this.render(); });
+            this.body.append(all);
+        }
+        if (this.bulkApproval) {
+            const card = node('section', undefined, 'research-permission');
+            card.append(node('strong', 'Fetch all — zgoda na poniższą listę adresów'));
+            this.bulkApproval.forEach(action => card.append(node('p', action.request.url, 'research-address')));
+            card.append(node('p', 'Każdy z tych adresów otrzyma GET bez Twoich cookies. Tekst może trafić do dostawcy AI po wysłaniu polecenia. Zgoda obejmuje tylko tę listę, bez kolejnych stron i przekierowań.'));
+            const allow = node('button', 'Allow — pobierz całą listę', 'btn btn-sm'); allow.type = 'button'; allow.disabled = this.busy;
+            allow.addEventListener('click', () => this.fetchAll());
+            const cancel = node('button', 'Anuluj Fetch all', 'btn btn-sm'); cancel.type = 'button'; cancel.disabled = this.busy;
+            cancel.addEventListener('click', () => { this.bulkApproval = null; this.render(); });
+            card.append(allow, cancel); this.body.append(card);
+        }
         pending.forEach(action => {
             const card = node('section', undefined, 'research-permission');
             const request = action.request;

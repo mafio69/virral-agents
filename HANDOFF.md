@@ -1,5 +1,9 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-17 — Fetch all
+
+Przy oczekujących pobraniach dodano Fetch all z podglądem dokładnej listy i jednym jawnym Allow dla tej listy. Bez zgody nic nie pobiera; nie obejmuje nowych stron ani wyszukiwania, zatrzymuje się po błędzie. Testy UI 53/53; PHP 139/139 (601 asercji), Composer i składnia poprawne. Bez rzeczywistego WWW i push.
+
 Praca na `codex/research-source-selection`: checklisty wyników, trwały szyfrowany koszyk, każda operacja WWW osobno ASK, natywne prośby AI i opracowanie pobranych stron. Instrukcja API/ograniczeń w docs/MCP-USAGE.md.
 
 Testy offline PHP 139/139 (601 asercji), UI 51/51. Przeglądarka na syntetycznej bazie: 3+2 zaznaczenia zachowane po reload, cztery fetch Allow + jeden Deny, opracowanie z czterema adresami; prośba AI pokazuje panel i respektuje Deny. Dowody w artifacts/research-*.png. Rzeczywiste WWW i dostawcy nie były wywoływane w tym etapie. Nie pobierano dokumentacji Gemini (odmowa właściciela).

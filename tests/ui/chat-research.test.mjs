@@ -59,3 +59,41 @@ test('failed approved search reports failure even if previous search has results
     assert.equal(notices.at(-1)[1], true);
     assert.match(notices.at(-1)[0], /nie powiodła/);
 });
+
+test('Fetch all requires confirmation and approves only the displayed selected fetches', async () => {
+    const actions = ['one', 'two', 'other'].map(id => ({ id, origin: 'user', status: 'pending', request: { kind: 'fetch', url: `https://example.org/${id}` } }));
+    actions.push({ id: 'search', status: 'pending', request: { kind: 'search', query: 'Other query' } });
+    const sources = actions.slice(0, 2).map(action => ({ id: action.id, url: action.request.url, page: { status: 'unread' } }));
+    const calls = [];
+    const panel = fixture({ research: async (operation, scope, payload) => {
+        if (operation === 'decide') { calls.push(payload); actions.find(a => a.id === payload.id).status = 'done'; }
+        return state(sources, actions);
+    } });
+    await panel.setScope(0);
+    await panel.fetchAll();
+    assert.equal(calls.length, 0);
+    panel.body.children.find(el => el.textContent === 'Fetch all… (2)').handlers.click();
+    assert.equal(calls.length, 0);
+    assert.deepEqual(panel.bulkApproval.map(a => a.id), ['one', 'two']);
+    await panel.fetchAll();
+    assert.deepEqual(calls, [{ id: 'one', allow: true }, { id: 'two', allow: true }]);
+    await panel.fetchAll();
+    assert.equal(calls.length, 2);
+    assert.equal(actions[2].status, 'pending');
+    assert.equal(actions[3].status, 'pending');
+});
+test('Fetch all stops after failure and never retries remaining pages automatically', async () => {
+    const actions = ['one', 'two'].map(id => ({ id, origin: 'user', status: 'pending', request: { kind: 'fetch', url: `https://example.org/${id}` } }));
+    const sources = actions.map(a => ({ id: a.id, url: a.request.url, page: { status: 'unread' } }));
+    const calls = [];
+    const panel = fixture({ research: async (operation, scope, payload) => {
+        if (operation === 'decide') { calls.push(payload.id); actions[0].status = 'failed'; }
+        return state(sources, actions);
+    } });
+    await panel.setScope(0);
+    panel.bulkApproval = panel.pendingFetches();
+    await panel.fetchAll();
+    assert.deepEqual(calls, ['one']);
+    assert.equal(panel.bulkApproval, null);
+    assert.equal(actions[1].status, 'pending');
+});

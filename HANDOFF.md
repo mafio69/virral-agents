@@ -1,5 +1,14 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-17 — lokalna skrzynka Mailpit do potwierdzania kont
+
+- Dodano profil dev z oficjalnym obrazem axllent/mailpit:v1.31.6, HTTP 127.0.0.1:8025 i SMTP 127.0.0.1:1025, limit 100 wiadomości, bez trwałego wolumenu i bez konfiguracji relay/forward.
+- docker-compose.dev.yml przełącza app na APP_ENV=dev i smtp://mailpit:1025; wiadomości z linkiem potwierdzającym ogląda się lokalnie i odklikuje w przeglądarce. Bazowy Compose zachowuje dotychczasowy transport; samego profilu dev nie utożsamiać z przełączeniem SMTP.
+- Testy PHP 164/164 (717 asercji), UI 57/57, Composer strict/no-check-publish i wymagania platformy poprawne. Oba modele Compose sprawdzone z wyłączonym wczytywaniem plików środowiska i izolowanym środowiskiem procesu, bez poświadczeń. Poprzedni test MailService na lokalnej atrapie SMTP potwierdził wysyłkę i obsługę odmowy; nie stanowi testu działającego Mailpita.
+- Próba uruchomienia samej usługi mailpit nie powiodła się: brak uprawnień do Docker API. Nie używano sudo, nie pobrano/uruchomiono obrazu ani nie restartowano aplikacji. Właściciel uruchamia komendę z docs/KONFIGURACJA.md; pełny test rejestracja → Mailpit → kliknięcie → logowanie pozostaje do wykonania przez właściciela.
+- Nie odczytywano ani nie zmieniano sekretów, prawdziwej bazy i plików środowiska. Lokalna cudza zmiana GIT-FLOW.md nie należy do tego commitu. Po zielonej walidacji: commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi zgodnie z poleceniem właściciela.
+
+
 ## 2026-10-17 — audyt S3: panel testowy tylko w development
 
 - S2 `de0bf00` scalony lokalnie fast-forward do develop; nowa gałąź `codex/audit-s3-dev-test-api`.

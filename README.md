@@ -170,3 +170,14 @@ composer test
 ## Track zadań
 
 Szczegółowa lista zadań: `.local/todo.md`
+
+## Poczta testowa w dev
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev up -d mailpit app nginx
+```
+
+Skrzynka: http://localhost:8025. Zarejestruj konto testowe w aplikacji,
+otwórz wiadomość w Mailpicie i kliknij link potwierdzający, a następnie zaloguj się.
+Ten wariant przełącza aplikację na lokalne SMTP i `APP_ENV=dev`.
+Szczegóły oraz powrót do zwykłego transportu: `docs/KONFIGURACJA.md`.

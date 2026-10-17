@@ -74,3 +74,51 @@ stylu pozostają pod `/ui/theme.css`.
 
 Zmiana konfiguracji Compose/PHP-FPM wymaga odtworzenia kontenera przez operatora.
 Nie zmieniano plików środowiska ani działających kontenerów.
+
+## Lokalna skrzynka Mailpit (dev)
+
+Mailpit przechwytuje pocztę testową zamiast wysyłać ją na prawdziwe skrzynki.
+Nie potrzebuje konta w zewnętrznym Mailtrapie, hasła ani klucza API.
+Obraz jest przypięty do `axllent/mailpit:v1.31.6`.
+
+Właściciel uruchamia z katalogu repo:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev up -d mailpit app nginx
+```
+
+Jawny plik developerski ustawia `APP_ENV=dev` i `MAIL_DSN=smtp://mailpit:1025`
+wewnątrz aplikacji, niezależnie od wcześniej skonfigurowanego transportu.
+Dlatego trzeba uruchomić ponownie także usługę `app`, nie samą skrzynkę.
+Plików środowiska nie trzeba zmieniać. Bazowy Compose bez tego pliku nie zmienia
+transportu poczty i domyślnie nie uruchamia profilu `dev`.
+
+1. Otwórz aplikację pod `http://localhost:8181` i zarejestruj konto testowe,
+   używając np. adresu w domenie `example.invalid`.
+2. Otwórz `http://localhost:8025`, wybierz wiadomość „Potwierdź rejestrację”.
+3. Kliknij link w treści wiadomości (lub otwórz go w nowej karcie na tym samym komputerze).
+   Prowadzi do aplikacji na `localhost:8181`, nie do kontenera SMTP.
+4. Po komunikacie potwierdzenia wróć do aplikacji i zaloguj się.
+
+Potwierdzenie nadal wymaga jednorazowego linku; nie ma automatycznej aktywacji ani
+obejścia zabezpieczenia S2. Nie wklejaj linków i kodów potwierdzających do czatu.
+W tym trybie także panel `/test-api` jest dostępny, zgodnie z S3.
+
+Panel HTTP (8025) i SMTP dla narzędzi hosta (1025) są przypisane wyłącznie do
+`127.0.0.1`. PHP w Dockerze korzysta z nazwy `mailpit`, a PHP na hoście z
+`smtp://127.0.0.1:1025`. Mailpit nie ma wolumenu danych; wiadomości są tymczasowe,
+a liczba przechowywanych wiadomości jest ograniczona do 100. Nie skonfigurowano
+przekazywania ani wysyłania wiadomości na zewnątrz.
+
+Powrót do zwykłego transportu (wykonuje właściciel):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev stop mailpit
+docker compose -f docker-compose.yml up -d --force-recreate app
+```
+
+Bazowy plik ponownie stosuje swój transport poczty i ustawienie środowiska.
+Samo zatrzymanie Mailpita nie przywraca transportu w działającym procesie PHP.
+
+Źródła: [Docker Mailpit](https://mailpit.axllent.org/docs/install/docker/),
+[wydanie v1.31.6](https://github.com/axllent/mailpit/releases/tag/v1.31.6).

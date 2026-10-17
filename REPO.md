@@ -133,3 +133,9 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `src/routes.php` rejestruje `/test-api` wyłącznie, gdy `settings.environment` jest dokładnie `dev`; domyślnie `prod` (404).
 - `APP_ENV` nadpisuje jawne ustawienie `config/app.php`; Compose i PHP-FPM przekazują tę nazwę środowiska. Zmiany wymagają odtworzenia kontenerów przez operatora.
 - Szablon panelu jest w `resources/views/test-api.html`, poza document root; dawny `/ui/index.html` nie stanowi obejścia warunku trasy. Nie przenosić szablonu z powrotem do `public`.
+
+### Lokalna poczta developerska
+
+- Opcjonalny profil `dev` udostępnia Mailpit `v1.31.6`; panel HTTP na `127.0.0.1:8025`, SMTP hosta na `127.0.0.1:1025`. Bez wolumenu danych i bez skonfigurowanego przekazywania na zewnątrz; limit 100 wiadomości.
+- `docker-compose.dev.yml` łączyć z bazowym Compose i `--profile dev`. Nadpisuje w app tylko `APP_ENV=dev` i `MAIL_DSN=smtp://mailpit:1025`; zależność od mailpit zapewnia start skrzynki przed app. Sam profil bez pliku developerskiego nie przełącza poczty aplikacji.
+- Potwierdzanie kont testowych odbywa się przez link z wiadomości w panelu Mailpita do `app_url` (lokalnie localhost:8181). Nie ma obejścia potwierdzania ani zmian rzeczywistych kont. Po przełączeniu transportu odtworzyć app; szczegóły w `docs/KONFIGURACJA.md`.

@@ -72,7 +72,7 @@ test('Fetch all requires confirmation and approves only the displayed selected f
     await panel.setScope(0);
     await panel.fetchAll();
     assert.equal(calls.length, 0);
-    panel.body.children.find(el => el.textContent === 'Fetch all… (2)').handlers.click();
+    panel.bulkApproval = panel.pendingFetches().map(action => ({ ...action, request: { ...action.request } }));
     assert.equal(calls.length, 0);
     assert.deepEqual(panel.bulkApproval.map(a => a.id), ['one', 'two']);
     await panel.fetchAll();
@@ -284,4 +284,31 @@ test('continue stays visibly locked through page loading, rerenders and the AI r
     assert.deepEqual(locks, [true, false]);
     assert.equal(panel.continueButton.disabled, false);
     assert.equal(panel.continueButton['aria-busy'], 'false');
+});
+
+
+test('modal footer owns the single Continue control and survives panel redraws', async () => {
+    const control = new Element('button');
+    const snapshots = [];
+    let finish, sent = 0;
+    const source = { id: 'a', url: 'https://example.org/a', title: 'A', page: { status: 'loaded' } };
+    const panel = fixture({ research: async () => state([source]) }, {
+        continueControl: control, continueLabel: 'Kontynuuj', onState: value => snapshots.push(value),
+        onContinue: async () => { sent++; await new Promise(resolve => { finish = resolve; }); },
+    });
+    await panel.setScope(7);
+    assert.equal(control.textContent, 'Kontynuuj');
+    assert.equal(control.disabled, false);
+    const descendants = el => el.children.flatMap(child => [child, ...descendants(child)]);
+    assert.equal(descendants(panel.body).filter(el => el.tag === 'button' && /Kontynuuj|Przeczytaj|Fetch all/.test(el.textContent)).length, 0);
+    const sending = panel.continueWithSources();
+    panel.render();
+    assert.equal(control.disabled, true);
+    assert.equal(control['aria-busy'], 'true');
+    assert.match(control.textContent, /AI przygotowuje/);
+    await control.handlers.click();
+    assert.equal(sent, 1);
+    finish(); await sending;
+    assert.equal(control.disabled, false);
+    assert.equal(snapshots.at(-1).sources[0].id, 'a');
 });

@@ -1,5 +1,14 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-18 — źródła w niezależnym modalu
+
+- Wyniki i źródła przeniesiono poza układ czatu do natywnego dialogu. Przewija się jego treść, nagłówek i pojedynczy przycisk „Kontynuuj” pozostają widoczne. Zamknięcie, Escape i kontynuacja nie usuwają źródeł; boczna lista pozwala je przywołać.
+- Kontynuacja zamyka modal i zachowuje blokadę podczas fetch oraz oczekiwania na AI. Pobiera tylko zaznaczone strony, ponownie używa zapisanych tekstów. Backend przekazuje JSON z tytułem, URL, statusem, tekstem, czasem pobrania i informacją o skróceniu; treści stron traktuje jako niezaufane dane.
+- Zachowano istniejący szyfrowany magazyn wyników i pobranych tekstów per użytkownik/rozmowa, bez jawnego localStorage. Po reload należy otworzyć tę samą rozmowę z historii. Kolejne wyszukiwanie zachowuje wcześniejsze wybrane źródła; nie jest archiwum wszystkich niewybranych wyników.
+- Walidacja: PHP 166/166 (731 asercji), UI/skrypt 73/73, Composer strict/platform, składnia JS/PHP i diff poprawne. Ręcznie w przeglądarce na syntetycznym routerze: 4 wyniki → odznaczenie 1 → kontynuacja z 3 → zamknięcie modalu, długa odpowiedź i przewijanie góra/dół, reload i odtworzenie 3 pobranych treści, przywołanie z boku, Escape, drugie wyszukanie z 2 nowymi i 3 zachowanymi źródłami. Dowody: artifacts/research-modal-2026-10-18.png i artifacts/research-chat-layout-2026-10-18.png. Bez rzeczywistego WWW/AI i prywatnej historii. Serwer atrapowy wymagał ponownego uruchomienia podczas testu kolejnego wyszukania; po wznowieniu przepływ poprawny.
+- Wcześniejszy zgłoszony błąd odbioru odpowiedzi z rzeczywistego modelu pozostaje niezdiagnozowany. Nie przypisywać tej zmianie naprawy jego przyczyny. Cudza zmiana GIT-FLOW.md poza zakresem i commitem. Push wyłącznie develop po zielonej walidacji.
+
+
 ## 2026-10-18 — widoczna blokada kontynuacji do zakończenia żądania AI
 
 - ResearchPanel utrzymuje blokadę podczas fetch i całego oczekiwania na onContinue. Przycisk ma disabled, aria-busy oraz opisy „Pobieram wybrane strony…” / „AI przygotowuje odpowiedź…”, zachowane również po odrysowaniu panelu.

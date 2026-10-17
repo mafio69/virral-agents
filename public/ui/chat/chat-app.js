@@ -1,9 +1,10 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261018-research-progress-lock';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-research-progress-lock';
+import { ChatApi } from './chat-api.js?v=20261018-research-modal';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-research-modal';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-research-progress-lock';
+import { ResearchModal } from './chat-research-modal.js?v=20261018-research-modal';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-research-modal';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
@@ -18,6 +19,10 @@ const app = byId('app'), sidebar = byId('sidebar'), list = byId('chat-list');
 const thread = byId('thread'), messages = byId('chat-messages');
 const input = byId('chat-input'), send = byId('send-button'), model = byId('chat-model');
 const connection = byId('chat-connection');
+const researchModal = new ResearchModal({
+    dialog: byId('research-dialog'), openButtons: [byId('research-open'), byId('research-open-side')],
+    closeButton: byId('research-close'), count: byId('research-count'), sourceList: byId('research-source-list'),
+});
 const status = byId('chat-status'), mobile = matchMedia('(max-width: 860px)');
 const markdown = new MarkdownRenderer();
 const searchDog = mountSearchDog(byId('search-dog'));
@@ -242,7 +247,7 @@ input.addEventListener('input', () => { controller.setDraft(input.value); autosi
 async function sendDraft() {
     if (preparingImage || researchBusy || controller.state.busy || !controller.state.draft.trim() && !controller.state.images.length) return;
     const useResearch = byId('research-mode').checked;
-    if (useResearch && !await researchPanel.beforeSend()) { byId('research-panel').open = true; return; }
+    if (useResearch && !await researchPanel.beforeSend()) { researchModal.open(); return; }
     await controller.send(null, useResearch);
     if (useResearch) await researchPanel.refresh();
     if (!input.disabled) input.focus();
@@ -254,10 +259,12 @@ byId('chat-form').addEventListener('submit', event => {
 });
 researchPanel = new ResearchPanel(controller.api, {
     query: byId('search-query'), search: byId('search-send'), body: byId('research-body'), summary: byId('research-summary'),
-    onContinuationChange: busy => { researchContinuation = busy; render(controller.state); },
+    continueControl: byId('research-continue'), continueLabel: 'Kontynuuj',
+    onState: state => researchModal.update(state),
+    onContinuationChange: busy => { if (busy) researchModal.close(); researchContinuation = busy; render(controller.state); },
     onBusy: busy => { researchBusy = busy; render(controller.state); },
     onNotice: (text, error = false) => {
-        byId('research-panel').open = true;
+        if (!researchContinuation) researchModal.open();
         controller.update(error ? { error: text, notice: '' } : { notice: text, error: '' });
     },
     onActivity: activity => { researchActivity = activity; render(controller.state); },

@@ -8,8 +8,8 @@ const node = (tag, text, className = '') => {
 
 /** Durable server state; result replacement never clears the selected source shelf. */
 export class ResearchPanel {
-    constructor(api, { query, search, body, summary, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, canContinue = () => true }) {
-        Object.assign(this, { api, query, search, body, summary, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, canContinue });
+    constructor(api, { query, search, body, summary, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, onState = () => {}, continueControl = null, continueLabel = 'Kontynuuj z wybranymi stronami', canContinue = () => true }) {
+        Object.assign(this, { api, query, search, body, summary, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, onState, continueControl, continueLabel, canContinue });
         this.scope = null;
         this.version = 0;
         this.busy = false;
@@ -21,6 +21,7 @@ export class ResearchPanel {
         this.continueButton = null;
         this.refreshQueued = false;
         this.bulkApproval = null;
+        continueControl?.addEventListener('click', () => this.continueWithSources());
         query.addEventListener('input', () => this.updateButton());
         search.addEventListener('click', () => {
             const text = query.value.trim();
@@ -41,7 +42,7 @@ export class ResearchPanel {
             this.continueButton.setAttribute('aria-busy', String(this.continuing));
             this.continueButton.textContent = this.continuing
                 ? this.continuationStage === 'ai' ? 'AI przygotowuje odpowiedź…' : 'Pobieram wybrane strony…'
-                : 'Kontynuuj z wybranymi stronami';
+                : this.continueLabel;
         }
     }
 
@@ -202,40 +203,23 @@ export class ResearchPanel {
         this.updateButton();
         this.summary.textContent = `Źródła do badania (${this.state.sources.length}/20)`;
         this.body.replaceChildren();
-        this.continueButton = null;
+        this.continueButton = this.continueControl;
+        this.updateButton();
         const refresh = node('button', 'Odśwież listę', 'btn btn-sm');
         refresh.type = 'button'; refresh.disabled = this.busy || this.scope === null;
         refresh.addEventListener('click', () => this.refresh());
         this.body.append(refresh);
         if (!this.ready) this.body.append(node('p', this.busy ? 'Wczytywanie źródeł…' : 'Zaloguj się, aby zbierać źródła.'));
         if (this.state.sources.length) {
-            const button = node('button', 'Kontynuuj z wybranymi stronami', 'btn btn-silver btn-sm');
+            const button = this.continueControl || node('button', this.continueLabel, 'btn btn-silver btn-sm');
             button.type = 'button';
-            button.addEventListener('click', () => this.continueWithSources());
+            if (!this.continueControl) button.addEventListener('click', () => this.continueWithSources());
             this.continueButton = button;
-            this.body.append(button);
+            if (!this.continueControl) this.body.append(button);
             this.body.append(node('p', 'Kliknięcie pobierze treść zaznaczonych stron i przekaże ją wybranemu dostawcy AI. Bez dodatkowego potwierdzania pobrań. Odznaczone strony zostaną pominięte.'));
             this.updateButton();
         }
         const pending = this.state.actions.filter(action => action.status === 'pending' && !(this.continuing && action.request.kind === 'fetch' && this.state.sources.some(source => source.url === action.request.url)));
-        const fetches = this.pendingFetches();
-        if (fetches.length && !this.continuing) {
-            const all = node('button', `Fetch all… (${fetches.length})`, 'btn btn-sm');
-            all.type = 'button'; all.disabled = this.busy;
-            all.addEventListener('click', () => { this.bulkApproval = this.pendingFetches().map(action => ({ ...action, request: { ...action.request } })); this.render(); });
-            this.body.append(all);
-        }
-        if (this.bulkApproval) {
-            const card = node('section', undefined, 'research-permission');
-            card.append(node('strong', 'Fetch all — zgoda na poniższą listę adresów'));
-            this.bulkApproval.forEach(action => card.append(node('p', action.request.url, 'research-address')));
-            card.append(node('p', 'Każdy z tych adresów otrzyma GET bez Twoich cookies. Tekst może trafić do dostawcy AI po wysłaniu polecenia. Zgoda obejmuje tylko tę listę, bez kolejnych stron i przekierowań.'));
-            const allow = node('button', 'Allow — pobierz całą listę', 'btn btn-sm'); allow.type = 'button'; allow.disabled = this.busy;
-            allow.addEventListener('click', () => this.fetchAll());
-            const cancel = node('button', 'Anuluj Fetch all', 'btn btn-sm'); cancel.type = 'button'; cancel.disabled = this.busy;
-            cancel.addEventListener('click', () => { this.bulkApproval = null; this.render(); });
-            card.append(allow, cancel); this.body.append(card);
-        }
         pending.forEach(action => {
             const card = node('section', undefined, 'research-permission');
             const request = action.request;
@@ -257,9 +241,10 @@ export class ResearchPanel {
             this.body.append(node('h3', 'Wyniki ostatniego udanego wyszukiwania'));
             this.state.results.forEach(source => this.body.append(this.resultNode(source)));
         }
-        this.body.append(node('h3', 'Twoja lista źródeł'));
+        const earlierSources = this.state.sources.filter(source => !this.state.results.some(result => result.id === source.id));
+        if (earlierSources.length) this.body.append(node('h3', 'Źródła z wcześniejszych wyszukiwań'));
         if (!this.state.sources.length) this.body.append(node('p', 'Nowe wyniki będą domyślnie zaznaczone. Wybór pozostaje na liście podczas kolejnych wyszukiwań.'));
-        this.state.sources.forEach(source => {
+        earlierSources.forEach(source => {
             const row = node('div', undefined, 'research-source');
             const link = node('a', source.title || source.url); link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
             const labels = { unread: 'Czeka na zgodę i pobranie', loaded: source.page.truncated ? 'Tekst pobrany (skrócony)' : 'Tekst pobrany', denied: 'Odmowa — nie przeczytano', failed: 'Nie udało się pobrać' };
@@ -272,11 +257,7 @@ export class ResearchPanel {
             remove.addEventListener('click', () => this.run('select', { id: source.id, selected: false })); row.append(remove);
             this.body.append(row);
         });
-        if (this.state.sources.length) {
-            const prepare = node('button', 'Przeczytaj wybrane strony…', 'btn btn-sm'); prepare.type = 'button'; prepare.disabled = this.busy;
-            prepare.addEventListener('click', () => this.run('prepare', {})); this.body.append(prepare);
-            this.body.append(node('p', 'Gotowe? Kliknij „Kontynuuj z wybranymi stronami”. Nie musisz wpisywać dodatkowej wiadomości. Własne polecenie w polu czatu zostanie zachowane.'));
-        }
+        this.onState(this.state);
     }
 
     resultNode(source) {
@@ -285,6 +266,8 @@ export class ResearchPanel {
         checkbox.setAttribute('aria-label', `Dodaj źródło: ${source.title || source.url}`);
         checkbox.addEventListener('change', () => this.run('select', { id: source.id, selected: checkbox.checked }));
         const text = node('span'); text.append(node('strong', source.title || source.url), node('small', source.url), node('span', source.snippet));
+        const selected = this.state.sources.find(item => item.id === source.id);
+        if (selected) text.append(node('small', selected.page.status === 'loaded' ? 'Treść pobrana i zachowana' : selected.page.status === 'failed' ? 'Pobranie nie powiodło się' : 'Wybrane do opracowania'));
         row.append(checkbox, text); return row;
     }
 }

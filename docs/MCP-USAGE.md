@@ -6,13 +6,13 @@ W widoku czatu „Szukaj stron…” działa niezależnie od wiadomości i model
 Każde wyszukanie pokazuje dokładne zapytanie i osobne Allow / Deny. Zatwierdzone
 zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wyników.
 
-1. Wyniki udanego wyszukiwania są domyślnie zaznaczone i trafiają na listę źródeł,
+1. Wyniki otwierają się w osobnym modalu poza układem czatu. Wyniki udanego wyszukiwania są domyślnie zaznaczone i trafiają na listę źródeł,
    do łącznego limitu 20. Odznacz niepotrzebne strony. Kolejne wyszukiwanie nie
    usuwa wcześniejszego wyboru ani nie zaznacza ponownie ręcznie wykluczonych URL
    (pamiętanych jest ostatnich 80 wykluczeń). Zaznaczenie samo niczego nie pobiera.
 2. Lista i decyzje są szyfrowane, oddzielne dla użytkownika i rozmowy. Przed pierwszą
-   wiadomością lista jest szkicem przenoszonym do nowej rozmowy. Odświeżenie zachowuje wybór.
-3. Kliknij **„Kontynuuj z wybranymi stronami”**. Ten jawny klik zatwierdza pobranie
+   wiadomością lista jest szkicem przenoszonym do nowej rozmowy. Zamknięcie modalu nie usuwa danych. Po odświeżeniu otwórz tę samą rozmowę; boczna lista „Wyniki i źródła” przywołuje modal i zapisane źródła. Pobrane teksty również pozostają w szyfrowanym magazynie serwera; nie zapisujemy ich w jawnym localStorage.
+3. Kliknij jedyny przycisk **„Kontynuuj”** w stopce modalu. Okno się zamknie, a przycisk pozostanie zablokowany do końca pobierania i odpowiedzi AI. Ten jawny klik zatwierdza pobranie
    zaznaczonej listy i przekazanie treści wybranemu dostawcy AI, bez dodatkowych
    pytań o fetch. Odznaczone adresy, nowe wyniki i inne oczekujące prośby nie są
    objęte tym kliknięciem. Treści już pobrane są używane ponownie.
@@ -23,7 +23,7 @@ zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wynik�
 5. Przycisk włącza tryb badania. Zwykłe wysłanie wiadomości zachowuje dotychczasowy
    sposób zbierania osobnych zgód. Wyszukanie WWW nadal wymaga Allow / Deny;
    sama prośba AI nie daje zgody. Wyniki wyszukania zleconego przez AI również
-   są domyślnie zaznaczone. Dodatkowe ręczne akcje pobierania pozostają dostępne.
+   są domyślnie zaznaczone. Ręczne prośby AI nadal są pokazywane z Allow / Deny w modalu.
 
 Fetch wykonuje backend VirralAI, nie serwer MCP: wyłącznie publiczny HTML/tekst,
 bez cookies, autoryzacji, JS i zasobów podrzędnych. Adresy lokalne/prywatne są

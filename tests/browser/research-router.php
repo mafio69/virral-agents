@@ -36,7 +36,8 @@ if (!str_starts_with($path, '/api/')) { http_response_code(404); return; }
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 
-$pdo = new PDO('sqlite:'.__DIR__.'/research-fixture.sqlite', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+$fixtureDatabase = getenv('RESEARCH_FIXTURE_DB') ?: __DIR__.'/research-fixture.sqlite';
+$pdo = new PDO('sqlite:'.$fixtureDatabase, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 (new MigrationRunner($pdo))->run();
 $cipher = new SodiumDataCipher(str_repeat('ab', 32)); // Dummy key for synthetic fixture data only.
 (new DataProtectionMigration($pdo, $cipher))->initializeEmptyDatabase();
@@ -59,7 +60,7 @@ $provider = new class implements ChatProviderInterface, WebToolClientInterface {
     public function id(): string { return 'google'; }
     public function name(): string { return 'MODEL TESTOWY — bez sieci'; }
     public function listModels(): array { return [['id' => 'gemini-fixture', 'name' => 'Model testowy — fikcyjne odpowiedzi']]; }
-    public function generate(array $messages, ?string $model = null): string { return 'Opracowanie testowe na podstawie wybranych stron.'; }
+    public function generate(array $messages, ?string $model = null): string { return 'Opracowanie testowe na podstawie wybranych stron.'.str_repeat("\n\n## Fragment odpowiedzi testowej\n\nTo fikcyjny tekst do ręcznego sprawdzenia przewijania czatu. Źródła są zapisane poza układem rozmowy.", 24); }
     public function generateWebReply(array $messages, string $model): AiReply {
         foreach (array_reverse($messages) as $message) {
             if ($message['role'] === 'user' && is_string($message['content']) && str_contains($message['content'], 'AI poproś')) return new AiReply('', webRequest: ['kind' => 'search', 'query' => 'Publiczne zapytanie zaproponowane przez AI']);

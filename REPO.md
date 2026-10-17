@@ -153,3 +153,9 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - Własny draft zostaje zachowany, pusty otrzymuje polecenie kontynuacji lub opracowania. Zmiana rozmowy i niepewna odpowiedź API zatrzymują operację. Błąd pojedynczej strony pozwala użyć pozostałych treści. Blokady sesji, modelu i powtórnego wysłania pozostają aktywne.
 
 - Stan `researchContinuation` blokuje edycję/wysyłkę i wybór modelu przez cały ciąg fetch → żądanie AI. ResearchPanel pokazuje odpowiedni etap na przycisku i zachowuje disabled/aria-busy po renderowaniu. Blokada kończy się po zakończeniu operacji (również błędem); nie oznacza potwierdzenia odpowiedzi dostawcy.
+
+### Modal wyników i magazyn źródeł
+
+- `chat-research-modal.js` zarządza natywnym dialogiem umieszczonym poza `#app`, przywołaniem z bocznej listy i przywracaniem fokusu. `chat-research.js` renderuje wyniki i aktualizuje pojedynczy przycisk w stopce dialogu; źródła nie zajmują wysokości formularza czatu.
+- Zamknięcie modalu nie czyści magazynu. Wyniki ostatniego wyszukania, wybrane źródła i pobrane teksty są w szyfrowanym `research_workspaces`, nie w jawnym localStorage. Powrót do rozmowy po reload odtwarza jej magazyn; niewybrane wyniki kolejnych wyszukiwań nie stanowią historii wszystkich wyszukań.
+- Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.

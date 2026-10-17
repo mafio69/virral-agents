@@ -338,3 +338,11 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Testy PHP 164/164 (717 asercji), UI 57/57, Composer strict/no-check-publish i wymagania platformy poprawne. Oba modele Compose sprawdzone z wyłączonym wczytywaniem plików środowiska i izolowanym środowiskiem procesu, bez poświadczeń. Poprzedni test MailService na lokalnej atrapie SMTP potwierdził wysyłkę i obsługę odmowy; nie stanowi testu działającego Mailpita.
 - Próba uruchomienia samej usługi mailpit nie powiodła się: brak uprawnień do Docker API. Nie używano sudo, nie pobrano/uruchomiono obrazu ani nie restartowano aplikacji. Właściciel uruchamia komendę z docs/KONFIGURACJA.md; pełny test rejestracja → Mailpit → kliknięcie → logowanie pozostaje do wykonania przez właściciela.
 - Nie odczytywano ani nie zmieniano sekretów, prawdziwej bazy i plików środowiska. Lokalna cudza zmiana GIT-FLOW.md nie należy do tego commitu. Po zielonej walidacji: commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi zgodnie z poleceniem właściciela.
+
+## 2026-10-17 — jeden skrypt startowy dev/prod z sudo
+
+- dev-start.sh [dev|prod] [--dry-run] w głównym katalogu repo; bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie odczytuje plików środowiska; dla wartości zapisanej wyłącznie w takim pliku właściciel podaje jawny argument.
+- Wszystkie wywołania Docker mają sudo. Dev wybiera override z Mailpitem; nowy docker-compose.prod.yml wymusza APP_ENV=prod. W prod po starcie zatrzymywana jest sama skrzynka Mailpit.
+- Najpierw start app, w dev także mailpit; potem Nginx uruchamiany bez odtwarzania i bez dotykania zależności. Reload odświeża upstream po zmianie app. Nieudany start app przerywa dalsze kroki; brak down i kasowania danych.
+- Walidacja: PHP 164/164 (717 asercji), JS/skrypt 62/62, bash -n, oba modele Compose, Composer strict/no-check-publish, platforma i diff poprawne. Compose sprawdzony z wyłączonym wczytywaniem plików środowiska i bez danych dostępowych. Testy uruchamiania używają wyłącznie atrapy sudo; skryptu nie wykonano na działających usługach.
+- Cudza zmiana GIT-FLOW.md pozostaje nietknięta i poza commitem. Sekretów nie czytano ani nie zmieniano. Procedura właściciela: ./dev-start.sh dev albo ./dev-start.sh prod. Po testach commit, lokalne scalenie, push wyłącznie develop i usunięcie gałęzi.

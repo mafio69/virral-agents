@@ -1,0 +1,5 @@
+# Explicit production mode, including when a local environment file selects dev.
+services:
+  app:
+    environment:
+      APP_ENV: prod

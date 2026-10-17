@@ -84,7 +84,7 @@ Obraz jest przypięty do `axllent/mailpit:v1.31.6`.
 Właściciel uruchamia z katalogu repo:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev up -d mailpit app nginx
+./dev-start.sh dev
 ```
 
 Jawny plik developerski ustawia `APP_ENV=dev` i `MAIL_DSN=smtp://mailpit:1025`
@@ -113,8 +113,7 @@ przekazywania ani wysyłania wiadomości na zewnątrz.
 Powrót do zwykłego transportu (wykonuje właściciel):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev stop mailpit
-docker compose -f docker-compose.yml up -d --force-recreate app
+./dev-start.sh prod
 ```
 
 Bazowy plik ponownie stosuje swój transport poczty i ustawienie środowiska.
@@ -122,3 +121,31 @@ Samo zatrzymanie Mailpita nie przywraca transportu w działającym procesie PHP.
 
 Źródła: [Docker Mailpit](https://mailpit.axllent.org/docs/install/docker/),
 [wydanie v1.31.6](https://github.com/axllent/mailpit/releases/tag/v1.31.6).
+
+### Jeden skrypt startowy
+
+`dev-start.sh` uruchamiaj z głównego katalogu repo. Wszystkie operacje Docker
+wykonuje jako `sudo docker compose`; nie czyta bezpośrednio plików środowiska,
+nie wyświetla konfiguracji ani sekretów. Sam Docker Compose przy rzeczywistym
+starcie nadal korzysta z lokalnej konfiguracji jak wcześniej; uruchomienie
+wykonuje właściciel w swoim terminalu.
+
+```bash
+./dev-start.sh dev
+./dev-start.sh prod
+APP_ENV=dev ./dev-start.sh
+./dev-start.sh dev --dry-run
+```
+
+Argument ma pierwszeństwo przed APP_ENV procesu. Bez argumentu tylko dokładne
+`APP_ENV=dev` wybiera dev; brak lub inna wartość wybiera prod. Wpisu APP_ENV
+w samym pliku środowiska skrypt nie odczytuje — w takim przypadku podaj jawnie
+argument. `docker-compose.prod.yml` wymusza APP_ENV=prod w kontenerze nawet wtedy,
+gdy inna lokalna konfiguracja wskazuje dev. Nie trzeba przekazywać APP_ENV przez sudo.
+
+Skrypt najpierw uruchamia app (w dev również Mailpita). Potem uruchamia Nginxa
+bez odtwarzania istniejącego kontenera i bez ponownego ruszania zależności,
+a następnie przeładowuje Nginxa, żeby odświeżył adres upstream po zmianie app.
+Jeśli app nie wystartuje, nie przechodzi do Nginxa. Nie używa down, usuwania danych
+ani force-recreate. W prod po poprawnym starcie zatrzymuje samą skrzynkę Mailpit.
+Nie oznacza to wycofania ustawień innych niż jawnie nadpisane przez Compose.

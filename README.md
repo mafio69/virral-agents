@@ -62,7 +62,7 @@ SPA dostępne pod `/` — landing page z kafelkami do sekcji:
 | Ścieżka | Opis |
 |---------|------|
 | `/` | Landing page SPA |
-| `/test-api` | Legacy SPA (test API) |
+| `/test-api` | Panel testowy wyłącznie przy `APP_ENV=dev` |
 | `/api/auth/*` | Autoryzacja |
 | `/api/tasks*` | Zadania |
 | `/api/chats*` | Czaty |
@@ -97,7 +97,7 @@ SPA dostępne pod `/` — landing page z kafelkami do sekcji:
 ```
 ├── public/
 │   ├── index.php              # Entry point Slim + migracje + error handling
-│   ├── ui/index.html          # Panel SPA (landing + sekcje)
+│   ├── ui/landing.html        # Strona startowa i formularze konta
 │   └── error-pages/503.html   # Strona błędu retro terminal
 ├── src/
 │   ├── Controller/            # AuthController, ChatController, TaskController

@@ -1,5 +1,14 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-17 — audyt S3: panel testowy tylko w development
+
+- S2 `de0bf00` scalony lokalnie fast-forward do develop; nowa gałąź `codex/audit-s3-dev-test-api`.
+- `/test-api` rejestrowane wyłącznie dla jawnego `environment=dev`; domyślnie `prod`. APP_ENV przekazywane przez Compose/PHP-FPM, bez odczytu lub zmiany plików środowiska i bez odtworzenia kontenerów.
+- Szablon przeniesiony z public/ui/index.html do resources/views/test-api.html, aby adres pliku statycznego nie obchodził blokady. Dodane testy prod/dev/braku/nieznanego środowiska i dawnych ścieżek.
+- Właściciel doprecyzował cykl: każdy punkt ma pełne testy, commit, lokalne scalenie do develop, push wyłącznie develop i usunięcie zakończonej gałęzi po udanym push. Pełna walidacja S3: PHP 164/164 (717 asercji), UI 57/57; Composer strict/no-check-publish, wymagania platformy i diff poprawne. Testy izolowane, bez sekretów, rzeczywistej bazy i odtworzenia kontenerów.
+- S3 przygotowane do commitu i lokalnego scalenia; następnie push develop obejmujący S1–S3 i usunięcie trzech lokalnych gałęzi audytu. Kolejny punkt: A1 (wspólne AuthMiddleware). Nie modyfikować ani nie odczytywać chronionych plików. Zastosowanie ustawień Compose/FPM należy do operatora.
+
+
 ## 2026-10-17 — audyt S2: obowiązkowe potwierdzenie e-maila
 
 - Gałąź `codex/audit-s2-email-confirmation` z lokalnego develop po scaleniu przetestowanego S1 (`d2b7c63`); bez push.

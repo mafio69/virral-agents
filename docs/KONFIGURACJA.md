@@ -59,3 +59,18 @@ Polecenie wykonuje właściciel. Zmiana ustawień tablicy PHP nie wymaga ponowne
 ## Ochrona danych użytkowników (2026-10-14)
 
 Do trzech wcześniej opisanych wartości dołącza USER_DATA_KEY, niezależny klucz ochrony danych użytkowników. Obowiązuje instrukcja docs/OCHRONA_DANYCH.md. Przy preserve-env dodaj USER_DATA_KEY do istniejącej listy. Bez poprawnego klucza i migracji aplikacja odmawia pracy z bazą. Dotychczasowy DB_HASH pozostaje kluczem rejestru dostawców.
+
+## Środowisko i panel testowy
+
+`config/app.php` ustawia `environment` domyślnie na `prod`. Jawne `APP_ENV`
+może nadpisać tę wartość; Compose przekazuje je z domyślnym `prod`, a PHP-FPM
+udostępnia workerom. To zwykła nazwa środowiska, nie sekret.
+
+Trasa `/test-api` istnieje wyłącznie dla dokładnej wartości `dev`. Brak wartości,
+`prod` i pozostałe środowiska nie rejestrują tej trasy (404). Szablon znajduje się
+w `resources/views/test-api.html`, poza katalogiem publicznym, więc dawny
+`/ui/index.html` nie udostępnia panelu jako pliku statycznego. Zasoby wspólnego
+stylu pozostają pod `/ui/theme.css`.
+
+Zmiana konfiguracji Compose/PHP-FPM wymaga odtworzenia kontenera przez operatora.
+Nie zmieniano plików środowiska ani działających kontenerów.

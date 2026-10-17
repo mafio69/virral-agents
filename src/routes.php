@@ -22,12 +22,15 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'text/html; charset=UTF-8');
     });
 
-    $app->get('/test-api', function ($request, $response) {
-        $body = $response->getBody();
-        $body->write(file_get_contents(__DIR__.'/../public/ui/index.html'));
+    $settings = $app->getContainer()->get('settings');
+    if (($settings['environment'] ?? 'prod') === 'dev') {
+        $app->get('/test-api', function ($request, $response) {
+            $response->getBody()->write(file_get_contents(__DIR__.'/../resources/views/test-api.html'));
 
-        return $response->withHeader('Content-Type', 'text/html');
-    });
+            return $response->withHeader('Content-Type', 'text/html; charset=UTF-8')
+                ->withHeader('Cache-Control', 'no-store');
+        });
+    }
 
     $app->group('/api', function (RouteCollectorProxy $group) {
         // Auth

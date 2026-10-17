@@ -6,6 +6,7 @@ declare(strict_types=1);
 // Sekrety są dołączane przez src/settings.php z istniejącego środowiska.
 return [
     'displayErrorDetails' => false,
+    'environment' => 'prod',
     'db' => [
         'path' => dirname(__DIR__).'/var/database/app.sqlite',
     ],

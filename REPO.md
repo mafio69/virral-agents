@@ -127,3 +127,9 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `EmailConfirmationRequiredException` jest mapowany na HTTP 403, kod `email_confirmation_required` i no-store. Nie powstaje nowa sesja ani cookie; błędne dane logowania nadal zwracają 401. Wylogowanie działa również dla starej sesji niepotwierdzonego konta.
 - Istniejący endpoint `/api/auth/verify-email` zatwierdza konto i unieważnia link przez usunięcie jego hasha. Błędny albo wykorzystany link zwraca 422.
 - Awaria SMTP nie usuwa utworzonego konta i nie omija wymogu potwierdzenia. Nie ma endpointu ponownej wysyłki; obsługa niedostarczonego lub utraconego linku wymaga osobnego zadania. Testy używają wyłącznie poczty atrapowej.
+
+### Panel testowy wyłącznie w development
+
+- `src/routes.php` rejestruje `/test-api` wyłącznie, gdy `settings.environment` jest dokładnie `dev`; domyślnie `prod` (404).
+- `APP_ENV` nadpisuje jawne ustawienie `config/app.php`; Compose i PHP-FPM przekazują tę nazwę środowiska. Zmiany wymagają odtworzenia kontenerów przez operatora.
+- Szablon panelu jest w `resources/views/test-api.html`, poza document root; dawny `/ui/index.html` nie stanowi obejścia warunku trasy. Nie przenosić szablonu z powrotem do `public`.

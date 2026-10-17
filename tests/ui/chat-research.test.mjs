@@ -247,3 +247,41 @@ test('switching chats during preparation cancels old fetch approval and continua
     assert.equal(fetches, 0);
     assert.equal(continued, 0);
 });
+
+
+test('continue stays visibly locked through page loading, rerenders and the AI response', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
+    const action = { id: 'a', origin: 'user', status: 'pending', request: { kind: 'fetch', url: source.url } };
+    let resolveFetch, resolveAi, aiCalls = 0;
+    const locks = [];
+    const panel = fixture({ research: async operation => {
+        if (operation === 'state') return state([source]);
+        if (operation === 'prepare') return state([source], [action]);
+        return new Promise(resolve => { resolveFetch = () => resolve(state([
+            { ...source, page: { status: 'loaded' } },
+        ], [{ ...action, status: 'done' }])); });
+    } }, {
+        onContinuationChange: value => locks.push(value),
+        onContinue: async () => { aiCalls++; await new Promise(resolve => { resolveAi = resolve; }); },
+    });
+    await panel.setScope(1);
+    const pending = panel.continueWithSources();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(panel.continueButton.disabled, true);
+    assert.equal(panel.continueButton['aria-busy'], 'true');
+    assert.match(panel.continueButton.textContent, /Pobieram/);
+    await panel.continueWithSources();
+    assert.equal(aiCalls, 0);
+    resolveFetch();
+    await new Promise(resolve => setImmediate(resolve));
+    panel.render();
+    assert.equal(panel.continueButton.disabled, true);
+    assert.match(panel.continueButton.textContent, /AI przygotowuje/);
+    await panel.continueWithSources();
+    assert.equal(aiCalls, 1);
+    assert.deepEqual(locks, [true]);
+    resolveAi(); await pending;
+    assert.deepEqual(locks, [true, false]);
+    assert.equal(panel.continueButton.disabled, false);
+    assert.equal(panel.continueButton['aria-busy'], 'false');
+});

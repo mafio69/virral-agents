@@ -353,3 +353,10 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Wyniki domyślnie wybrane do limitu 20; odznaczone adresy nie są pobierane ani ponownie automatycznie zaznaczane (ostatnich 80 wykluczeń). Własne polecenie pozostaje w użyciu; przy pustym polu aplikacja sama dodaje kontynuację poprzedniego zadania lub opracowanie nowych źródeł.
 - Testy: PHP 166/166 (731 asercji), UI/skrypt 69/69; Composer strict/no-check-publish, platforma i diff poprawne. Pokrycie: wybór po search, wykluczenia/limit, fetch bez dodatkowej zgody po kliknięciu, pominięcie odznaczonych, utrata odpowiedzi, zmiana rozmowy i podwójne kliknięcie. Dane fikcyjne, bez rzeczywistego WWW i płatnego AI.
 - Bez odczytu sekretów i rzeczywistej historii. Cudza zmiana GIT-FLOW.md zachowana poza commitem. Wersje URL modułów JS odświeżone. Po walidacji commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi.
+
+## 2026-10-18 — widoczna blokada kontynuacji do zakończenia żądania AI
+
+- ResearchPanel utrzymuje blokadę podczas fetch i całego oczekiwania na onContinue. Przycisk ma disabled, aria-busy oraz opisy „Pobieram wybrane strony…” / „AI przygotowuje odpowiedź…”, zachowane również po odrysowaniu panelu.
+- Osobny stan kontynuacji blokuje edycję wiadomości, wysyłkę i zmianę modelu/rozmowy również pomiędzy kolejnymi operacjami źródeł. Nie dodano pytań o fetch ani ponawiania żądań.
+- Pełna walidacja: PHP 166/166 (731 asercji), UI/skrypt 70/70, składnia JS, Composer strict/no-check-publish, platforma i diff poprawne. Test kontroluje opóźniony fetch i odpowiedź AI, odrysowanie i kolejne kliknięcia — tylko jedna wysyłka. Bez rzeczywistego WWW lub dostawcy AI.
+- Wcześniej zgłoszony błąd „Nie udało się odebrać odpowiedzi” po kontynuacji pozostaje niezdiagnozowany: potwierdzono tylko moment wystąpienia, brak nazwy modelu i statusu HTTP. Nie twierdzić, że ta poprawka usuwa jego przyczynę. Cudza zmiana GIT-FLOW.md nietknięta; bez odczytu sekretów.

@@ -1,15 +1,16 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261018-research-continue';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-research-continue';
+import { ChatApi } from './chat-api.js?v=20261018-research-progress-lock';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-research-progress-lock';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-research-continue';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-research-progress-lock';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
 let preparingImage = false;
 let researchPanel;
 let researchBusy = false;
+let researchContinuation = false;
 let researchActivity = 'idle';
 
 const byId = id => document.getElementById(id);
@@ -83,7 +84,7 @@ function messageNode(message) {
 let renderedMessages, renderedPending, renderedBusy, renderedChats, renderedChatId;
 let renderedModels, renderedModel, renderedImages, renderedConnections, renderedConnection, renderedModelsLoading;
 function render(state) {
-    const blocked = preparingImage || researchBusy || state.busy || state.loading || state.authenticated !== true;
+    const blocked = preparingImage || researchBusy || researchContinuation || state.busy || state.loading || state.authenticated !== true;
     const currentId = state.activeChat?.id;
     app.dataset.state = state.authenticated === false ? 'loggedout' : state.busy ? 'pending'
         : !state.messages.length && !state.pendingMessage ? 'empty' : 'chat';
@@ -93,7 +94,7 @@ function render(state) {
     const modelLabel = byId('composer-model');
     modelLabel.hidden = !confirmedModel;
     modelLabel.textContent = confirmedModel ? `Model: ${confirmedModel.name || confirmedModel.id}` : '';
-    input.disabled = preparingImage || state.busy || state.loading;
+    input.disabled = preparingImage || researchContinuation || state.busy || state.loading;
     if (input.value !== state.draft) { input.value = state.draft; autosize(); }
     send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);
     researchPanel?.setScope(state.authenticated === true ? currentId || 0 : null);
@@ -103,12 +104,12 @@ function render(state) {
     byId('attach-image').disabled = blocked || state.deliveryUncertain || !supportsImages;
     byId('attach-image').title = supportsImages ? 'Dodaj PNG, JPEG lub WebP do analizy' : 'Wybierz model oznaczony tekst i obrazy';
     send.setAttribute('aria-busy', String(state.busy));
-    connection.disabled = researchBusy || state.busy || state.loading || Boolean(state.activeChat) || !state.connections.length;
-    model.disabled = researchBusy || state.busy || state.modelsLoading || Boolean(state.activeChat) || !state.models.length;
+    connection.disabled = researchContinuation || researchBusy || state.busy || state.loading || Boolean(state.activeChat) || !state.connections.length;
+    model.disabled = researchContinuation || researchBusy || state.busy || state.modelsLoading || Boolean(state.activeChat) || !state.models.length;
     connection.title = state.activeChat ? 'Aby zmienić połączenie, rozpocznij nową rozmowę.' : 'Wybierz dostawcę AI';
     model.title = state.activeChat ? 'Aby zmienić model, rozpocznij nową rozmowę.' : 'Model nowej rozmowy';
-    byId('new-chat').disabled = researchBusy || state.busy;
-    byId('research-mode').disabled = researchBusy || state.busy;
+    byId('new-chat').disabled = researchContinuation || researchBusy || state.busy;
+    byId('research-mode').disabled = researchContinuation || researchBusy || state.busy;
 
     status.replaceChildren(element('span', '', state.busy ? state.searchActivity === 'searching' ? 'Szukam źródeł i przygotowuję odpowiedź…' : 'Model przygotowuje odpowiedź…'
         : state.loading ? 'Wczytywanie rozmów…' : state.modelsLoading ? 'Pobieranie modeli…' : [state.error, state.notice].filter(Boolean).join(' ')));
@@ -253,6 +254,7 @@ byId('chat-form').addEventListener('submit', event => {
 });
 researchPanel = new ResearchPanel(controller.api, {
     query: byId('search-query'), search: byId('search-send'), body: byId('research-body'), summary: byId('research-summary'),
+    onContinuationChange: busy => { researchContinuation = busy; render(controller.state); },
     onBusy: busy => { researchBusy = busy; render(controller.state); },
     onNotice: (text, error = false) => {
         byId('research-panel').open = true;

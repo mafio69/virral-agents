@@ -151,3 +151,5 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - Nowe wyniki wyszukiwania są wybierane w ResearchService do limitu 20 źródeł, bez automatycznego fetch. Ostatnich 80 ręcznych wykluczeń przechowuje szyfrowany workspace; ponowne zaznaczenie usuwa wykluczenie.
 - ResearchPanel pokazuje „Kontynuuj z wybranymi stronami”. Kliknięcie zapisuje listę zatwierdzonych URL, przygotowuje i zatwierdza fetch dla tej listy, następnie wysyła polecenie w trybie badania. Nie wymaga kolejnego potwierdzania fetch; nie obejmuje nowych ani odznaczonych adresów.
 - Własny draft zostaje zachowany, pusty otrzymuje polecenie kontynuacji lub opracowania. Zmiana rozmowy i niepewna odpowiedź API zatrzymują operację. Błąd pojedynczej strony pozwala użyć pozostałych treści. Blokady sesji, modelu i powtórnego wysłania pozostają aktywne.
+
+- Stan `researchContinuation` blokuje edycję/wysyłkę i wybór modelu przez cały ciąg fetch → żądanie AI. ResearchPanel pokazuje odpowiedni etap na przycisku i zachowuje disabled/aria-busy po renderowaniu. Blokada kończy się po zakończeniu operacji (również błędem); nie oznacza potwierdzenia odpowiedzi dostawcy.

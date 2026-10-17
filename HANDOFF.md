@@ -1,5 +1,13 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-18 — widoczna blokada kontynuacji do zakończenia żądania AI
+
+- ResearchPanel utrzymuje blokadę podczas fetch i całego oczekiwania na onContinue. Przycisk ma disabled, aria-busy oraz opisy „Pobieram wybrane strony…” / „AI przygotowuje odpowiedź…”, zachowane również po odrysowaniu panelu.
+- Osobny stan kontynuacji blokuje edycję wiadomości, wysyłkę i zmianę modelu/rozmowy również pomiędzy kolejnymi operacjami źródeł. Nie dodano pytań o fetch ani ponawiania żądań.
+- Pełna walidacja: PHP 166/166 (731 asercji), UI/skrypt 70/70, składnia JS, Composer strict/no-check-publish, platforma i diff poprawne. Test kontroluje opóźniony fetch i odpowiedź AI, odrysowanie i kolejne kliknięcia — tylko jedna wysyłka. Bez rzeczywistego WWW lub dostawcy AI.
+- Wcześniej zgłoszony błąd „Nie udało się odebrać odpowiedzi” po kontynuacji pozostaje niezdiagnozowany: potwierdzono tylko moment wystąpienia, brak nazwy modelu i statusu HTTP. Nie twierdzić, że ta poprawka usuwa jego przyczynę. Cudza zmiana GIT-FLOW.md nietknięta; bez odczytu sekretów.
+
+
 ## 2026-10-18 — kontynuacja z domyślnie wybranymi wynikami
 
 - Dodano widoczny przycisk „Kontynuuj z wybranymi stronami”. Na jawne polecenie właściciela kliknięcie pobiera zaznaczoną listę bez dodatkowych pytań fetch i przekazuje treści do AI. Wyszukiwanie nadal wymaga Allow/Deny; sam checkbox nie uruchamia sieci.

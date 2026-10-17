@@ -8,8 +8,8 @@ const node = (tag, text, className = '') => {
 
 /** Durable server state; result replacement never clears the selected source shelf. */
 export class ResearchPanel {
-    constructor(api, { query, search, body, summary, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, canContinue = () => true }) {
-        Object.assign(this, { api, query, search, body, summary, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, canContinue });
+    constructor(api, { query, search, body, summary, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, canContinue = () => true }) {
+        Object.assign(this, { api, query, search, body, summary, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, canContinue });
         this.scope = null;
         this.version = 0;
         this.busy = false;
@@ -17,6 +17,7 @@ export class ResearchPanel {
         this.state = empty();
         this.resume = false;
         this.continuing = false;
+        this.continuationStage = '';
         this.continueButton = null;
         this.refreshQueued = false;
         this.bulkApproval = null;
@@ -35,7 +36,13 @@ export class ResearchPanel {
     updateButton() {
         this.search.disabled = !this.canSearch();
         this.query.disabled = this.scope === null || this.busy;
-        if (this.continueButton) this.continueButton.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue();
+        if (this.continueButton) {
+            this.continueButton.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue();
+            this.continueButton.setAttribute('aria-busy', String(this.continuing));
+            this.continueButton.textContent = this.continuing
+                ? this.continuationStage === 'ai' ? 'AI przygotowuje odpowiedź…' : 'Pobieram wybrane strony…'
+                : 'Kontynuuj z wybranymi stronami';
+        }
     }
 
     async continueWithSources() {
@@ -44,6 +51,8 @@ export class ResearchPanel {
         // The explicit click approves fetching only the source URLs visible in this selection.
         const approved = new Set(this.state.sources.map(source => source.url));
         this.continuing = true;
+        this.continuationStage = 'fetch';
+        this.onContinuationChange(true);
         this.resume = false;
         this.onActivity('searching');
         this.render();
@@ -58,10 +67,14 @@ export class ResearchPanel {
                 if (!await this.run('decide', { id: action.id, allow: true }) || version !== this.version) return;
             }
             if (version !== this.version) return;
+            this.continuationStage = 'ai';
+            this.updateButton();
             this.onActivity('done');
             await this.onContinue();
         } finally {
             this.continuing = false;
+            this.continuationStage = '';
+            this.onContinuationChange(false);
             this.onActivity('idle');
             this.render();
         }

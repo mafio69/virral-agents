@@ -44,12 +44,15 @@ final readonly class ResearchService implements ResearchServiceInterface
         $state = $this->store->change($userId, $chatId, function (array $state) use ($sourceId, $selected): array {
             if (!$selected) {
                 unset($state['sources'][$sourceId]);
+                $state['excluded'][$sourceId] = true;
+                $state['excluded'] = array_slice($state['excluded'], -80, null, true);
                 foreach ($state['actions'] as &$action) {
                     if ($action['status'] === 'pending' && ($action['request']['kind'] ?? '') === 'fetch'
                         && self::sourceId($action['request']['url']) === $sourceId) $action['status'] = 'cancelled';
                 }
                 return $state;
             }
+            unset($state['excluded'][$sourceId]);
             if (isset($state['sources'][$sourceId])) return $state;
             if (count($state['sources']) >= 20) throw new ValidationException('Można wybrać maksymalnie 20 źródeł.');
             foreach ($state['results'] as $source) {
@@ -116,6 +119,12 @@ final readonly class ResearchService implements ResearchServiceInterface
                     catch (ValidationException) { continue; }
                     $id = self::sourceId($url);
                     $state['results'][$id] = ['id' => $id, 'url' => $url, 'title' => mb_substr($entry['title'], 0, 300), 'snippet' => mb_substr($entry['snippet'], 0, 400)];
+                }
+                foreach ($state['results'] as $id => $source) {
+                    if (count($state['sources']) >= 20) break;
+                    if (!isset($state['sources'][$id]) && !isset($state['excluded'][$id])) {
+                        $state['sources'][$id] = $source + ['page' => ['status' => 'unread']];
+                    }
                 }
                 $state['results'] = array_values($state['results']);
             } elseif ($request['kind'] === 'fetch') {

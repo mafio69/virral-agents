@@ -346,3 +346,10 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Najpierw start app, w dev także mailpit; potem Nginx uruchamiany bez odtwarzania i bez dotykania zależności. Reload odświeża upstream po zmianie app. Nieudany start app przerywa dalsze kroki; brak down i kasowania danych.
 - Walidacja: PHP 164/164 (717 asercji), JS/skrypt 62/62, bash -n, oba modele Compose, Composer strict/no-check-publish, platforma i diff poprawne. Compose sprawdzony z wyłączonym wczytywaniem plików środowiska i bez danych dostępowych. Testy uruchamiania używają wyłącznie atrapy sudo; skryptu nie wykonano na działających usługach.
 - Cudza zmiana GIT-FLOW.md pozostaje nietknięta i poza commitem. Sekretów nie czytano ani nie zmieniano. Procedura właściciela: ./dev-start.sh dev albo ./dev-start.sh prod. Po testach commit, lokalne scalenie, push wyłącznie develop i usunięcie gałęzi.
+
+## 2026-10-18 — kontynuacja z domyślnie wybranymi wynikami
+
+- Dodano widoczny przycisk „Kontynuuj z wybranymi stronami”. Na jawne polecenie właściciela kliknięcie pobiera zaznaczoną listę bez dodatkowych pytań fetch i przekazuje treści do AI. Wyszukiwanie nadal wymaga Allow/Deny; sam checkbox nie uruchamia sieci.
+- Wyniki domyślnie wybrane do limitu 20; odznaczone adresy nie są pobierane ani ponownie automatycznie zaznaczane (ostatnich 80 wykluczeń). Własne polecenie pozostaje w użyciu; przy pustym polu aplikacja sama dodaje kontynuację poprzedniego zadania lub opracowanie nowych źródeł.
+- Testy: PHP 166/166 (731 asercji), UI/skrypt 69/69; Composer strict/no-check-publish, platforma i diff poprawne. Pokrycie: wybór po search, wykluczenia/limit, fetch bez dodatkowej zgody po kliknięciu, pominięcie odznaczonych, utrata odpowiedzi, zmiana rozmowy i podwójne kliknięcie. Dane fikcyjne, bez rzeczywistego WWW i płatnego AI.
+- Bez odczytu sekretów i rzeczywistej historii. Cudza zmiana GIT-FLOW.md zachowana poza commitem. Wersje URL modułów JS odświeżone. Po walidacji commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi.

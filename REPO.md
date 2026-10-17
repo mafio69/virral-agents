@@ -86,7 +86,7 @@ Dodaj wpis tutaj dopiero, gdy informacja jest trwała, zweryfikowana i oszczędz
   protokołu, sesję, `tools/list`, `tools/call` i zamknięcie sesji; limit odpowiedzi 1 MiB,
   timeout wywołania/odczytu 45 s. Nie otrzymuje kluczy dostawców AI.
 - Domyślny tryb WWW to ASK. Zgoda dotyczy jednego jawnego zapytania i nie przechodzi
-  na kolejną wiadomość. Wyszukiwanie jest oddzielne od wiadomości; checkboxy zbierają źródła. Fetch wymaga osobnego Allow dla każdego adresu.
+  na kolejną wiadomość. Wyszukiwanie jest oddzielne od wiadomości; checkboxy zbierają źródła. Fetch wymaga jawnej zgody: „Kontynuuj z wybranymi stronami” zatwierdza pobranie zaznaczonej listy bez dodatkowych pytań; ręczne akcje zachowują Allow/Deny.
 - `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp`.
   PHP uruchomione na hoście wymaga jawnego `http://127.0.0.1:8890/mcp`.
   Samodzielny skrypt diagnostyczny nadal domyślnie używa adresu hosta.
@@ -145,3 +145,9 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `dev-start.sh [dev|prod] [--dry-run]` wybiera bazowy Compose i jawny plik dev albo prod; wszystkie wywołania Docker przez sudo. Bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie analizuje plików środowiska.
 - `docker-compose.prod.yml` wymusza APP_ENV=prod w app. Dev używa lokalnego Mailpita, prod bazowego transportu i zatrzymuje mailpit po udanym starcie.
 - Start app poprzedza start Nginxa bez odtwarzania; reload Nginxa odświeża upstream po zmianie adresu app. Błąd startu app przerywa skrypt przed operacjami na Nginxie. Dry-run tylko pokazuje komendy.
+
+### Jawna kontynuacja badania
+
+- Nowe wyniki wyszukiwania są wybierane w ResearchService do limitu 20 źródeł, bez automatycznego fetch. Ostatnich 80 ręcznych wykluczeń przechowuje szyfrowany workspace; ponowne zaznaczenie usuwa wykluczenie.
+- ResearchPanel pokazuje „Kontynuuj z wybranymi stronami”. Kliknięcie zapisuje listę zatwierdzonych URL, przygotowuje i zatwierdza fetch dla tej listy, następnie wysyła polecenie w trybie badania. Nie wymaga kolejnego potwierdzania fetch; nie obejmuje nowych ani odznaczonych adresów.
+- Własny draft zostaje zachowany, pusty otrzymuje polecenie kontynuacji lub opracowania. Zmiana rozmowy i niepewna odpowiedź API zatrzymują operację. Błąd pojedynczej strony pozwala użyć pozostałych treści. Blokady sesji, modelu i powtórnego wysłania pozostają aktywne.

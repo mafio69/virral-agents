@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ResearchPanel } from '../../public/ui/chat/chat-research.js';
+import { ResearchPanel, continueResearch } from '../../public/ui/chat/chat-research.js';
 
 class Element {
     constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this.value = ''; }
@@ -110,4 +110,140 @@ test('a failed individual fetch still resumes the waiting command', async () => 
     panel.resume = true;
     await panel.decide(action, true);
     assert.equal(resumed, 1);
+});
+
+
+test('visible continue action needs no typed follow-up, keeps draft and prevents duplicate clicks', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', page: { status: 'loaded' } };
+    let sends = 0, release;
+    const controller = { state: { draft: '', messages: [{ role: 'user', content: 'Original question' }] },
+        setDraft(value) { this.state.draft = value; } };
+    let researchEnabled = false;
+    const panel = fixture({ research: async () => state([source]) }, {
+        onContinue: () => continueResearch(controller, () => { researchEnabled = true; }, async () => {
+            sends++;
+            await new Promise(resolve => { release = resolve; });
+        }),
+    });
+    await panel.setScope(1);
+    const button = panel.body.children.find(el => el.textContent === 'Kontynuuj z wybranymi stronami');
+    assert.ok(button);
+    const first = button.handlers.click();
+    await button.handlers.click();
+    assert.equal(sends, 1);
+    assert.equal(button.disabled, true);
+    assert.equal(researchEnabled, true);
+    assert.match(controller.state.draft, /Kontynuuj poprzednie zadanie/);
+    release(); await first;
+    assert.equal(panel.continueButton.disabled, false);
+    controller.state.draft = 'My specific synthesis instructions';
+    await continueResearch(controller, () => {}, async () => { sends++; });
+    assert.equal(controller.state.draft, 'My specific synthesis instructions');
+    assert.equal(sends, 2);
+});
+
+test('continue click fetches selected pages without a second prompt then resumes exactly once', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
+    const action = { id: 'fetch', request: { kind: 'fetch', url: source.url }, origin: 'user', status: 'pending' };
+    const calls = []; let sends = 0;
+    let snapshot = state([source]);
+    const panel = fixture({ research: async (operation, scope, payload) => {
+        calls.push([operation, payload]);
+        if (operation === 'prepare') snapshot = state([source], [action]);
+        if (operation === 'decide') snapshot = state([{ ...source, page: { status: 'loaded' } }], [{ ...action, status: 'done' }]);
+        return snapshot;
+    } });
+    panel.onContinue = async () => { if (await panel.beforeSend()) sends++; };
+    await panel.setScope(1);
+    await panel.continueWithSources();
+    assert.deepEqual(calls.map(call => call[0]), ['state', 'prepare', 'decide']);
+    assert.deepEqual(calls[2][1], { id: 'fetch', allow: true });
+    assert.equal(sends, 1);
+});
+
+test('failed preparation and blocked chat never dispatch a continuation', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
+    let sends = 0;
+    const panel = fixture({ research: async operation => {
+        if (operation === 'prepare') throw new Error('Fixture unavailable');
+        return state([source]);
+    } });
+    panel.onContinue = async () => { if (await panel.beforeSend()) sends++; };
+    await panel.setScope(1);
+    await panel.continueWithSources();
+    assert.equal(sends, 0);
+    assert.equal(panel.resume, false);
+    panel.canContinue = () => false;
+    panel.onContinue = () => { sends++; };
+    panel.updateButton();
+    assert.equal(panel.continueButton.disabled, true);
+    await panel.continueWithSources();
+    assert.equal(sends, 0);
+});
+
+test('new research starts with a useful default task and search results reflect persisted selection', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', title: 'Fixture', snippet: '', page: { status: 'unread' } };
+    const controller = { state: { draft: '', messages: [] }, setDraft(value) { this.state.draft = value; } };
+    await continueResearch(controller, () => {}, async () => {});
+    assert.match(controller.state.draft, /Opracuj wybrane źródła/);
+    const panel = fixture({ research: async () => ({ ...state([source]), results: [source] }) });
+    await panel.setScope(0);
+    assert.equal(panel.resultNode(source).children[0].checked, true);
+    panel.state.sources = [];
+    panel.render();
+    assert.equal(panel.resultNode(source).children[0].checked, false);
+    assert.equal(panel.continueButton, null);
+});
+
+
+test('continuation fetches only the clicked selection and continues after a page failure', async () => {
+    const sources = ['one', 'two'].map(id => ({ id, url: `https://example.org/${id}`, page: { status: 'unread' } }));
+    const actions = [...sources, { id: 'unchecked', url: 'https://example.org/unchecked' }].map(source => ({
+        id: source.id, request: { kind: 'fetch', url: source.url }, origin: 'user', status: 'pending',
+    }));
+    const calls = []; let continued = 0;
+    const panel = fixture({ research: async (operation, scope, payload) => {
+        if (operation === 'decide') {
+            calls.push(payload.id);
+            actions.find(action => action.id === payload.id).status = payload.id === 'one' ? 'failed' : 'done';
+            sources.find(source => source.id === payload.id).page.status = payload.id === 'one' ? 'failed' : 'loaded';
+        }
+        return state(sources, actions);
+    } }, { onContinue: () => { continued++; } });
+    await panel.setScope(1);
+    await panel.continueWithSources();
+    assert.deepEqual(calls, ['one', 'two']);
+    assert.equal(actions[2].status, 'pending');
+    assert.equal(continued, 1);
+});
+
+test('uncertain fetch delivery stops continuation without retry or AI dispatch', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
+    const action = { id: 'a', request: { kind: 'fetch', url: source.url }, origin: 'user', status: 'pending' };
+    let attempts = 0, continued = 0;
+    const panel = fixture({ research: async operation => {
+        if (operation === 'decide') { attempts++; throw new Error('Lost response'); }
+        return state([source], [action]);
+    } }, { onContinue: () => { continued++; } });
+    await panel.setScope(1);
+    await panel.continueWithSources();
+    assert.equal(attempts, 1);
+    assert.equal(continued, 0);
+});
+
+test('switching chats during preparation cancels old fetch approval and continuation', async () => {
+    const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
+    let resolvePrepare, continued = 0, fetches = 0;
+    const panel = fixture({ research: async (operation, scope) => {
+        if (operation === 'prepare') return new Promise(resolve => { resolvePrepare = resolve; });
+        if (operation === 'decide') fetches++;
+        return scope === 1 ? state([source]) : state();
+    } }, { onContinue: () => { continued++; } });
+    await panel.setScope(1);
+    const pending = panel.continueWithSources();
+    await panel.setScope(2);
+    resolvePrepare(state([source], [{ id: 'a', request: { kind: 'fetch', url: source.url }, status: 'pending' }]));
+    await pending;
+    assert.equal(fetches, 0);
+    assert.equal(continued, 0);
 });

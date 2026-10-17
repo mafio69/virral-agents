@@ -1,9 +1,9 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261017-fetch-continue';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261017-fetch-continue';
+import { ChatApi } from './chat-api.js?v=20261018-research-continue';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-research-continue';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchPanel } from './chat-research.js?v=20261017-fetch-continue';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-research-continue';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
@@ -259,6 +259,10 @@ researchPanel = new ResearchPanel(controller.api, {
         controller.update(error ? { error: text, notice: '' } : { notice: text, error: '' });
     },
     onActivity: activity => { researchActivity = activity; render(controller.state); },
+    canContinue: () => !preparingImage && !controller.state.busy && !controller.state.loading
+        && controller.state.authenticated === true && !controller.state.modelsLoading
+        && !controller.state.deliveryUncertain && Boolean(controller.state.activeChat || controller.state.selectedModel),
+    onContinue: () => continueResearch(controller, () => { byId('research-mode').checked = true; }, sendDraft),
     onResume: () => sendDraft(),
     onAgent: async allow => {
         if (controller.state.draft.trim()) { controller.update({ notice: 'Decyzja zapisana. Wyślij polecenie, aby kontynuować badanie.' }); return; }

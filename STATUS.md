@@ -1,5 +1,13 @@
 # STATUS
 
+## 2026-10-18 — kontynuacja z domyślnie wybranymi wynikami
+
+- Dodano widoczny przycisk „Kontynuuj z wybranymi stronami”. Na jawne polecenie właściciela kliknięcie pobiera zaznaczoną listę bez dodatkowych pytań fetch i przekazuje treści do AI. Wyszukiwanie nadal wymaga Allow/Deny; sam checkbox nie uruchamia sieci.
+- Wyniki domyślnie wybrane do limitu 20; odznaczone adresy nie są pobierane ani ponownie automatycznie zaznaczane (ostatnich 80 wykluczeń). Własne polecenie pozostaje w użyciu; przy pustym polu aplikacja sama dodaje kontynuację poprzedniego zadania lub opracowanie nowych źródeł.
+- Testy: PHP 166/166 (731 asercji), UI/skrypt 69/69; Composer strict/no-check-publish, platforma i diff poprawne. Pokrycie: wybór po search, wykluczenia/limit, fetch bez dodatkowej zgody po kliknięciu, pominięcie odznaczonych, utrata odpowiedzi, zmiana rozmowy i podwójne kliknięcie. Dane fikcyjne, bez rzeczywistego WWW i płatnego AI.
+- Bez odczytu sekretów i rzeczywistej historii. Cudza zmiana GIT-FLOW.md zachowana poza commitem. Wersje URL modułów JS odświeżone. Po walidacji commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi.
+
+
 ## 2026-10-17 — jeden skrypt startowy dev/prod z sudo
 
 - dev-start.sh [dev|prod] [--dry-run] w głównym katalogu repo; bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie odczytuje plików środowiska; dla wartości zapisanej wyłącznie w takim pliku właściciel podaje jawny argument.

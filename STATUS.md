@@ -1,5 +1,15 @@
 # STATUS
 
+## 2026-10-17 — zamknięcie sesji
+
+- Bieżąca gałąź: `codex/research-source-selection`; ostatni commit kodu/metadanych: `998916e`. W tej sesji nie wykonano push ani scalenia nowej funkcji do develop.
+- Gotowe: checkboxy wyników, trwały szyfrowany koszyk między wyszukiwaniami, zgody ASK, Fetch all z jawną zgodą na wskazaną listę, kontynuacja po błędzie pojedynczej strony i licencja MIT.
+- Ostatnia pełna walidacja: PHP 139/139 (601 asercji), UI 54/54, `composer validate --strict --no-check-publish`, wymagania platformy i diff — poprawne. Lokalnie PHP 8.5; GitHub PHP 8.4 wymaga ponownego uruchomienia po wysłaniu poprawki licencji.
+- Właściciel zgłosił niedostępne pobrania YouTube i Gazeta.pl. Poprawiono blokowanie pozostałych stron/polecenia, ale nie ustalono przyczyn niedostępności tych adresów i nie potwierdzono rzeczywistego opracowania po poprawce. Testy regresji są offline.
+- Podgląd aplikacji otwierać przez `http://localhost:8181/chat`, nie przez `file:///…/chat.html`.
+- Pozostawiono nietknięte cudze zmiany: `.gitignore` oraz nieśledzony `src/Infrastructure/AI/GroundedClientInterface.php`.
+
+
 ## 2026-10-17 — licencja MIT i walidacja CI
 
 Właściciel wybrał MIT. Dodano deklarację w composer.json i pełny tekst LICENSE. Walidacja musi używać `composer validate --strict --no-check-publish`, jak GitHub Actions; poprzednia kontrola bez --strict przeoczyła brak licencji. Pełne testy PHP 139/139 (601 asercji), UI 54/54, wymagania platformy i diff poprawne. Bez push; lokalne PHP 8.5, wersja 8.4 wymaga ponownego CI.

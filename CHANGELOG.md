@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-17 — podsumowanie zakończonego etapu źródeł
+
+- `2e48daf`: wybór stron checkboxami, trwały koszyk i opracowanie wybranych treści z uprawnieniami ASK.
+- `4daae48`: Fetch all, jedna jawna zgoda na wyświetloną listę adresów.
+- `fef7463`: nieudany fetch nie zatrzymuje pozostałych pobrań ani oczekującego polecenia.
+- `998916e`: MIT w composer.json i LICENSE; ścisła walidacja Composer przechodzi bez ostrzeżenia licencji.
+- Weryfikacja lokalna: PHP 139/139, UI 54/54. Nowy wynik GitHub Actions i rzeczywiste opracowanie po poprawce fetch pozostają niepotwierdzone.
+
+
 ## 2026-10-17 — licencja MIT i walidacja CI
 
 Właściciel wybrał MIT. Dodano deklarację w composer.json i pełny tekst LICENSE. Walidacja musi używać `composer validate --strict --no-check-publish`, jak GitHub Actions; poprzednia kontrola bez --strict przeoczyła brak licencji. Pełne testy PHP 139/139 (601 asercji), UI 54/54, wymagania platformy i diff poprawne. Bez push; lokalne PHP 8.5, wersja 8.4 wymaga ponownego CI.

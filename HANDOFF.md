@@ -1,5 +1,18 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-17 — przekazanie na koniec sesji
+
+Pracuj dalej na `codex/research-source-selection` (ostatni commit `998916e`). Właściciel zakończył sesję; bez push i bez scalenia tej funkcji. Końcowy zapis dokumentacji jest osobną zmianą roboczą.
+
+Funkcja: wyszukiwanie oddzielne od wiadomości, checkboxy, szyfrowana lista maksymalnie 20 źródeł, osobne ASK dla search/fetch, Fetch all z dokładną listą do jednej zgody, prośby AI Allow/Deny i opracowanie treści pobranych stron. Fetch all kontynuuje po statusie failed; również pojedynczy nieudany fetch wznawia oczekujące polecenie. Utrata połączenia z API aplikacji i niepewny stan nadal wymagają odświeżenia, bez automatycznej ponownej decyzji.
+
+Ostatnie testy: PHP 139/139, 601 asercji; UI 54/54; Composer strict/platform i składnia/diff poprawne. Test przeglądarkowy na atrapach potwierdził 3+2 źródła, zachowanie po reload oraz pominięcie treści odmówionej strony. Późniejsze Fetch all i kontynuacja po błędzie mają testy automatyczne; nie potwierdzono ich pełnego przebiegu na rzeczywistych stronach/modelu.
+
+Do sprawdzenia po wznowieniu: rzeczywiste wykonanie polecenia po częściowo nieudanych fetchach, przyczyny unavailable dla zgłoszonych YouTube/Gazeta.pl oraz wynik GitHub Actions PHP 8.4 po wysłaniu poprawki MIT. Rzeczywisty search/fetch nadal wymaga odrębnej zgody. Nie omijaj ograniczeń fetchera (HTML/tekst publicznych stron, bez JS, PDF i automatycznych przekierowań).
+
+Właściwy adres widoku to `http://localhost:8181/chat`; lokalny plik HTML nie jest działającą aplikacją. Nie dodawaj cudzych zmian `.gitignore` i `GroundedClientInterface.php`. Nie czytaj sekretów ani rzeczywistej bazy. Szczegóły API i ograniczeń w `docs/MCP-USAGE.md`.
+
+
 ## 2026-10-17 — licencja MIT i walidacja CI
 
 Właściciel wybrał MIT. Dodano deklarację w composer.json i pełny tekst LICENSE. Walidacja musi używać `composer validate --strict --no-check-publish`, jak GitHub Actions; poprzednia kontrola bez --strict przeoczyła brak licencji. Pełne testy PHP 139/139 (601 asercji), UI 54/54, wymagania platformy i diff poprawne. Bez push; lokalne PHP 8.5, wersja 8.4 wymaga ponownego CI.

@@ -8,3 +8,5 @@
 /.env.*
 /Design/*.zip
 /public/ui/favicons.zip
+/secret/2026-10-15_01-04.png
+/docs/eva.sh

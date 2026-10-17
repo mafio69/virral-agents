@@ -44,13 +44,21 @@ class ChatServiceModelsTest extends TestCase
         ');
 
         // Create service dependencies
-        $chatRepository = new \App\Repository\ChatRepository($this->pdo);
+        $chatRepository = new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         
-        // Mock OVH AI client with mocked API response
-        $ovhAiClient = $this->createMock(\App\Infrastructure\AI\OvhAiClient::class);
-        $ovhAiClient->method('generate')->willReturn('AI response');
-        $ovhAiClient->method('getBaseUrl')->willReturn('https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/');
-        
+        $catalogue = ['data' => array_map(static fn(string $id): array => ['id' => $id], [
+            'Qwen3.8-27B', 'Qwen3.6-27B', 'Qwen3.5-397B-A17B',
+            'bge-m3', 'whisper-large-v3', 'Qwen3Guard-Gen-8B', 'stable-diffusion-xl',
+        ])];
+        $httpClient = new \GuzzleHttp\Client([
+            'handler' => \GuzzleHttp\HandlerStack::create(new \GuzzleHttp\Handler\MockHandler([
+                new \GuzzleHttp\Psr7\Response(200, [], json_encode($catalogue, JSON_THROW_ON_ERROR)),
+            ])),
+        ]);
+        $ovhAiClient = new \App\Infrastructure\AI\OvhAiClient(
+            'https://example.invalid/v1', 'dummy-value', 'Qwen3.8-27B', httpClient: $httpClient,
+        );
+
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
 
         $this->chatService = new ChatService($chatRepository, $ovhAiClient, $logger);
@@ -58,36 +66,10 @@ class ChatServiceModelsTest extends TestCase
 
     public function testGetAvailableModels(): void
     {
-        // This test will call the real OVH AI API
-        // In a real scenario, you might want to mock the HTTP client
-        // For now, we'll test that the method doesn't throw an exception
-        
-        try {
-            $models = $this->chatService->getAvailableModels();
-            
-            // Verify we got some models
-            $this->assertIsArray($models);
-            $this->assertGreaterThan(0, count($models));
-            
-            // Verify structure of first model
-            $firstModel = $models[0];
-            $this->assertArrayHasKey('id', $firstModel);
-            $this->assertArrayHasKey('name', $firstModel);
-            $this->assertArrayHasKey('description', $firstModel);
-            $this->assertArrayHasKey('category', $firstModel);
-            
-            // Verify that embeddings and image models are filtered out
-            foreach ($models as $model) {
-                $this->assertStringNotContainsString('Embedding', $model['id']);
-                $this->assertStringNotContainsString('stable-diffusion', $model['id']);
-                $this->assertStringNotContainsString('bge-', $model['id']);
-                $this->assertNotEquals('ppl', $model['id']);
-            }
-            
-        } catch (\Throwable $e) {
-            // If API call fails (network issues, etc.), we just skip this test
-            $this->markTestSkipped('OVH AI API is not accessible: ' . $e->getMessage());
-        }
+        $models = $this->chatService->getAvailableModels();
+        $this->assertSame(['Qwen3.8-27B', 'Qwen3.6-27B', 'Qwen3.5-397B-A17B'], array_column($models, 'id'));
+        $this->assertSame(['code', 'visual', 'visual'], array_column($models, 'category'));
+        $this->assertSame([true, true, true], array_column($models, 'supports_images'));
     }
 
     public function testModelDescriptionMapping(): void
@@ -111,7 +93,8 @@ class ChatServiceModelsTest extends TestCase
 
         $this->assertEquals('code', $method->invoke($this->chatService, 'Qwen3-Coder-30B-A3B-Instruct'));
         $this->assertEquals('visual', $method->invoke($this->chatService, 'Qwen2.5-VL-72B-Instruct'));
-        $this->assertEquals('general', $method->invoke($this->chatService, 'Qwen3.6-27B'));
+        $this->assertEquals('visual', $method->invoke($this->chatService, 'Qwen3.6-27B'));
+        $this->assertEquals('code', $method->invoke($this->chatService, 'Qwen3.8-27B'));
         $this->assertEquals('audio', $method->invoke($this->chatService, 'whisper-large-v3'));
         $this->assertEquals('guard', $method->invoke($this->chatService, 'Qwen3Guard-Gen-8B'));
         $this->assertEquals('general', $method->invoke($this->chatService, 'Mistral-7B-Instruct-v0.3'));

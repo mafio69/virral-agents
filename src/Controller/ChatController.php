@@ -20,6 +20,8 @@ final readonly class ChatController
         private readonly AddChatMessageInputMapper $addChatMessageInputMapper,
         private readonly ChatService $chatService,
         private readonly AuthService $authService,
+        private readonly ?\App\Service\SearchDiagnosticsInterface $searchDiagnostics = null,
+        private readonly ?\App\Service\ResearchServiceInterface $research = null,
     ) {
     }
 
@@ -81,35 +83,52 @@ final readonly class ChatController
         return JsonResponder::respond($response, $result, 201);
     }
     
+    public function listConnections(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return JsonResponder::respond($response, $this->chatService->getConnections());
+    }
+
+    public function searchStatus(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $this->getUserId($request);
+        $status = $this->searchDiagnostics?->status() ?? ['available' => false, 'reason' => 'missing_configuration', 'searched' => false];
+        return JsonResponder::respond($response, $status);
+    }
+
+    public function researchState(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('state', $request, $response); }
+    public function researchPropose(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('propose', $request, $response); }
+    public function researchDecide(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('decide', $request, $response); }
+    public function researchSelect(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('select', $request, $response); }
+    public function researchPrepare(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface { return $this->researchCall('prepare', $request, $response); }
+
+    private function researchCall(string $operation, ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $userId = $this->getUserId($request);
+        [$scope, $args] = (new \App\Mapper\Chat\ResearchInputMapper())->map($operation, $request->getQueryParams(), (array)$request->getParsedBody());
+        $service = $this->research ?? throw new \App\Exception\ValidationException('Badanie źródeł jest niedostępne.');
+        return JsonResponder::respond($response, $service->{$operation}($userId, $scope, ...$args));
+    }
+
     public function listModels(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        // Fetch available models from OVH AI API
+        // Pobranie modeli wybranego połączenia.
         try {
-            $models = $this->chatService->getAvailableModels();
+            $connection = $request->getQueryParams()['connection'] ?? null;
+            if ($connection !== null && !is_string($connection)) {
+                return JsonResponder::respond($response, ['error' => 'Nieznane połączenie AI.'], 400);
+            }
+            $models = $this->chatService->getAvailableModels($connection);
             return JsonResponder::respond($response, $models);
-        } catch (\Throwable $e) {
-            // Fallback to static list if API fails
-            $models = [
-                [
-                    'id' => 'Qwen3-Coder-30B-A3B-Instruct',
-                    'name' => 'Qwen3-Coder-30B-A3B-Instruct',
-                    'description' => 'Advanced coding model optimized for code generation and debugging',
-                    'category' => 'code',
-                ],
-                [
-                    'id' => 'Qwen3-32B',
-                    'name' => 'Qwen3-32B',
-                    'description' => 'General purpose large language model',
-                    'category' => 'general',
-                ],
-                [
-                    'id' => 'Mistral-7B-Instruct-v0.3',
-                    'name' => 'Mistral-7B-Instruct-v0.3',
-                    'description' => 'Balanced model for general tasks',
-                    'category' => 'general',
-                ],
-            ];
-            return JsonResponder::respond($response, $models);
+        } catch (\App\Exception\ValidationException) {
+            return JsonResponder::respond($response, ['error' => 'Nieznane połączenie AI.'], 400);
+        } catch (\App\Exception\AiConnectionException $e) {
+            return JsonResponder::respond($response, [
+                'error' => 'Lista modeli AI jest niedostępna.',
+            ], 503)->withHeader('X-AI-Error', $e->reason);
+        } catch (\Throwable) {
+            return JsonResponder::respond($response, [
+                'error' => 'Lista modeli AI jest chwilowo niedostępna.',
+            ], 503);
         }
     }
 }

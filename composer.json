@@ -1,6 +1,8 @@
 {
   "name": "mariusz/slim-ovh-ai",
+  "description": "Slim API for AI conversations, approved web research, and task management.",
   "type": "project",
+  "license": "MIT",
   "require": {
     "php": "^8.4",
     "slim/slim": "^4.15",

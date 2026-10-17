@@ -18,6 +18,10 @@ final readonly class CreateChatInputMapper
             throw new ValidationException('Title is required');
         }
 
+        if ($model !== null && (!is_string($model) || strlen($model) > 200)) {
+            throw new ValidationException('Nieprawidłowy model.');
+        }
+
         return new CreateChatInput($userId, trim($title), $model);
     }
 }

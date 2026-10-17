@@ -36,6 +36,10 @@ final readonly class AiClientFactory implements AiClientFactoryInterface
             throw new NotFoundException('AI endpoint URL not found');
         }
 
+        if (str_starts_with($model->idModel, 'glm-')) {
+            ZaiEndpointPolicy::assertAllowed($endpoint->url);
+        }
+
         return new OpenAiCompatClient(
             baseUri: $endpoint->url,
             apiKey: $this->secretService->revealSecret($provider->providersSecret),

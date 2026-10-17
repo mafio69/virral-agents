@@ -44,15 +44,22 @@ return function (App $app) {
             $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
 
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        } catch (\App\Exception\AiConnectionException $e) {
+            $logger->error('AI provider unavailable', ['reason' => $e->reason]);
+            $response = new Response();
+            $response->getBody()->write(json_encode(['error' => 'Połączenie z AI jest niedostępne.']));
+            return $response->withStatus(503)->withHeader('Content-Type', 'application/json')
+                ->withHeader('X-AI-Error', $e->reason);
+        } catch (\App\Exception\DataProtectionException) {
+            $logger->error('Data protection unavailable');
+            $response = new Response();
+            return \App\Infrastructure\Http\JsonResponder::respond($response,
+                ['error' => 'Ochrona danych jest niedostępna. Skontaktuj się z administratorem.'], 503);
         } catch (Throwable $e) {
-            $logger->error($e->getMessage(), ['exception' => $e]);
+            $logger->error('Application operation failed', ['type' => get_class($e)]);
 
             $response = new Response();
             $error = ['error' => 'Internal Server Error'];
-            if ($_ENV['APP_ENV'] === 'dev') {
-                $error['message'] = $e->getMessage();
-                $error['trace'] = $e->getTraceAsString();
-            }
             $response->getBody()->write(json_encode($error));
 
             return $response->withStatus(500)->withHeader('Content-Type', 'application/json');

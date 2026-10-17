@@ -18,6 +18,7 @@ final readonly class RegisterInputMapper
             throw new ValidationException('Email is required');
         }
 
+        $email = trim($email);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new ValidationException('Invalid email format');
         }

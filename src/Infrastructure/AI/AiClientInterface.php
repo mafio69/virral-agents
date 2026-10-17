@@ -10,7 +10,7 @@ namespace App\Infrastructure\AI;
 interface AiClientInterface
 {
     /**
-     * @param list<array{role: string, content: string}> $messages
+     * @param list<array{role: string, content: string|list<array<string, mixed>>}> $messages
      */
     public function generate(array $messages, ?string $model = null): string;
 }

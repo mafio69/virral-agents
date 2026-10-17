@@ -13,10 +13,12 @@ final readonly class AddChatMessageInputMapper
     {
         $content = $data['content'] ?? '';
 
-        if (!is_string($content) || trim($content) === '') {
+        $images = (new \App\Service\ChatImageValidator())->validate($data['images'] ?? []);
+        if (!is_string($content) || (trim($content) === '' && $images === []) || strlen($content) > 16000) {
             throw new ValidationException('Message content is required');
         }
 
-        return new AddChatMessageInput($chatId, $userId, trim($content));
+        if (!is_bool($data['research'] ?? false)) throw new ValidationException('Nieprawidłowy tryb badania.');
+        return new AddChatMessageInput($chatId, $userId, trim($content), $images, \App\Dto\Chat\SearchOptions::fromInput($data['search'] ?? []), $data['research'] ?? false);
     }
 }

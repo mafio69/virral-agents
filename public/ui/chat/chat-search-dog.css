@@ -1,0 +1,14 @@
+.search-dog{display:flex;align-items:center;gap:8px;min-height:62px;color:var(--muted,#c8cccf);font-size:12px}
+.search-dog[hidden]{display:none}
+.search-dog svg{flex:none;overflow:visible}
+.search-dog-label{max-width:310px;line-height:1.5}
+.dog-head{transform-origin:52px 46px}
+.dog-tail{transform-origin:29px 58px}
+.dog-scent{opacity:0}
+.search-dog[data-activity=searching] .dog-head{animation:dog-sniff 1.6s ease-in-out infinite}
+.search-dog[data-activity=searching] .dog-tail{animation:dog-wag .65s ease-in-out infinite alternate}
+.search-dog[data-activity=searching] .dog-scent{animation:dog-scent 1.6s ease-in-out infinite}
+@keyframes dog-sniff{0%,100%{transform:translate(0,0) rotate(0)}35%,65%{transform:translate(5px,3px) rotate(8deg)}45%,55%{transform:translate(7px,4px) rotate(10deg)}}
+@keyframes dog-wag{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+@keyframes dog-scent{0%,25%,85%,100%{opacity:0;transform:translateX(4px)}40%,60%{opacity:.65;transform:translateX(0)}}
+@media(prefers-reduced-motion:reduce){.search-dog .dog-head,.search-dog .dog-tail,.search-dog .dog-scent{animation:none!important}.search-dog[data-activity=searching] .dog-scent{opacity:.5}}

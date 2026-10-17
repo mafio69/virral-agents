@@ -46,7 +46,7 @@ final readonly class TaskService
         $rows = $this->taskRepository->findByUserId($userId);
 
         return array_map(
-            fn(array $row) => new TaskResult(
+            fn (array $row) => new TaskResult(
                 id: (int)$row['id'],
                 userId: (int)$row['user_id'],
                 title: $row['title'],

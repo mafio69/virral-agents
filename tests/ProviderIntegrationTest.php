@@ -100,7 +100,7 @@ final class ProviderIntegrationTest extends TestCase
         $provider = new OpenAiProvider($this->transport([$this->catalogue(), $this->answer(), $this->answer('Second fixture')]));
         $registry = new ProviderRegistry($this->legacy(), ['openai' => $provider]);
         $ovh = new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B');
-        $service = new ChatService($chats, $ovh, new NullLogger(), $registry);
+        $service = ChatServiceFixture::create($chats, $ovh, new NullLogger(), $registry);
         $chat = $service->createChat(new CreateChatInput(1, 'Fixture', 'openai:gpt-6-astra'));
         $other = $service->createChat(new CreateChatInput(1, 'Other', 'openai:gpt-6-astra'));
         $chats->addMessage($other->id, 'user', 'Unrelated fixture');
@@ -115,7 +115,7 @@ final class ProviderIntegrationTest extends TestCase
         $body = json_decode((string)$this->history[2]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
         self::assertCount(3, $body['input']);
         self::assertStringNotContainsString('Unrelated fixture', json_encode($body));
-        $missing = new ChatService($chats, $ovh, new NullLogger(), new ProviderRegistry($this->legacy(), []));
+        $missing = ChatServiceFixture::create($chats, $ovh, new NullLogger(), new ProviderRegistry($this->legacy(), []));
         $before = count($chats->findMessagesByChatId($chat->id));
         try {
             $missing->addMessage(new AddChatMessageInput($chat->id, 1, 'Blocked'));

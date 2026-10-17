@@ -159,3 +159,11 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `chat-research-modal.js` zarządza natywnym dialogiem umieszczonym poza `#app`, przywołaniem z bocznej listy i przywracaniem fokusu. `chat-research.js` renderuje wyniki i aktualizuje pojedynczy przycisk w stopce dialogu; źródła nie zajmują wysokości formularza czatu.
 - Zamknięcie modalu nie czyści magazynu. Wyniki ostatniego wyszukania, wybrane źródła i pobrane teksty są w szyfrowanym `research_workspaces`, nie w jawnym localStorage. Powrót do rozmowy po reload odtwarza jej magazyn; niewybrane wyniki kolejnych wyszukiwań nie stanowią historii wszystkich wyszukań.
 - Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.
+
+
+### Audyt: autoryzacja, katalog i start bazy
+
+- `AuthMiddleware` z `SessionAuthenticatorInterface` waliduje sesję raz dla grupy prywatnych tras i ustawia `userId`. `SessionTokenResolver` zachowuje pierwszeństwo Bearer przed cookie; wylogowanie unieważnia obie przedstawione sesje. Katalog modeli/połączeń pozostaje publiczny.
+- `ModelCatalogInterface` / `ModelCatalogService` przechowują prezentację i możliwości modeli, niezależnie od zapisu rozmów. `ModelSelector` rozdziela dostawcę i identyfikator, zachowując obsługę dawnych modeli OVH.
+- `bin/migrate.php` uruchamia schemat i inicjalizację ochrony wyłącznie pustej bazy. Compose uruchamia go przez `docker/start-app.sh` przed FPM; błąd blokuje start. Istniejące jawne dane nadal wymagają oddzielnej, świadomej procedury ochrony danych. HTTP tylko sprawdza gotowość, bez migracji. Uruchomienia poza Compose wymagają wcześniejszego lokalnego wykonania migratora przez operatora.
+- Puste wyniki MCP wymagają jawnego `status: empty`, `source: null`, `results: []` i braku błędów. Nieznane wersje protokołu są odrzucane; lista i testy są w `McpSearchClient::SUPPORTED_PROTOCOLS` i `McpSearchClientTest`.

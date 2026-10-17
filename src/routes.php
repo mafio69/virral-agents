@@ -37,29 +37,32 @@ return function (App $app) {
         $group->post('/auth/register', [AuthController::class, 'register']);
         $group->post('/auth/login', [AuthController::class, 'login']);
         $group->post('/auth/logout', [AuthController::class, 'logout']);
-        $group->get('/auth/me', [AuthController::class, 'me']);
         $group->get('/auth/verify-email', [AuthController::class, 'verifyEmail']);
 
-        // Tasks
-        $group->get('/tasks', [TaskController::class, 'list']);
-        $group->post('/tasks', [TaskController::class, 'create']);
-        $group->put('/tasks/{id}', [TaskController::class, 'update']);
-        $group->delete('/tasks/{id}', [TaskController::class, 'delete']);
+        $group->group('', function (RouteCollectorProxy $group) {
+            $group->get('/auth/me', [AuthController::class, 'me']);
+            // Tasks
+            $group->get('/tasks', [TaskController::class, 'list']);
+            $group->post('/tasks', [TaskController::class, 'create']);
+            $group->put('/tasks/{id}', [TaskController::class, 'update']);
+            $group->delete('/tasks/{id}', [TaskController::class, 'delete']);
 
-        // Chats
-        $group->get('/chats', [ChatController::class, 'list']);
-        $group->post('/chats', [ChatController::class, 'create']);
-        $group->get('/chats/{id}', [ChatController::class, 'get']);
-        $group->post('/chats/{id}/messages', [ChatController::class, 'addMessage']);
-        
-        // AI Models
+            // Chats
+            $group->get('/chats', [ChatController::class, 'list']);
+            $group->post('/chats', [ChatController::class, 'create']);
+            $group->get('/chats/{id}', [ChatController::class, 'get']);
+            $group->post('/chats/{id}/messages', [ChatController::class, 'addMessage']);
+
+            // Research and diagnostics
+            $group->get('/search/status', [ChatController::class, 'searchStatus']);
+            $group->get('/research', [ChatController::class, 'researchState']);
+            $group->post('/research/actions', [ChatController::class, 'researchPropose']);
+            $group->post('/research/decisions', [ChatController::class, 'researchDecide']);
+            $group->put('/research/sources', [ChatController::class, 'researchSelect']);
+            $group->post('/research/prepare', [ChatController::class, 'researchPrepare']);
+        })->add(\App\Middleware\AuthMiddleware::class);
+
         $group->get('/ai-connections', [ChatController::class, 'listConnections']);
-        $group->get('/search/status', [ChatController::class, 'searchStatus']);
-        $group->get('/research', [ChatController::class, 'researchState']);
-        $group->post('/research/actions', [ChatController::class, 'researchPropose']);
-        $group->post('/research/decisions', [ChatController::class, 'researchDecide']);
-        $group->put('/research/sources', [ChatController::class, 'researchSelect']);
-        $group->post('/research/prepare', [ChatController::class, 'researchPrepare']);
         $group->get('/ai-models', [ChatController::class, 'listModels']);
     });
 };

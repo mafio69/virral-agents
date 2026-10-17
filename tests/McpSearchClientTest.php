@@ -81,6 +81,44 @@ final class McpSearchClientTest extends TestCase
         }
     }
 
+    public function testExplicitEmptyStatusAcceptsNullSourceButProviderFailureDoesNot(): void
+    {
+        foreach ([[], ['unavailable']] as $errors) {
+            $body = ['status' => 'empty', 'source' => null, 'results' => [], 'errors' => $errors];
+            $handler = HandlerStack::create(new MockHandler([
+                self::rpc(1, ['protocolVersion' => '2025-03-26']), new Response(202),
+                self::rpc(3, self::tools()),
+                self::rpc(4, ['content' => [['type' => 'text', 'text' => json_encode($body)]]]),
+            ]));
+            $client = new McpSearchClient('http://mcp.test/mcp', new Client(['handler' => $handler]));
+            if ($errors === []) {
+                self::assertSame(['source' => null, 'results' => []], $client->search('Public query', 3));
+            } else {
+                $this->expectException(SearchException::class);
+                $client->search('Public query', 3);
+            }
+        }
+    }
+
+    public function testSupportedProtocolsNegotiateAndUnknownVersionStopsBeforeTools(): void
+    {
+        foreach (McpSearchClient::SUPPORTED_PROTOCOLS as $version) {
+            $history = [];
+            $handler = HandlerStack::create(new MockHandler([
+                self::rpc(1, ['protocolVersion' => $version]), new Response(202), self::rpc(3, self::tools()),
+            ]));
+            $handler->push(Middleware::history($history));
+            $client = new McpSearchClient('http://mcp.test/mcp', new Client(['handler' => $handler]));
+            self::assertSame('web_search', $client->definition()['function']['name']);
+            self::assertSame($version, $history[2]['request']->getHeaderLine('MCP-Protocol-Version'));
+        }
+        $client = new McpSearchClient('http://mcp.test/mcp', new Client([
+            'handler' => HandlerStack::create(new MockHandler([self::rpc(1, ['protocolVersion' => 'unknown'])])),
+        ]));
+        $this->expectException(SearchException::class);
+        $client->definition();
+    }
+
     public function testInvalidQueryNeverConnects(): void
     {
         $client = new McpSearchClient('http://mcp.test/mcp', new Client(['handler' => HandlerStack::create(new MockHandler([]))]));

@@ -14,7 +14,7 @@ use App\Infrastructure\Mail\MailService;
 use App\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
 
-final readonly class AuthService
+final readonly class AuthService implements SessionAuthenticatorInterface
 {
     public function __construct(
         private readonly UserRepository $userRepository,

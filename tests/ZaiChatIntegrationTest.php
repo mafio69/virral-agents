@@ -62,7 +62,7 @@ final class ZaiChatIntegrationTest extends TestCase
             new class implements \App\Infrastructure\AI\ModelCatalogueInterface {
                 public function listModels(): array { return [['id' => 'glm-5.3-flash', 'supports_images' => true]]; }
             });
-        $this->chat = new ChatService(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $this->registry);
+        $this->chat = ChatServiceFixture::create(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $this->registry);
     }
 
     public function testImageAndHistoryReachOnlySelectedProvider(): void
@@ -122,7 +122,7 @@ final class ZaiChatIntegrationTest extends TestCase
 
     public function testZaiCatalogueWorksWhenOvhIsUnconfiguredWithoutLeakingFields(): void
     {
-        $models = $this->chat->getAvailableModels('zai');
+        $models = (new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $this->registry, new NullLogger()))->getAvailableModels('zai');
         $this->assertCount(1, $models);
         $this->assertTrue($models[0]['supports_images']);
         $this->assertSame('zai', $models[0]['provider']);
@@ -159,7 +159,7 @@ final class ZaiChatIntegrationTest extends TestCase
 
     private function chatUsing(ZaiChatModelRegistry $registry): ChatService
     {
-        return new ChatService(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)),
+        return ChatServiceFixture::create(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)),
             new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $registry);
     }
 

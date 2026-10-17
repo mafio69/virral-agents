@@ -47,7 +47,8 @@ final class AuthHttpTest extends TestCase
         $container = new Container([
             LoggerInterface::class => $logger,
             'settings' => ['displayErrorDetails' => false],
-            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, $repository),
+            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, $repository, new \App\Http\SessionTokenResolver()),
+            \App\Service\SessionAuthenticatorInterface::class => $service,
         ]);
         $this->app = AppFactory::create(container: $container);
         (require __DIR__.'/../src/routes.php')($this->app);
@@ -90,6 +91,27 @@ final class AuthHttpTest extends TestCase
     {
         self::assertSame(201, $this->request('POST', '/api/auth/register', $this->credentials())->getStatusCode());
         $this->confirmEmail();
+    }
+
+    public function testEveryPrivateRouteRejectsMissingSessionBeforeControllerResolution(): void
+    {
+        foreach ([['GET', '/api/auth/me'], ['GET', '/api/tasks'], ['POST', '/api/tasks'],
+            ['PUT', '/api/tasks/1'], ['DELETE', '/api/tasks/1'], ['GET', '/api/chats'],
+            ['POST', '/api/chats'], ['GET', '/api/chats/1'], ['POST', '/api/chats/1/messages'],
+            ['GET', '/api/search/status'], ['GET', '/api/research'],
+            ['POST', '/api/research/actions'], ['POST', '/api/research/decisions'],
+            ['PUT', '/api/research/sources'], ['POST', '/api/research/prepare']] as [$method, $path]) {
+            self::assertSame(401, $this->request($method, $path)->getStatusCode(), $path);
+        }
+    }
+
+    public function testBearerTakesPrecedenceOverCookieAndMalformedCookieIsRejected(): void
+    {
+        $this->registerConfirmed();
+        $token = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
+        self::assertSame(200, $this->request('GET', '/api/auth/me', bearer: $token)->getStatusCode());
+        self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $token], bearer: 'stale-fixture')->getStatusCode());
+        self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => ['bad']])->getStatusCode());
     }
 
     public function testRegisterThenLoginAndAuthenticateUsingResponseCookie(): void

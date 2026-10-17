@@ -74,13 +74,13 @@ $legacy = new class implements ChatModelRegistryInterface {
     public function clientFor(\App\Dto\AI\AiModel $model): AiClientInterface { throw new \RuntimeException('Fixture model unavailable'); }
 };
 $plain = new ChatReplyGenerator($search);
-$service = new \App\Service\ChatService($chats, new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'Qwen3.6-27B'), new \Psr\Log\NullLogger(),
+$service = \Tests\ChatServiceFixture::create($chats, new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'Qwen3.6-27B'), new \Psr\Log\NullLogger(),
     new ProviderRegistry($legacy, ['google' => $provider]), $plain, $research, new ResearchReplyGenerator($research, $plain));
 $data = json_decode(file_get_contents('php://input') ?: '{}', true, 64, JSON_THROW_ON_ERROR);
 $method = $_SERVER['REQUEST_METHOD'];
 try {
     if ($path === '/api/ai-connections') $result = [['id' => 'google', 'name' => $provider->name()]];
-    elseif ($path === '/api/ai-models') $result = $service->getAvailableModels('google');
+    elseif ($path === '/api/ai-models') $result = (new \App\Service\ModelCatalogService(new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'fixture'), new ProviderRegistry($legacy, ['google' => $provider]), new \Psr\Log\NullLogger()))->getAvailableModels('google');
     elseif ($path === '/api/chats' && $method === 'GET') $result = $service->getUserChats(1);
     elseif ($path === '/api/chats' && $method === 'POST') $result = $service->createChat((new \App\Mapper\Chat\CreateChatInputMapper())->map($data, 1));
     elseif (preg_match('~^/api/chats/(\d+)/messages$~', $path, $matches)) $result = $service->addMessage((new \App\Mapper\Chat\AddChatMessageInputMapper())->map($data, (int)$matches[1], 1));

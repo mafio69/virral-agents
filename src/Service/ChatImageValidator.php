@@ -10,7 +10,9 @@ final readonly class ChatImageValidator
 {
     public const MAX_BYTES = 524288;
 
-    public function __construct(private int $maxBytes = self::MAX_BYTES) {}
+    public function __construct(private int $maxBytes = self::MAX_BYTES)
+    {
+    }
 
     /** @return list<string> Validated inline images; never fetch remote URLs. */
     public function validate(mixed $images): array

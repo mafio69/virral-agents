@@ -60,6 +60,8 @@ Jeżeli zadanie wymaga sekretu, zatrzymaj się i poproś użytkownika o wykonani
 
 ## 6. Edycja i jakość
 
+- Kod czytelny jednym spojrzeniem, bez ifów w jednej linii.
+
 - Przed zmianą kodu lub konfiguracji pokaż plan zmian i poczekaj na zgodę, gdy zmiana jest większa niż pojedyncza, oczywista poprawka.
 - Nie zmieniaj plików ukrytych, `.git/**`, katalogów zależności (`vendor`, `node_modules`) ani plików sekretów.
 - Po zmianie uruchamiaj wyłącznie testy lub walidację potrzebną do bieżącego zadania i tylko po zgodzie na Bash.

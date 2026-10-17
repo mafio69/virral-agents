@@ -186,3 +186,16 @@ Start wariantu produkcyjnego: `./dev-start.sh prod`. Bez argumentu skrypt
 wybiera dev tylko dla `APP_ENV=dev` w środowisku terminala, w pozostałych przypadkach prod.
 Podgląd bez uruchamiania kontenerów: `./dev-start.sh dev --dry-run`.
 Wszystkie wywołania Dockera w skrypcie mają prefiks sudo.
+
+
+### Kontrole jakości PHP i UI
+
+```bash
+composer lint       # PHP CS Fixer: sprawdzenie bez zmiany plików
+composer format     # zastosowanie formatowania w zakresie php-cs-fixer.php
+composer check-all  # formatter, PHPUnit oraz testy UI/skryptów
+composer validate --strict --no-check-publish
+composer check-platform-reqs
+```
+
+Konfiguracja `php-cs-fixer.php` sprawdza warstwy objęte audytem; nie skanuje plików środowiska ani katalogów sekretów. Migracje aplikacji odbywają się przed startem PHP-FPM przez `docker/start-app.sh`; żądania HTTP tylko sprawdzają gotowość bazy. Procedura operatora: `docs/KONFIGURACJA.md`.

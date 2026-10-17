@@ -149,3 +149,10 @@ a następnie przeładowuje Nginxa, żeby odświeżył adres upstream po zmianie 
 Jeśli app nie wystartuje, nie przechodzi do Nginxa. Nie używa down, usuwania danych
 ani force-recreate. W prod po poprawnym starcie zatrzymuje samą skrzynkę Mailpit.
 Nie oznacza to wycofania ustawień innych niż jawnie nadpisane przez Compose.
+
+
+## Migracje przy starcie aplikacji
+
+Compose uruchamia `sh docker/start-app.sh`: najpierw `php bin/migrate.php`, następnie PHP-FPM. Nieudana migracja zatrzymuje start FPM. Żądania HTTP nie aktualizują już schematu; niegotowa baza zwraca 503. Operator uruchamiający aplikację poza Compose musi wcześniej wykonać `php bin/migrate.php` we własnym, prawidłowo skonfigurowanym środowisku.
+
+Migrator inicjalizuje ochronę automatycznie tylko dla pustej bazy. Istniejące dane bez znacznika ochrony wymagają dotychczasowej jawnej procedury z `docs/OCHRONA_DANYCH.md`. Zastosowanie zmiany na instalacji wymaga ponownego uruchomienia aplikacji przez operatora. Agent nie wykonał migracji rzeczywistej bazy ani restartu usług.

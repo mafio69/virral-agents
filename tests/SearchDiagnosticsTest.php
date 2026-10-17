@@ -93,9 +93,10 @@ final class SearchDiagnosticsTest extends TestCase
         $auth = $this->createMock(\App\Service\AuthService::class);
         $auth->method('validateToken')->with('fixture-session')->willReturn(1);
         $controller = new \App\Controller\ChatController(new \App\Mapper\Chat\CreateChatInputMapper(), new \App\Mapper\Chat\AddChatMessageInputMapper(),
-            $this->createMock(\App\Service\ChatService::class), $auth, $diagnostics);
+            $this->createMock(\App\Service\ChatService::class), $this->createMock(\App\Service\ModelCatalogService::class), $diagnostics);
         $container = new \DI\Container([
             \App\Controller\ChatController::class => $controller,
+            \App\Service\SessionAuthenticatorInterface::class => $auth,
             LoggerInterface::class => new \Psr\Log\NullLogger(), 'settings' => ['displayErrorDetails' => false],
         ]);
         $app = \Slim\Factory\AppFactory::create(container: $container);

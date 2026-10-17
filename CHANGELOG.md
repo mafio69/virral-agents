@@ -368,3 +368,20 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Zachowano istniejący szyfrowany magazyn wyników i pobranych tekstów per użytkownik/rozmowa, bez jawnego localStorage. Po reload należy otworzyć tę samą rozmowę z historii. Kolejne wyszukiwanie zachowuje wcześniejsze wybrane źródła; nie jest archiwum wszystkich niewybranych wyników.
 - Walidacja: PHP 166/166 (731 asercji), UI/skrypt 73/73, Composer strict/platform, składnia JS/PHP i diff poprawne. Ręcznie w przeglądarce na syntetycznym routerze: 4 wyniki → odznaczenie 1 → kontynuacja z 3 → zamknięcie modalu, długa odpowiedź i przewijanie góra/dół, reload i odtworzenie 3 pobranych treści, przywołanie z boku, Escape, drugie wyszukanie z 2 nowymi i 3 zachowanymi źródłami. Dowody: artifacts/research-modal-2026-10-18.png i artifacts/research-chat-layout-2026-10-18.png. Bez rzeczywistego WWW/AI i prywatnej historii. Serwer atrapowy wymagał ponownego uruchomienia podczas testu kolejnego wyszukania; po wznowieniu przepływ poprawny.
 - Wcześniejszy zgłoszony błąd odbioru odpowiedzi z rzeczywistego modelu pozostaje niezdiagnozowany. Nie przypisywać tej zmianie naprawy jego przyczyny. Cudza zmiana GIT-FLOW.md poza zakresem i commitem. Push wyłącznie develop po zielonej walidacji.
+
+
+## 2026-10-18 — audyt A1–A5 i kontrakt MCP, praca w toku
+
+- Gałąź docs/audyt-2026-10-17 uaktualniona zatwierdzonym rebase na develop; S1–S3 już zawarte. A1: wspólny resolver sesji i AuthMiddleware/SessionAuthenticatorInterface, jedna walidacja dla prywatnych tras. A2–A4: ModelCatalogInterface/Service, wymagane zależności ChatService, ModelSelector.
+- A5: bin/migrate.php, DatabaseInitializer i start-app.sh przed FPM; HTTP wyłącznie assertReady. Testy na SQLite w pamięci i atrapach procesu potwierdzają idempotencję, zachowanie istniejących jawnych danych i zatrzymanie startu po błędzie. Nie uruchamiano rzeczywistej migracji ani kontenerów.
+- K1: jawne empty/null/[] akceptowane, błędy dostawcy nadal odrzucane. K3: lista wersji w stałej i testy negocjacji; zgodność z przypiętą biblioteką drugiego repo pozostaje niezweryfikowana.
+- Wynik: PHP 173/173 (786 asercji), UI/skrypty 75/75; Composer strict/no-check-publish i platforma poprawne, składnia 48 PHP i skryptu startowego, diff-check poprawne. Bez WWW/API modeli i sekretów.
+- A6 w toku: konfiguracja php-cs-fixer.php i żądana zasada czytelności w AGENTS.md przygotowane; oczekiwanie na odpowiedź właściciela o dodaniu PHP CS Fixer jako zależności i pobraniu pakietów. Formatter nie został uruchomiony. Brak commitu/scalenia/push. Po A6 ponownie pełne wymagane kontrole; scalenie do develop dopiero na koniec, push wyłącznie develop i osobno zatwierdzony. P1 przez PR na GitHub po zielonych kontrolach, bez lokalnego merge do master.
+
+
+## 2026-10-18 — zamknięcie lokalnych poprawek audytu A1–A6
+
+- A6: za zgodą właściciela dodano friendsofphp/php-cs-fixer ^3.95 (lock 3.95.27), bez aktualizowania dotychczasowych pakietów. Konfiguracja php-cs-fixer.php obejmuje warstwy objęte audytem, bez sekretów, ustawień środowiska, zależności i cache. PSR-12 oraz wymagane klamry; sformatowano 19 plików. Dodano composer lint, format, test-ui i check-all; polecenia opisano w README.
+- Końcowe composer check-all: formatter 0/46 plików do poprawy, PHP 173/173 (786 asercji), UI/skrypty 75/75. Composer strict/no-check-publish, platforma i diff poprawne. Lokalnie PHP 8.5.4; sprawdzenie na PHP 8.4 pozostaje dla CI. Składnia PHP i shell poprawna w poprzedniej kontroli; formatowanie używa nierozszerzających składni reguł PSR-12.
+- A1–A6 i klient K1 gotowe lokalnie. K3 ma testy negocjacji obsługiwanych wersji, ale przypiętej biblioteki i wspólnego JSON drugiego repo nie zweryfikowano. A5 sprawdzono na fikcyjnych bazach i atrapach procesów; rzeczywisty start kontenera i migracja instalacji pozostają po stronie operatora.
+- Etap przeznaczony do commitu i końcowego lokalnego scalenia do develop po zielonych kontrolach. Gałąź audytu zachować. Bez push i operacji na master; P1 wymaga osobnego procesu PR na GitHub. Nie odczytywano plików środowiska ani sekretów.

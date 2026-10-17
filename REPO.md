@@ -112,3 +112,11 @@ Aktualizuj `REPO.md` w tym samym commicie, gdy zmienia się architektura, urucha
 ### Licencja i walidacja Composer
 
 Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validate --strict --no-check-publish`, zgodnie z GitHub Actions; walidacja bez --strict przepuszcza ostrzeżenia, które blokują CI.
+
+### Ochrona przed zgadywaniem haseł
+
+- `LoginAttemptLimiterInterface` jest wymaganą zależnością `AuthService`; implementacja używa `LoginAttemptRepositoryInterface` i wspólnej tabeli `login_attempts` w SQLite.
+- Limit 5 nieudanych prób w ruchomym oknie 900 s, osobno dla e-maila i IP. Rezerwacja w transakcji `BEGIN IMMEDIATE` poprzedza sprawdzenie hasła; udana próba zwalnia tylko własny wpis. Zablokowane próby nie przedłużają okna. HTTP 429 zawiera `Retry-After` i `Cache-Control: no-store`.
+- Identyfikatory to HMAC z klucza indeksowania danych użytkownika i osobnymi prefiksami; nie zapisujemy jawnych adresów ani haseł. E-mail limitera jest przycinany i sprowadzany do małych liter; nie zmienia to reguł wyszukiwania kont. IP jest normalizowany binarnie (w tym IPv6).
+- Kontroler przekazuje wyłącznie `REMOTE_ADDR`. Przy reverse proxy operator musi zapewnić prawidłowy peer po stronie serwera WWW; nagłówki klienta nie obchodzą limitu. Brak poprawnego IP trafia do wspólnego koszyka.
+- Przeterminowane wpisy są usuwane przy rezerwacji kolejnej próby; bez kolejnych logowań mogą pozostać w bazie. Rejestracja wymaga 10 znaków Unicode; starsze hasła nadal pozwalają się logować.

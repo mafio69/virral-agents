@@ -107,7 +107,7 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
     </div>
     <div class="field">
       <label for="reg-password">Hasło</label>
-      <input type="password" id="reg-password" name="password" autocomplete="new-password" placeholder="min. 6 znaków" minlength="6" required>
+      <input type="password" id="reg-password" name="password" autocomplete="new-password" placeholder="min. 10 znaków" minlength="10" required>
     </div>
     <button type="submit" class="btn-primary">Zarejestruj</button>
     <pre id="reg-result" class="mt-2 hidden"></pre>
@@ -258,6 +258,7 @@ async function login() {
     } else {
       show(el, r.status === 401 ? 'Nieprawidłowy email lub hasło.'
         : r.status === 422 ? 'Sprawdź email i hasło.'
+        : r.status === 429 ? 'Zbyt wiele prób logowania. Spróbuj ponownie za 15 minut.'
         : 'Logowanie jest niedostępne z powodu błędu serwera.', 'error');
     }
   } catch {

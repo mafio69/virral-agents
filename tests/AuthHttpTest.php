@@ -36,7 +36,9 @@ final class AuthHttpTest extends TestCase
         $this->mail = $this->createMock(MailService::class);
         $repository = new UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $logger = new NullLogger();
-        $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger);
+        $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger, new \App\Service\LoginAttemptLimiter(
+            new \App\Repository\LoginAttemptRepository($this->pdo), ProtectedDataFixture::cipher($this->pdo)
+        ));
         $container = new Container([
             LoggerInterface::class => $logger,
             'settings' => ['displayErrorDetails' => false],
@@ -47,10 +49,11 @@ final class AuthHttpTest extends TestCase
         (require __DIR__.'/../src/middleware.php')($this->app);
     }
 
-    private function request(string $method, string $path, ?array $body = null, array $cookies = [], string $scheme = 'http', string $bearer = ''): ResponseInterface
+    private function request(string $method, string $path, ?array $body = null, array $cookies = [], string $scheme = 'http', string $bearer = '', string $ip = '192.0.2.1', string $forwarded = ''): ResponseInterface
     {
-        $request = (new ServerRequestFactory())->createServerRequest($method, $scheme.'://fixture.example.invalid'.$path)
-            ->withCookieParams($cookies);
+        $request = (new ServerRequestFactory())->createServerRequest($method, $scheme.'://fixture.example.invalid'.$path, ['REMOTE_ADDR' => $ip])
+            ->withCookieParams($cookies)
+            ->withHeader('X-Forwarded-For', $forwarded);
         if ($bearer !== '') {
             $request = $request->withHeader('Authorization', 'Bearer '.$bearer);
         }
@@ -163,4 +166,67 @@ final class AuthHttpTest extends TestCase
         self::assertSame(422, $this->request('POST', '/api/auth/register', ['email' => 'fixture@example.invalid', 'password' => 'short'])->getStatusCode());
         self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn());
     }
+    public function testSixthFailedLoginReturns429AndDoesNotCreateSession(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        $bad = ['email' => $this->credentials()['email'], 'password' => 'incorrect-fixture'];
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            self::assertSame(401, $this->request('POST', '/api/auth/login', $bad)->getStatusCode());
+        }
+        $blocked = $this->request('POST', '/api/auth/login', $this->credentials());
+        self::assertSame(429, $blocked->getStatusCode());
+        self::assertGreaterThan(0, (int)$blocked->getHeaderLine('Retry-After'));
+        self::assertLessThanOrEqual(900, (int)$blocked->getHeaderLine('Retry-After'));
+        self::assertSame('no-store', $blocked->getHeaderLine('Cache-Control'));
+        self::assertSame('', $blocked->getHeaderLine('Set-Cookie'));
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM sessions')->fetchColumn());
+        self::assertStringNotContainsString($bad['email'], (string)$blocked->getBody());
+    }
+
+    public function testIpLimitCannotBeBypassedUsingDifferentEmailsOrForwardedHeaders(): void
+    {
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            self::assertSame(401, $this->request('POST', '/api/auth/login', [
+                'email' => "missing-$attempt@example.invalid", 'password' => 'incorrect-fixture',
+            ], forwarded: "192.0.2.$attempt")->getStatusCode());
+        }
+        self::assertSame(429, $this->request('POST', '/api/auth/login', [
+            'email' => 'another@example.invalid', 'password' => 'incorrect-fixture',
+        ], forwarded: '198.51.100.1')->getStatusCode());
+    }
+
+    public function testEmailLimitPersistsAcrossDifferentIps(): void
+    {
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            self::assertSame(401, $this->request('POST', '/api/auth/login', [
+                'email' => 'missing@example.invalid', 'password' => 'incorrect-fixture',
+            ], ip: "192.0.2.$attempt")->getStatusCode());
+        }
+        self::assertSame(429, $this->request('POST', '/api/auth/login', [
+            'email' => 'missing@example.invalid', 'password' => 'incorrect-fixture',
+        ], ip: '198.51.100.1')->getStatusCode());
+    }
+
+    public function testRegistrationRequiresTenCharactersIncludingUnicode(): void
+    {
+        foreach (['123456789', str_repeat('ą', 9)] as $password) {
+            self::assertSame(422, $this->request('POST', '/api/auth/register', [
+                'email' => 'short@example.invalid', 'password' => $password,
+            ])->getStatusCode());
+        }
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn());
+        self::assertSame(201, $this->request('POST', '/api/auth/register', [
+            'email' => 'long@example.invalid', 'password' => str_repeat('ą', 10),
+        ])->getStatusCode());
+    }
+
+    public function testSuccessfulLoginDoesNotConsumeFailureBudget(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        for ($i = 0; $i < 7; ++$i) {
+            self::assertSame(200, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+        }
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM login_attempts')->fetchColumn());
+    }
+
 }

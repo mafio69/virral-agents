@@ -20,6 +20,7 @@ final readonly class AuthService
         private readonly MailService $mailService,
         private readonly string $appUrl,
         private readonly LoggerInterface $logger,
+        private LoginAttemptLimiterInterface $loginLimiter,
     ) {
     }
 
@@ -52,8 +53,9 @@ final readonly class AuthService
         return $confirmationSent;
     }
 
-    public function login(LoginInput $input): LoginResult
+    public function login(LoginInput $input, string $clientIp = 'unknown'): LoginResult
     {
+        $attemptId = $this->loginLimiter->reserve($input->email, $clientIp);
         $user = $this->userRepository->findByEmail($input->email);
 
         if (!$user || !password_verify($input->password, $user['password_hash'])) {
@@ -67,6 +69,7 @@ final readonly class AuthService
 
         $this->userRepository->createSession((int)$user['id'], $token, $expiresAt);
 
+        $this->loginLimiter->release($attemptId);
         return new LoginResult((int)$user['id'], $token, $expiresAt);
     }
 

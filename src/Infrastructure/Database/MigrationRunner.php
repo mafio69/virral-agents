@@ -28,6 +28,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email_key TEXT NOT NULL,
+    ip_key TEXT NOT NULL,
+    attempted_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS login_attempts_email ON login_attempts (email_key, attempted_at);
+CREATE INDEX IF NOT EXISTS login_attempts_ip ON login_attempts (ip_key, attempted_at);
+CREATE INDEX IF NOT EXISTS login_attempts_expiry ON login_attempts (attempted_at);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

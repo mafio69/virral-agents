@@ -30,6 +30,11 @@ return function (App $app) {
             $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
 
             return $response->withStatus(422)->withHeader('Content-Type', 'application/json');
+        } catch (\App\Exception\LoginRateLimitException $e) {
+            $response = \App\Infrastructure\Http\JsonResponder::respond(
+                new Response(), ['error' => $e->getMessage()], 429
+            );
+            return $response->withHeader('Retry-After', (string)$e->retryAfter);
         } catch (UnauthorizedException $e) {
             $logger->warning($e->getMessage());
 

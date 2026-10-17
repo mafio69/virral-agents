@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-10-17 — audyt S1: limit logowania
+
+- Gałąź `codex/audit-s1-login-limits`, utworzona z aktualnego `origin/develop`.
+- Limit 5 nieudanych prób / 15 minut osobno na IP i e-mail; szósta próba zwraca 429, Retry-After i no-store. Udane logowanie usuwa tylko własną rezerwację, nie kasuje wcześniejszych niepowodzeń.
+- Wspólna tabela SQLite i atomowa rezerwacja przed weryfikacją hasła chronią przed równoległymi próbami. Przeterminowane wpisy są usuwane przy kolejnym logowaniu. E-mail i IP zapisane wyłącznie jako HMAC z oddzielnymi prefiksami, bez haseł, sesji i jawnych identyfikatorów.
+- IP wyłącznie z REMOTE_ADDR; brak zaufania do X-Forwarded-For. Za reverse proxy limit dotyczy widocznego adresu peer, dopóki operator nie skonfiguruje zaufanego przekazywania IP. Brak IP używa wspólnego zachowawczego limitu.
+- Rejestracja wymaga minimum 10 znaków, także Unicode; formularz pokazuje wymaganie i osobny komunikat blokady logowania. Hasła istniejących kont nie są zmieniane.
+- Walidacja: PHP 153/153 (656 asercji), UI 55/55; Composer strict/no-check-publish, wymagania platformy i diff poprawne. Testy tylko na danych fikcyjnych i SQLite w pamięci, bez rzeczywistej bazy, poczty i sekretów. Nową tabelę utworzy istniejący mechanizm migracji przy uruchomieniu; agent nie wykonał migracji na instalacji.
+- Bez push i scalenia; S2 (obowiązkowe potwierdzanie e-maila) jest kolejnym osobnym zadaniem. Cudze nieśledzone pliki i katalog chroniony pozostawiono nietknięte.
+
+
 ## 2026-10-17 — podsumowanie zakończonego etapu źródeł
 
 - `2e48daf`: wybór stron checkboxami, trwały koszyk i opracowanie wybranych treści z uprawnieniami ASK.

@@ -135,3 +135,15 @@ for (const [action, emailId, passwordId] of [['login', 'login-email', 'login-pas
         assert.equal(requests[0].url, `/api/auth/${action}`);
     });
 }
+
+
+test('rate-limited login shows a retry message without saving a session', async () => {
+    const { context, elements, buttons, requests } = await fixture({
+        response: { ok: false, status: 429, data: { error: 'Rate limited' } },
+    });
+    await vm.runInContext('login()', context);
+    assert.match(elements.get('login-result').textContent, /Zbyt wiele prób logowania/);
+    assert.equal(elements.get('dashboard-view').classList.contains('hidden'), true);
+    assert.equal(buttons.get('login').disabled, false);
+    assert.equal(requests.length, 1);
+});

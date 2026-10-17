@@ -58,7 +58,10 @@ class AuthServiceTest extends TestCase
             $userRepository,
             $mailService,
             'http://localhost',
-            $logger
+            $logger,
+            new \App\Service\LoginAttemptLimiter(
+                new \App\Repository\LoginAttemptRepository($this->pdo), ProtectedDataFixture::cipher($this->pdo)
+            )
         );
     }
 

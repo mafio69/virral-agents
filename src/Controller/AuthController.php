@@ -41,7 +41,8 @@ final class AuthController
         $data = (array)$request->getParsedBody();
         $input = $this->loginInputMapper->map($data);
 
-        $result = $this->authService->login($input);
+        $clientIp = $request->getServerParams()['REMOTE_ADDR'] ?? '';
+        $result = $this->authService->login($input, is_string($clientIp) ? $clientIp : '');
 
         return JsonResponder::respond($response, [
             'token' => $result->token,

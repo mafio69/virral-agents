@@ -1,191 +1,44 @@
-# Git Flow — Rules for AI Agents (universal, copy-paste across repos)
+# GIT-FLOW.md — zasady pracy Git
 
-This document describes how an AI agent should work in this repository, from task
-assignment through deploy — the order of tests, commits, and pushes, when the agent
-should stay quiet versus ask, how to handle an encrypted `.env`, and what it must never
-do — so that anyone joining the project (a human or another model) understands the
-rules without needing extra explanation from the author.
+## Złota zasada
 
-This file is written so it can be copied 1:1 into another repo, only swapping branch
-names/commands for local conventions if they differ from `develop`/`master`.
+Przed każdym commitem pełny zestaw testów wymagany przez repozytorium musi być zielony. Czerwone testy, linting, typecheck lub skaner bezpieczeństwa blokują commit.
 
-## ZŁOTA ZASADA / GOLDEN RULE
+## Start zadania
 
-> **PL — Przed każdym commitem: wszystkie testy zielone. Bez wyjątków.**
-> Nie „większość". Nie „te, które dotyczą mojej zmiany". Wszystkie: typecheck, linter,
-> testy jednostkowe, testy frontendu. Czerwone testy = nie ma commita.
->
-> **EN — Before every commit: the full test suite is green. No exceptions.**
-> Not "most of them". Not "the ones my change touches". All of them: typecheck, linter,
-> unit tests, frontend tests. Red tests mean no commit.
+1. Przeczytaj: `README.md`, `STATUS.md`, `GIT-FLOW.md`, `AGENTS.md`, `HANDOFF.md`.
+2. Zwykłe zadanie wykonuj na nowym branchu utworzonym z aktualnego `origin/develop`, potem scalasz i `push` tylko z `branch-a develop`!
+3. Praca bezpośrednio na `develop` jest dozwolona wyłącznie po wyraźnej zgodzie Mariusza albo dla zadania oznaczonego przez niego jako `fire`.
+4. Nie pracuj bezpośrednio na `master`.
 
-Zasada obowiązuje we **wszystkich repozytoriach**, niezależnie od stacku. Komenda zależy od
-projektu (`npm run check-all`, `composer test-all`, `make test`) — zasada nie zależy od niczego.
+## W trakcie zadania
 
-**Dlaczego złota:** dwie godziny sprzątania repozytorium zamiast kodowania — konflikty,
-zmiany wiszące niezacommitowane przez kilka dni, fałszywy alarm skanera sekretów blokujący
-merge. Każda z tych rzeczy rośnie tym bardziej, im dłużej praca nie jest domknięta commitem.
+1. Wykonuj tylko zakres zlecony przez Mariusza.
+2. Nie dodawaj zależności, nie aktualizuj pakietów i nie refaktoryzuj pobocznych elementów bez zgody.
+3. Nie odczytuj ani nie modyfikuj sekretów oraz nie analizuj dotenvx i skryptów środowiska — obowiązuje `AGENTS.md`.
+4. Testy i kontrole jakości uruchamiaj poleceniami opisanymi w `README.md` i `REPO.md`, zgodnie z zasadami `AGENTS.md`.
 
----## 0. Operating Rules — Before You Start Coding
+## Commit
 
-These rules govern the agent's way of working itself, independent of the git flow
-described below.
+1. Przed commitem uruchom wymagane testy.
+2. Nie commituj przy błędach.
+3. Commit nie wymaga wyraźnej zgody Mariusza, o ile nie powie inaczej.
+4. Nie zmieniaj `git config user.name` ani `git config user.email`.
+5. Nie przywracaj plików bezpieczeństwa przez `git restore`, `git checkout --`, `git reset --hard` ani podobne mechanizmy.
+6. Podpisuj się pod commit wzór `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
+7. Po commit z końcem zadania robisz scalanie lokalnego branch do develop. Po udanym push usuwasz branch lokalny
 
-- **Task work order:** keep coding until the task is complete. Once it's done, run the
-  full test suite — quality, security, unit tests, and frontend tests. Only once all
-  tests pass do you move to the commit step (commit identity rules — see section 1,
-  branch rules — see section 2).
-- **Push waits for the human by default.** After committing, the agent does not run
-  `push` unless the human explicitly says otherwise in the same conversation. The human
-  performs the push, unless you're given explicit approval to do it yourself.
-- **Do not report progress continuously.** Don't narrate what you're doing step by step
-  or summarize work status if nobody asked — that wastes tokens. Information about the
-  deploy and about any errors is provided by the human, not the agent — the agent does
-  not look it up or monitor it on its own.
-- **Save tokens.** Talk less, code more — the priority is getting the task done, not
-  commenting on it. Don't produce long explanations or discuss GitHub mechanics itself
-  (e.g. explaining features not needed to complete the task) unless asked.
-- **Ask when you don't know.** If information needed to safely or correctly complete a
-  step is missing, ask directly instead of guessing or making silent assumptions.
-- **Never look for workarounds to reach data the human doesn't want you to access** —
-  in particular `.env` and other files holding secrets/sensitive data. Attempts to work
-  around this ban are treated as a breach of trust and can end collaboration with that
-  model.
+## Push i master
 
-## 1. Commit Identity — the AI Signs as Itself, Not as the Repo Owner
+1. `git push` wymaga osobnej, wyraźnej zgody Mariusza w bieżącej rozmowie.
+2. PUSH tylko develop żadnych innych branchy nie robimy push
+3 `master` przyjmuje zmiany wyłącznie przez PR z zielonymi wymaganymi kontrolami i tylko na github się wykonuje.
+4  Deploy wymaga osobnej zgody Mariusza.
 
-Every commit made by an AI agent must use its **own** git identity, not inherit the
-human's identity from the repo's local config.
+## Dokumentacja po zadaniu
 
-```bash
-git commit --author="<Your name/model> <address>" -m "..."
-# e.g.
-git commit --author="Claude Sonnet 5 <noreply@anthropic.com>" -m "..."
-```
+Jeżeli istnieją i zmiana tego wymaga, aktualizuj kolejno:
 
-- Without `--author`, `git commit` defaults to the local `user.name`/`user.email` from
-  the repo config — so `git blame` would show the AI's changes as written by the human.
-  That's unfair to them and misleads anyone who later reads the history.
-- Additionally, leave a trailer at the end of the commit message body:
-  ```
-  Co-Authored-By: <Your identity, e.g. Claude Sonnet 5 <noreply@anthropic.com>>
-  ```
-  GitHub displays this as a second co-author with a separate avatar on the
-  commit/PR page. The trailer does **not replace** `--author` — use both together.
-- **NEVER change `git config user.name`/`user.email`** (globally or per-repo) to
-  achieve this. `--author` is a one-time override on a single command, not a
-  permanent config change — changing the config would affect ALL future commits in
-  this repo, including ones made manually by the human.
-- When a commit introduces **a policy/rule agreed on jointly with the human** (not
-  just code the AI designed on its own) — e.g. a commit changing this very file —
-  add an extra trailer with their identity, alongside your own:
-  ```
-  Co-Authored-By: Mariusz <mf1969@gmail.com>
-  Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-  ```
-  This reflects that the rule's content came from them (dictated in conversation),
-  and the AI only wrote it down and implemented it in the files.
-
-## 2. Git Flow — Mandatory for Every Task
-
-1. **New branch, locally, from `develop`** (never from `master`, never from an old
-   branch belonging to another, already-closed task).
-2. Work happens on that branch.
-3. **Merge the branch into `develop` — locally** (`git merge`, not via a GitHub PR —
-   `develop` doesn't require a PR, only `master` does, see section 4).
-4. `git push origin develop` — **only once the human allows it** (see section 0: push
-   waits for the human by default, unless they explicitly say otherwise).
-5. CI (GitHub Actions or equivalent) runs tests on `develop`.
-6. **If green → open a PR `develop` → `master`.** `master` only accepts code
-   **through a PR** (branch protection/ruleset enforces this — no direct pushes, not
-   even fast-forward). Merge the PR only after the required status checks pass ON
-   THAT PR (passing on `develop` isn't enough — the PR triggers them again from
-   scratch).
-7. **If the PR to master is green → deploy** from `master` (manual trigger or
-   automatic after a green merge, depending on the repo). The agent does not track
-   the deploy's progress or look for information about its errors — the human
-   provides that information (see section 0).
-8. **After a successful deploy, the task branch is deleted** (locally and on
-   `origin`, if it was pushed).
-
-### Overriding Principle
-
-**Working directly on `develop` is not allowed.** Always a new branch, always from
-the current `develop` (`git fetch`, then branch from `origin/develop`, not from an
-old local copy).
-
-### The Only Exception
-
-A task flagged by the human as urgent/priority (in DevBrain: `fire` priority on the
-TODO board) — in that case it's fine to work directly on `develop`, without a
-separate branch, to avoid losing time on ceremony for a genuinely urgent matter.
-
-- **Only the human sets this flag**, never the AI on its own.
-- An AI that sees a task without this flag does not set it itself to bypass the
-  "always branch from develop" rule — that would defeat the entire purpose of the
-  rule.
-- In a repo that has no concept of "task priority" (e.g. no TODO system), this
-  exception can be replaced by any other explicit, unambiguous signal from the human
-  in the same conversation ("work directly on develop, I know what I'm doing") — but
-  the default behavior without such a signal is always to branch.
-
-## 3. `master` Branch Protection — What Must Be Configured in the Repo
-
-For step 6 above to actually mean something (rather than just be a matter of good
-faith), the `master` branch must have the following configured in the repo settings
-(GitHub: Settings → Rules → Rulesets, or classic Branch protection):
-
-- ban on direct push/force-push/branch deletion,
-- PR required before merge,
-- required status checks (tests) — **caution**: don't add jobs with `paths` filters
-  to the required checks if they don't always trigger (e.g. a workflow that only
-  fires on Docker file changes) — a required status check that never reports a
-  status blocks the merge FOREVER. The same applies to requirements like "Code
-  Scanning" (CodeQL) if the actual scan isn't enabled in the repo — the PR hangs
-  indefinitely waiting for a result that will never come.
-- if the rule targets the repo's "default branch" (e.g. `~DEFAULT_BRANCH` on
-  GitHub) instead of an explicit name (`refs/heads/master`) — **check which branch is
-  actually the default** (`gh api repos/<owner>/<repo> -q .default_branch`). Changing
-  the default branch after the fact silently shifts the rule's target to a different
-  branch, which looks like the rule stopped working, when really it started
-  protecting something else.
-
-## 4. Encrypted `.env` (dotenvx) — Rules for Agent Work
-
-In this repo, `.env` is encrypted with `dotenvx`: the `.env` file only holds the
-public key and encrypted values, so it's safe to commit. Decryption happens on the
-fly, at process startup, using a private key that `dotenvx` looks for either in a
-`.env.keys` file or in the `DOTENV_PRIVATE_KEY` environment variable (or its
-per-environment variant, e.g. `DOTENV_PRIVATE_KEY_PRODUCTION`).
-
-**The private key lives outside the repo, in a location known only to the human.**
-This is a deliberate part of the security model — the fewer parties (including AI)
-that know the exact path, the smaller the attack surface. In practice this means:
-
-- The agent **does not ask where the key file is located or what its path is**, and
-  does not write that path into any repo file (including this document), even if it
-  happens to learn it from some command's output.
-- The agent **never reads, copies, or prints in logs or in its response** the
-  contents of the private key file or the key itself.
-- The agent **never runs decryption on its own initiative** (e.g. `dotenvx decrypt`,
-  `dotenvx get`) in order to peek at values — this falls under the ban in section 0
-  ("never look for workarounds to reach data the human doesn't want you to access").
-- If a task requires running the app/tests with a decrypted environment, the agent
-  **runs the process through `dotenvx run`** (e.g.
-  `dotenvx run --env-keys-file "$keyfile" -- <command>`), letting `dotenvx` itself
-  find the key from wherever the human has already configured it (environment
-  variable, default `.env.keys` location, or another mechanism set up locally) —
-  **the agent does not supply its own explicit key path in the command**, unless the
-  human provides one in that session.
-- If the process fails to find the key for some reason (decryption error, missing
-  variable), the agent **asks the human** how to run the process with a decrypted
-  environment — it does not try to guess the path or search the filesystem for the
-  key file.
-- **Key rotation** (new key pair, re-encrypting `.env`) happens only on the human's
-  explicit instruction and only through official `dotenvx` commands (`dotenvx
-  encrypt`, `dotenvx rotate`, etc.) — the agent does not manually modify encrypted
-  values or generate its own keys.
-- The private key file **never gets committed** — if the agent notices such a file
-  (e.g. `.env.keys` or its equivalent) is not ignored by git (showing up in
-  `git status` as untracked/to-be-added), it stops and flags this to the human
-  instead of adding it to the commit or silently fixing `.gitignore` without asking.
+1. `HANDOFF.md` — krótka pałeczka dla następnej sesji.
+2. `CHANGELOG.md` — trwała historia, append-only.
+3. `STATUS.md` — aktualny stan i następny priorytet.

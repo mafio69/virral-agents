@@ -86,7 +86,7 @@ class AuthServiceTest extends TestCase
         $this->authService->register($input);
 
         $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('Ten adres email ma już konto. Zaloguj się.');
+        $this->expectExceptionMessage('Ten adres email ma już konto. Potwierdź email, a następnie zaloguj się.');
         
         $this->authService->register($input);
     }
@@ -96,6 +96,8 @@ class AuthServiceTest extends TestCase
         // First register a user
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
+
+        $this->authService->verifyEmail($this->verificationToken);
 
         // Now login
         $loginInput = new LoginInput('test@example.com', 'password123', false);
@@ -137,6 +139,8 @@ class AuthServiceTest extends TestCase
         // Register and login to get a token
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
+
+        $this->authService->verifyEmail($this->verificationToken);
 
         $loginInput = new LoginInput('test@example.com', 'password123', false);
         $result = $this->authService->login($loginInput);

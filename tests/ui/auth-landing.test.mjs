@@ -68,7 +68,7 @@ test('blocked storage does not prevent registration or misreport mail failure', 
     await vm.runInContext('register()', context);
     assert.equal(requests.length, 1);
     assert.equal(JSON.parse(requests[0].options.body).email, 'fixture@example.invalid');
-    assert.match(elements.get('reg-result').textContent, /Email potwierdzający nie został wysłany/);
+    assert.match(elements.get('reg-result').textContent, /email potwierdzający nie został wysłany/);
     assert.equal(buttons.get('register').disabled, false);
 });
 
@@ -146,4 +146,25 @@ test('rate-limited login shows a retry message without saving a session', async 
     assert.equal(elements.get('dashboard-view').classList.contains('hidden'), true);
     assert.equal(buttons.get('login').disabled, false);
     assert.equal(requests.length, 1);
+});
+
+
+test('unconfirmed email keeps login form open and shows confirmation guidance', async () => {
+    const { context, elements, buttons, requests } = await fixture({
+        response: { ok: false, status: 403, data: { code: 'email_confirmation_required' } },
+    });
+    vm.runInContext("showForm('login')", context);
+    await vm.runInContext('login()', context);
+    assert.match(elements.get('login-result').textContent, /Potwierdź adres email/);
+    assert.equal(elements.get('login-form').classList.contains('hidden'), false);
+    assert.equal(elements.get('dashboard-view').classList.contains('hidden'), true);
+    assert.equal(buttons.get('login').disabled, false);
+    assert.equal(requests.length, 1);
+});
+
+test('mail delivery failure explains that confirmation still blocks login', async () => {
+    const { context, elements } = await fixture();
+    await vm.runInContext('register()', context);
+    assert.match(elements.get('reg-result').textContent, /Logowanie wymaga potwierdzenia adresu/);
+    assert.doesNotMatch(elements.get('reg-result').textContent, /Możesz przejść do logowania/);
 });

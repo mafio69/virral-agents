@@ -1,5 +1,15 @@
 # 2026-10-17 — koszyk źródeł
 
+## 2026-10-17 — audyt S2: obowiązkowe potwierdzenie e-maila
+
+- Gałąź `codex/audit-s2-email-confirmation` z lokalnego develop po scaleniu przetestowanego S1 (`d2b7c63`); bez push.
+- AuthService po sprawdzeniu hasła wymaga email_confirmed_at. Niepotwierdzone konto otrzymuje 403 / email_confirmation_required / no-store bez nowej sesji, ciasteczka i identyfikatorów w odpowiedzi. Błędne hasło pozostaje 401, a limity S1 obowiązują również przy odmowie potwierdzenia.
+- Walidacja sesji także sprawdza potwierdzenie, więc wcześniejsze sesje nie obchodzą wymogu; wylogowanie pozostaje dostępne. Nie zmieniano potwierdzeń ani sesji w rzeczywistej bazie.
+- Istniejący link potwierdzający odblokowuje konto; ponowne użycie i niepoprawny link zwracają 422. Formularz wyjaśnia 403 oraz brak możliwości logowania po niedostarczeniu poczty. Nie dodano ponownej wysyłki linku ani automatycznego zatwierdzania starszych kont.
+- Pełne testy: PHP 156/156 (694 asercje), UI 57/57; Composer strict/no-check-publish, wymagania platformy i diff poprawne. Testy na fikcyjnych kontach, poczcie atrapowej i SQLite w pamięci. Rzeczywiste doręczenie poczty niezweryfikowane; bez sekretów, migracji i operacji na rzeczywistych kontach.
+- Kolejny punkt audytu: S3 (ograniczenie /test-api do development). S2 pozostaje lokalnym commitem na osobnej gałęzi; bez scalenia do develop i bez push.
+
+
 ## 2026-10-17 — audyt S1: limit logowania
 
 - Gałąź `codex/audit-s1-login-limits`, utworzona z aktualnego `origin/develop`.

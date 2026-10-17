@@ -120,3 +120,10 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - Identyfikatory to HMAC z klucza indeksowania danych użytkownika i osobnymi prefiksami; nie zapisujemy jawnych adresów ani haseł. E-mail limitera jest przycinany i sprowadzany do małych liter; nie zmienia to reguł wyszukiwania kont. IP jest normalizowany binarnie (w tym IPv6).
 - Kontroler przekazuje wyłącznie `REMOTE_ADDR`. Przy reverse proxy operator musi zapewnić prawidłowy peer po stronie serwera WWW; nagłówki klienta nie obchodzą limitu. Brak poprawnego IP trafia do wspólnego koszyka.
 - Przeterminowane wpisy są usuwane przy rezerwacji kolejnej próby; bez kolejnych logowań mogą pozostać w bazie. Rejestracja wymaga 10 znaków Unicode; starsze hasła nadal pozwalają się logować.
+
+### Obowiązkowe potwierdzanie e-maila
+
+- `AuthService` sprawdza `email_confirmed_at` po poprawnej weryfikacji hasła i przy walidacji istniejącej sesji. Wymóg dotyczy wszystkich kont, także wcześniej zarejestrowanych; nie ma automatycznej migracji potwierdzeń.
+- `EmailConfirmationRequiredException` jest mapowany na HTTP 403, kod `email_confirmation_required` i no-store. Nie powstaje nowa sesja ani cookie; błędne dane logowania nadal zwracają 401. Wylogowanie działa również dla starej sesji niepotwierdzonego konta.
+- Istniejący endpoint `/api/auth/verify-email` zatwierdza konto i unieważnia link przez usunięcie jego hasha. Błędny albo wykorzystany link zwraca 422.
+- Awaria SMTP nie usuwa utworzonego konta i nie omija wymogu potwierdzenia. Nie ma endpointu ponownej wysyłki; obsługa niedostarczonego lub utraconego linku wymaga osobnego zadania. Testy używają wyłącznie poczty atrapowej.

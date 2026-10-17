@@ -25,6 +25,7 @@ final class AuthHttpTest extends TestCase
     private App $app;
     private \PDO $pdo;
     private MailService $mail;
+    private string $verificationToken;
 
     protected function setUp(): void
     {
@@ -34,6 +35,10 @@ final class AuthHttpTest extends TestCase
         ]);
         (new MigrationRunner($this->pdo))->run();
         $this->mail = $this->createMock(MailService::class);
+        $this->mail->method('send')->willReturnCallback(function (string $to, string $subject, string $body): void {
+            preg_match('/token=([a-f0-9]{64})/', $body, $match);
+            $this->verificationToken = $match[1];
+        });
         $repository = new UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $logger = new NullLogger();
         $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger, new \App\Service\LoginAttemptLimiter(
@@ -74,12 +79,27 @@ final class AuthHttpTest extends TestCase
         return ['email' => 'fixture@example.invalid', 'password' => 'fixture-password'];
     }
 
+    private function confirmEmail(): void
+    {
+        self::assertSame(200, $this->request(
+            'GET', '/api/auth/verify-email?token='.$this->verificationToken
+        )->getStatusCode());
+    }
+
+    private function registerConfirmed(): void
+    {
+        self::assertSame(201, $this->request('POST', '/api/auth/register', $this->credentials())->getStatusCode());
+        $this->confirmEmail();
+    }
+
     public function testRegisterThenLoginAndAuthenticateUsingResponseCookie(): void
     {
         $this->mail->expects($this->once())->method('send');
         $registered = $this->request('POST', '/api/auth/register', $this->credentials());
         self::assertSame(201, $registered->getStatusCode());
         self::assertTrue($this->data($registered)['confirmation_sent']);
+        self::assertSame(403, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+        $this->confirmEmail();
         $login = $this->request('POST', '/api/auth/login', $this->credentials());
         self::assertSame(200, $login->getStatusCode());
         $token = $this->data($login)['token'];
@@ -92,14 +112,14 @@ final class AuthHttpTest extends TestCase
 
     public function testHttpsLoginSetsSecureCookie(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         $response = $this->request('POST', '/api/auth/login', $this->credentials(), scheme: 'https');
         self::assertStringContainsString('SameSite=Strict; Secure', $response->getHeaderLine('Set-Cookie'));
     }
 
     public function testLogoutRevokesOnlyPresentedSessionAndClearsHttpOnlyCookie(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         $first = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
         $second = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
         $logout = $this->request('POST', '/api/auth/logout', cookies: ['token' => $first], scheme: 'https');
@@ -113,18 +133,18 @@ final class AuthHttpTest extends TestCase
         self::assertSame(204, $this->request('POST', '/api/auth/logout')->getStatusCode());
     }
 
-    public function testMailFailureKeepsAccountAvailableForLogin(): void
+    public function testMailFailureKeepsAccountButDoesNotAllowLogin(): void
     {
         $this->mail->expects($this->once())->method('send')->willThrowException(new \RuntimeException('Fixture mail unavailable'));
         $response = $this->request('POST', '/api/auth/register', $this->credentials());
         self::assertSame(201, $response->getStatusCode());
         self::assertFalse($this->data($response)['confirmation_sent']);
-        self::assertSame(200, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+        self::assertSame(403, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
     }
 
     public function testLogoutClearsCookieSessionEvenWhenBrowserHasStaleBearer(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         $token = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
         self::assertSame(204, $this->request('POST', '/api/auth/logout', cookies: ['token' => $token], bearer: 'stale-fixture')->getStatusCode());
         self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $token])->getStatusCode());
@@ -135,6 +155,7 @@ final class AuthHttpTest extends TestCase
         $credentials = $this->credentials();
         $credentials['email'] = '  '.$credentials['email'].'  ';
         self::assertSame(201, $this->request('POST', '/api/auth/register', $credentials)->getStatusCode());
+        $this->confirmEmail();
         self::assertSame(200, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
         self::assertSame(422, $this->request('POST', '/api/auth/register', $this->credentials())->getStatusCode());
         self::assertSame(1, (int)$this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn());
@@ -142,7 +163,7 @@ final class AuthHttpTest extends TestCase
 
     public function testInvalidCredentialsAndExpiredSessionAreRejected(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         self::assertSame(401, $this->request('POST', '/api/auth/login', [
             'email' => 'fixture@example.invalid', 'password' => 'incorrect-fixture-password',
         ])->getStatusCode());
@@ -153,7 +174,7 @@ final class AuthHttpTest extends TestCase
 
     public function testRememberMeCreatesThirtyDaySession(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         $response = $this->request('POST', '/api/auth/login', $this->credentials() + ['remember_me' => true]);
         self::assertSame(200, $response->getStatusCode());
         $expiry = $this->pdo->query('SELECT expires_at FROM sessions')->fetchColumn();
@@ -168,7 +189,7 @@ final class AuthHttpTest extends TestCase
     }
     public function testSixthFailedLoginReturns429AndDoesNotCreateSession(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         $bad = ['email' => $this->credentials()['email'], 'password' => 'incorrect-fixture'];
         for ($attempt = 0; $attempt < 5; ++$attempt) {
             self::assertSame(401, $this->request('POST', '/api/auth/login', $bad)->getStatusCode());
@@ -222,11 +243,56 @@ final class AuthHttpTest extends TestCase
 
     public function testSuccessfulLoginDoesNotConsumeFailureBudget(): void
     {
-        $this->request('POST', '/api/auth/register', $this->credentials());
+        $this->registerConfirmed();
         for ($i = 0; $i < 7; ++$i) {
             self::assertSame(200, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
         }
         self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM login_attempts')->fetchColumn());
+    }
+
+    public function testUnconfirmedAccountGets403WithoutSessionAndWrongPasswordStays401(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        $wrong = $this->request('POST', '/api/auth/login', [
+            'email' => $this->credentials()['email'], 'password' => 'incorrect-fixture',
+        ]);
+        self::assertSame(401, $wrong->getStatusCode());
+        self::assertArrayNotHasKey('code', $this->data($wrong));
+        $denied = $this->request('POST', '/api/auth/login', $this->credentials());
+        self::assertSame(403, $denied->getStatusCode());
+        self::assertSame('email_confirmation_required', $this->data($denied)['code']);
+        self::assertSame('no-store', $denied->getHeaderLine('Cache-Control'));
+        self::assertSame('', $denied->getHeaderLine('Set-Cookie'));
+        self::assertArrayNotHasKey('token', $this->data($denied));
+        self::assertStringNotContainsString($this->credentials()['email'], (string)$denied->getBody());
+        self::assertStringNotContainsString($this->verificationToken, (string)$denied->getBody());
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM sessions')->fetchColumn());
+    }
+
+    public function testConfirmationLinkIsSingleUseAndInvalidLinkDoesNotUnlockLogin(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        self::assertSame(422, $this->request('GET', '/api/auth/verify-email?token=invalid-fixture')->getStatusCode());
+        self::assertSame(403, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+        $this->confirmEmail();
+        self::assertSame(422, $this->request('GET', '/api/auth/verify-email?token='.$this->verificationToken)->getStatusCode());
+        self::assertSame(200, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+    }
+
+    public function testLegacySessionCannotBypassEmailConfirmationAndCanBeLoggedOut(): void
+    {
+        $this->request('POST', '/api/auth/register', $this->credentials());
+        $repository = new UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
+        $user = $repository->findByEmail($this->credentials()['email']);
+        $session = 'synthetic-legacy-session';
+        $repository->createSession((int)$user['id'], $session, date('Y-m-d H:i:s', time() + 3600));
+        foreach ([['token' => $session], []] as $cookies) {
+            $denied = $this->request('GET', '/api/auth/me', cookies: $cookies, bearer: $cookies === [] ? $session : '');
+            self::assertSame(403, $denied->getStatusCode());
+            self::assertSame('email_confirmation_required', $this->data($denied)['code']);
+        }
+        self::assertSame(204, $this->request('POST', '/api/auth/logout', cookies: ['token' => $session])->getStatusCode());
+        self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $session])->getStatusCode());
     }
 
 }

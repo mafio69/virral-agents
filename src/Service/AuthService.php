@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Dto\Auth\LoginInput;
 use App\Dto\Auth\LoginResult;
 use App\Dto\Auth\RegisterInput;
+use App\Exception\EmailConfirmationRequiredException;
 use App\Exception\UnauthorizedException;
 use App\Exception\ValidationException;
 use App\Infrastructure\Mail\MailService;
@@ -29,7 +30,7 @@ final readonly class AuthService
         $existingUser = $this->userRepository->findByEmail($input->email);
         if ($existingUser) {
             $this->logger->warning('Register failed: email taken');
-            throw new ValidationException('Ten adres email ma już konto. Zaloguj się.');
+            throw new ValidationException('Ten adres email ma już konto. Potwierdź email, a następnie zaloguj się.');
         }
 
         $passwordHash = password_hash($input->password, PASSWORD_DEFAULT);
@@ -63,6 +64,8 @@ final readonly class AuthService
             throw new UnauthorizedException('Invalid credentials');
         }
 
+        $this->requireConfirmedEmail($user);
+
         $token = bin2hex(random_bytes(32));
         $hours = $input->rememberMe ? 720 : 24;
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$hours hours"));
@@ -80,7 +83,13 @@ final readonly class AuthService
             throw new UnauthorizedException('Invalid or expired token');
         }
 
-        return (int)$session['user_id'];
+        $user = $this->userRepository->findById((int)$session['user_id']);
+        if (!$user) {
+            throw new UnauthorizedException('Invalid or expired token');
+        }
+        $this->requireConfirmedEmail($user);
+
+        return (int)$user['id'];
     }
 
     public function logout(string $token): void
@@ -95,5 +104,12 @@ final readonly class AuthService
             throw new ValidationException('Invalid verification token');
         }
         $this->userRepository->verifyEmail((int)$user['id']);
+    }
+
+    private function requireConfirmedEmail(array $user): void
+    {
+        if (empty($user['email_confirmed_at'])) {
+            throw new EmailConfirmationRequiredException();
+        }
     }
 }

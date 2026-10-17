@@ -224,7 +224,7 @@ async function register() {
       document.getElementById('reg-password').value = '';
       document.getElementById('login-email').value = email;
       show(el, r.data.confirmation_sent === false
-        ? 'Konto utworzone. Email potwierdzający nie został wysłany. Możesz przejść do logowania.'
+        ? 'Konto utworzone, ale email potwierdzający nie został wysłany. Logowanie wymaga potwierdzenia adresu. Skontaktuj się z administratorem.'
         : 'Konto utworzone. Sprawdź email, aby potwierdzić rejestrację.', 'success');
     } else {
       show(el, r.status === 422 ? r.data.error || 'Sprawdź email i hasło.'
@@ -257,6 +257,7 @@ async function login() {
       await loadDashboard();
     } else {
       show(el, r.status === 401 ? 'Nieprawidłowy email lub hasło.'
+        : r.status === 403 && r.data?.code === 'email_confirmation_required' ? 'Potwierdź adres email przed zalogowaniem. Sprawdź wiadomość z linkiem potwierdzającym.'
         : r.status === 422 ? 'Sprawdź email i hasło.'
         : r.status === 429 ? 'Zbyt wiele prób logowania. Spróbuj ponownie za 15 minut.'
         : 'Logowanie jest niedostępne z powodu błędu serwera.', 'error');

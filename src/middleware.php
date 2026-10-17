@@ -35,6 +35,10 @@ return function (App $app) {
                 new Response(), ['error' => $e->getMessage()], 429
             );
             return $response->withHeader('Retry-After', (string)$e->retryAfter);
+        } catch (\App\Exception\EmailConfirmationRequiredException $e) {
+            return \App\Infrastructure\Http\JsonResponder::respond(
+                new Response(), ['error' => $e->getMessage(), 'code' => 'email_confirmation_required'], 403
+            );
         } catch (UnauthorizedException $e) {
             $logger->warning($e->getMessage());
 

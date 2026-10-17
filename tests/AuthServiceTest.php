@@ -15,6 +15,8 @@ class AuthServiceTest extends TestCase
 {
     private AuthService $authService;
     private \PDO $pdo;
+    private \App\Repository\UserRepository $users;
+    private string $verificationToken;
 
     protected function setUp(): void
     {
@@ -44,7 +46,12 @@ class AuthServiceTest extends TestCase
 
         // Create service dependencies (mocked)
         $mailService = $this->createMock(\App\Infrastructure\Mail\MailService::class);
-        $userRepository = new \App\Repository\UserRepository($this->pdo);
+        $userRepository = new \App\Repository\UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
+        $this->users = $userRepository;
+        $mailService->method('send')->willReturnCallback(function (string $to, string $subject, string $body): void {
+            preg_match('/token=([a-f0-9]{64})/', $body, $match);
+            $this->verificationToken = $match[1];
+        });
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
 
         $this->authService = new AuthService(
@@ -62,9 +69,7 @@ class AuthServiceTest extends TestCase
         $this->authService->register($input);
 
         // Verify user was created
-        $stmt = $this->pdo->prepare('SELECT * FROM users WHERE email = ?');
-        $stmt->execute(['test@example.com']);
-        $user = $stmt->fetch();
+        $user = $this->users->findByEmail('test@example.com');
 
         $this->assertIsArray($user);
         $this->assertEquals('test@example.com', $user['email']);
@@ -78,7 +83,7 @@ class AuthServiceTest extends TestCase
         $this->authService->register($input);
 
         $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('Email is already taken');
+        $this->expectExceptionMessage('Ten adres email ma już konto. Zaloguj się.');
         
         $this->authService->register($input);
     }
@@ -153,19 +158,14 @@ class AuthServiceTest extends TestCase
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
 
-        // Get the verification token from database
-        $stmt = $this->pdo->prepare('SELECT email_verification_token FROM users WHERE email = ?');
-        $stmt->execute(['test@example.com']);
-        $user = $stmt->fetch();
-        $token = $user['email_verification_token'];
+        // Use the token delivered to the fixture mailbox, not its stored hash
+        $token = $this->verificationToken;
 
         // Verify email
         $this->authService->verifyEmail($token);
 
         // Check that email_confirmed_at is set
-        $stmt = $this->pdo->prepare('SELECT email_confirmed_at FROM users WHERE email = ?');
-        $stmt->execute(['test@example.com']);
-        $user = $stmt->fetch();
+        $user = $this->users->findByEmail('test@example.com');
 
         $this->assertNotNull($user['email_confirmed_at']);
     }

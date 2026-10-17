@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1b1d20">
+<title>VirralAI — czat</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#1b1d20; --bg-side:#121416; --field:#25282c;
+  --line:#2f3338; --line-soft:#272a2e;
+  --text:#ece8e1; --muted:#a09b93; --faint:#8d8981;
+  --accent:#3cc8bc; --accent-soft:rgba(60,200,188,.12); --accent-line:rgba(60,200,188,.5);
+  --danger:#e08a80; --danger-soft:rgba(224,138,128,.1); --danger-line:rgba(224,138,128,.35);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --side-w:288px; --col:800px;
+  --brush:repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 1px,rgba(0,0,0,.03) 1px 2px);
+  --metal:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,0) 46%),var(--brush),linear-gradient(180deg,#3b4046,#2b2f34);
+  --metal-edge:#4b5158 #23262a #1c1e21 #3f454b;
+  --metal-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 1px 2px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:#74e2d7}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+svg.mark{width:28px;height:28px;flex:none;fill:none}
+
+/* ---------- przyciski: satynowy grafit / szczotkowany metal ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 14px;border-radius:10px;border:1px solid;border-color:var(--metal-edge);
+  background:var(--metal);box-shadow:var(--metal-shadow);color:var(--text);font-size:14px;font-weight:550;text-decoration:none;cursor:pointer;transition:filter .12s,transform .06s}
+.btn:hover{filter:brightness(1.12);color:var(--text)}
+.btn:active{filter:brightness(.92);box-shadow:inset 0 1px 3px rgba(0,0,0,.55);transform:translateY(.5px)}
+.btn:focus-visible,.btn-ghost:focus-visible,.chat-item:focus-visible,.help-sum:focus-visible,.home:focus-visible,.brand:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none;transform:none}
+.btn-icon{width:36px;height:36px;padding:0}
+.btn-sm{height:28px;padding:0 10px;font-size:12.5px;border-radius:7px;gap:6px}
+.btn-sm svg{width:15px;height:15px}
+.btn-wide{width:100%;height:40px;justify-content:flex-start;padding:0 12px}
+.btn-silver{background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 52%),repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,rgba(0,0,0,.05) 1px 2px),linear-gradient(180deg,#dfe3e7,#9da4ac);
+  border-color:#eef0f2 #7d848c #666d75 #cfd4d9;color:#14171a;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 3px rgba(0,0,0,.5)}
+.btn-silver:hover{color:#14171a}
+.btn-ghost{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 9px;border:0;border-radius:8px;background:transparent;color:var(--faint);font-size:12.5px;font-weight:550;cursor:pointer}
+.btn-ghost:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.btn-ghost svg{width:15px;height:15px}
+
+/* ---------- szkielet ---------- */
+#app{display:flex;height:100dvh;width:100%}
+#sidebar{width:var(--side-w);flex:none;display:flex;flex-direction:column;min-height:0;background:var(--bg-side);border-right:1px solid var(--line-soft);overflow:hidden;transition:margin-left .22s ease,transform .22s ease}
+.main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+.scrim{display:none}
+@media (min-width:861px){#app[data-sidebar=closed] #sidebar{margin-left:calc(var(--side-w) * -1)}}
+
+/* panel historii */
+.side-head{display:flex;align-items:center;justify-content:space-between;padding:14px 12px 10px 16px}
+.brand{display:flex;align-items:center;gap:9px;color:var(--text);text-decoration:none;font-weight:650;font-size:16px;letter-spacing:-.01em;border-radius:8px}
+.brand:hover{color:var(--text)}
+.brand b{color:var(--accent);font-weight:650}
+#new-chat{margin:0 12px 6px;width:calc(100% - 24px)}
+#chat-list{flex:1;min-height:0;overflow-y:auto;padding:2px 8px 12px;scrollbar-width:thin;scrollbar-color:#3a3e44 transparent}
+#chat-list ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.group-label{margin:16px 10px 6px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.chat-item{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--muted);text-align:left;cursor:pointer}
+.chat-item::before{content:"";width:6px;height:6px;border-radius:50%;background:transparent;flex:none}
+.chat-item span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.chat-item[aria-current=true]{background:var(--accent-soft);color:var(--text)}
+.chat-item[aria-current=true]::before{background:var(--accent)}
+.side-foot{display:flex;flex-direction:column;gap:10px;padding:10px 12px 12px;border-top:1px solid var(--line-soft)}
+.home{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 8px;border-radius:8px;color:var(--muted);text-decoration:none}
+.home:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.demo{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px dashed var(--line)}
+.demo p{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.demo div{display:flex;flex-wrap:wrap;gap:6px}
+
+/* nagłówek rozmowy */
+.top{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 20px;border-bottom:1px solid var(--line-soft)}
+.open-side{display:none}
+#app[data-sidebar=closed] .open-side{display:inline-flex}
+#chat-title{flex:1;min-width:0;margin:0;font-size:15.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picks{display:flex;gap:8px;min-width:0}
+.select{position:relative;display:flex;align-items:center;gap:8px;min-width:0;height:36px;padding:0 10px;border-radius:10px;border:1px solid;border-color:var(--metal-edge);background:var(--metal);box-shadow:var(--metal-shadow);color:var(--muted)}
+.select:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.select svg{width:16px;height:16px}
+.select select{appearance:none;-webkit-appearance:none;min-width:0;width:100%;height:100%;padding:0 18px 0 0;border:0;outline:0;background:transparent;color:var(--text);font-size:13.5px;font-weight:500;text-overflow:ellipsis;cursor:pointer}
+.select select option{background:#1f2124;color:var(--text)}
+.select .caret{position:absolute;right:8px;width:14px;height:14px;pointer-events:none}
+.select.conn{width:176px}
+.select.model{width:min(280px,32vw)}
+
+/* rozmowa */
+#chat-messages{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#3a3e44 transparent}
+.thread{width:100%;max-width:var(--col);margin:0 auto;padding:28px 24px 20px;display:flex;flex-direction:column;gap:30px}
+.msg.user{align-self:flex-end;max-width:min(82%,640px);padding:10px 15px;background:var(--field);border:1px solid var(--line);border-radius:16px 16px 4px 16px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.ai{display:grid;grid-template-columns:28px minmax(0,1fr);gap:14px}
+.msg.ai .body{min-width:0}
+.prose{font-size:15.5px;line-height:1.72;overflow-wrap:anywhere}
+.prose>:first-child{margin-top:0}
+.prose p{margin:0 0 .95em}
+.prose h2{margin:1.5em 0 .5em;font-size:1.2em;line-height:1.3;font-weight:650;letter-spacing:-.01em}
+.prose ul,.prose ol{margin:0 0 1em;padding-left:1.35em}
+.prose li{margin:.3em 0}
+.prose li::marker{color:var(--faint)}
+.prose blockquote{margin:1.1em 0;padding:.15em 0 .15em 1.1em;border-left:2px solid #484d54;color:var(--muted)}
+.prose blockquote p{margin:0}
+.prose code{padding:2px 6px;border-radius:6px;background:#2a2d31;font:.88em var(--mono);color:#e9e3d6}
+.table-wrap{margin:1.1em 0;overflow-x:auto;border:1px solid var(--line);border-radius:12px;scrollbar-width:thin}
+.table-wrap table{width:100%;min-width:520px;border-collapse:collapse;font-size:14px;line-height:1.5}
+.table-wrap th{padding:9px 14px;text-align:left;font-size:12.5px;font-weight:600;color:var(--muted);background:#202326}
+.table-wrap td{padding:9px 14px;border-top:1px solid var(--line-soft);vertical-align:top}
+.table-wrap td code{white-space:nowrap}
+.code{margin:1.1em 0;border:1px solid var(--line);border-radius:12px;background:#141618;overflow:hidden}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:5px 6px 5px 14px;background:#1a1c1f;border-bottom:1px solid var(--line-soft)}
+.lang{font:600 11.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font:13.5px/1.65 var(--mono);color:#dcd6ca;tab-size:4;scrollbar-width:thin;scrollbar-color:#3a3e44 transparent}
+.code pre code{padding:0;background:none;font:inherit;color:inherit}
+.k{color:#9db3d3}.s{color:#86d1c6}.c{color:#8a867c}
+.msg-actions{display:flex;gap:4px;margin:4px 0 0 -9px}
+[data-done] .ico-copy{color:var(--accent)}
+.typing{display:inline-flex;gap:5px;padding:12px 0}
+.typing i{width:7px;height:7px;border-radius:50%;background:#6c7279;animation:pulse 1.2s ease-in-out infinite}
+.typing i:nth-child(2){animation-delay:.18s}.typing i:nth-child(3){animation-delay:.36s}
+.alert{display:flex;align-items:flex-start;flex-wrap:wrap;gap:10px 12px;padding:12px 14px;border:1px solid var(--danger-line);border-radius:12px;background:var(--danger-soft);color:#f0d6d1}
+.alert svg{color:var(--danger);margin-top:2px}
+.alert div{flex:1;min-width:200px;display:flex;flex-direction:column}
+.alert span{color:#d9bdb8;font-size:14px}
+
+/* pusta rozmowa */
+.empty{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px 24px;text-align:center}
+.empty svg.mark{width:52px;height:52px}
+.empty h2{margin:8px 0 0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.empty p{margin:0;max-width:420px;color:var(--muted)}
+.suggest{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px}
+#app[data-state=empty] .thread{display:none}
+#app[data-state=empty] .empty{display:flex}
+
+/* dół: status, pole, podpowiedź, ściąga */
+.dock{flex:none;padding:6px 24px calc(14px + env(safe-area-inset-bottom))}
+.dock-in{max-width:var(--col);margin:0 auto;display:flex;flex-direction:column;gap:8px}
+#chat-status{min-height:18px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--muted)}
+#chat-status[data-kind=error]{color:var(--danger)}
+#chat-status[data-kind=busy]::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid #4a5056;border-top-color:var(--accent);animation:spin .8s linear infinite}
+.composer{display:flex;align-items:flex-end;gap:8px;padding:8px 8px 8px 16px;background:var(--field);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:border-color .15s,box-shadow .15s}
+.composer:focus-within{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft),0 8px 24px rgba(0,0,0,.25)}
+#chat-input{flex:1;min-width:0;min-height:40px;max-height:200px;padding:8px 0;resize:none;border:0;outline:0;background:transparent;font-size:15.5px;line-height:24px;overflow-y:auto;scrollbar-width:thin}
+#chat-input::placeholder{color:#8f8b83}
+#chat-input:disabled{cursor:not-allowed}
+#send-button{flex:none;width:40px;height:40px;padding:0;border-radius:12px}
+#send-button:disabled{opacity:.45}
+#app[data-state=pending] #send-button:disabled{opacity:.85}
+.send-spin{display:none;width:16px;height:16px;border-radius:50%;border:2px solid rgba(0,0,0,.22);border-top-color:#14171a;animation:spin .8s linear infinite}
+#app[data-state=pending] .send-spin{display:block}
+#app[data-state=pending] .send-ico{display:none}
+.hint{margin:0;text-align:center;font-size:12px;color:var(--faint)}
+.hint kbd{font:inherit;font-weight:600;color:var(--muted)}
+.gate{display:none}
+.gate .panel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 16px;background:var(--field);border:1px solid var(--line);border-radius:18px}
+.gate p{margin:0;color:var(--muted)}
+#app[data-state=loggedout] .gate{display:block}
+#app[data-state=loggedout] .composer,#app[data-state=loggedout] .hint{display:none}
+
+#markdown-help summary{display:flex;align-items:center;gap:6px;width:fit-content;min-height:32px;margin:0 auto;padding:0 10px;border-radius:8px;color:var(--faint);font-size:12.5px;font-weight:550;list-style:none;cursor:pointer;user-select:none}
+#markdown-help summary::-webkit-details-marker{display:none}
+#markdown-help summary:hover{color:var(--text)}
+#markdown-help summary svg{width:14px;height:14px;transition:transform .18s}
+#markdown-help[open] summary svg{transform:rotate(180deg)}
+.help-body{max-height:min(46dvh,380px);margin-top:6px;padding:8px 14px 14px;overflow:auto;background:#17191c;border:1px solid var(--line);border-radius:12px;font-size:13.5px;scrollbar-width:thin}
+.help-body table{width:100%;border-collapse:collapse}
+.help-body th{padding:6px;text-align:left;font-size:12px;font-weight:600;color:var(--faint)}
+.help-body td{padding:7px 6px;border-top:1px solid var(--line-soft);vertical-align:top}
+.help-body td:first-child{width:46%}
+.help-body code{padding:2px 6px;border-radius:6px;background:#2a2d31;font:12.5px var(--mono);color:#e9e3d6;overflow-wrap:anywhere}
+.help-body small{display:block;margin-top:2px;color:var(--faint);font-size:12px}
+.fx-h{font-size:16px;font-weight:700}
+.fx-q{padding-left:10px;border-left:2px solid #484d54;color:var(--muted)}
+.fx-li::before{content:"•  ";color:var(--faint)}
+.help-ex{margin:12px 0 0}
+.help-ex p{margin:0 0 6px;color:var(--muted)}
+.help-ex pre{margin:0;padding:10px 12px;overflow-x:auto;background:#141618;border:1px solid var(--line);border-radius:10px;font:13px/1.6 var(--mono);color:#dcd6ca}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,60%,100%{opacity:.35;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media (pointer:coarse){.hint{display:none}}
+
+/* ---------- telefon / wąskie okno ---------- */
+@media (max-width:860px){
+  #sidebar{position:fixed;inset:0 auto 0 0;z-index:20;width:min(86vw,320px);transform:translateX(-100%);box-shadow:8px 0 40px rgba(0,0,0,.5)}
+  #app[data-sidebar=open] #sidebar{transform:none}
+  #app[data-sidebar=open] .scrim{display:block;position:fixed;inset:0;z-index:19;background:rgba(5,6,7,.6)}
+  .open-side{display:inline-flex}
+  .top{flex-wrap:wrap;gap:8px;padding:8px 12px;min-height:0}
+  #chat-title{order:1}
+  .picks{order:2;width:100%}
+  .select.conn{flex:0 1 38%;width:auto}
+  .select.model{flex:1 1 0;width:auto}
+  .thread{padding:18px 14px 12px;gap:24px}
+  .msg.ai{grid-template-columns:minmax(0,1fr)}
+  .msg.ai .avatar{display:none}
+  .msg.user{max-width:90%}
+  .dock{padding:4px 12px calc(10px + env(safe-area-inset-bottom))}
+  #chat-input{font-size:16px}
+  .help-body{max-height:40dvh}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs><linearGradient id="g-mark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3f45"/><stop offset="1" stop-color="#22262a"/></linearGradient></defs>
+  <symbol id="i-mark" viewBox="0 0 28 28"><rect x=".75" y=".75" width="26.5" height="26.5" rx="8" fill="url(#g-mark)" stroke="#4a5057" stroke-width="1.5"/><path d="M8.5 9.5l5.5 10 5.5-10" fill="none" stroke="#3cc8bc" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H16"/></symbol>
+  <symbol id="i-caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></symbol>
+</svg>
+
+<div id="app" data-sidebar="" data-state="chat">
+
+  <aside id="sidebar" aria-label="Historia rozmów">
+    <div class="side-head">
+      <a class="brand" id="brand-link" href="/" aria-label="VirralAI — strona główna">
+        <svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>
+        <span>Virral<b>AI</b></span>
+      </a>
+      <button type="button" class="btn btn-icon" data-toggle-sidebar aria-controls="sidebar" aria-expanded="true" aria-label="Zwiń historię">
+        <svg class="i" aria-hidden="true"><use href="#i-panel"/></svg>
+      </button>
+    </div>
+
+    <button type="button" class="btn btn-wide" id="new-chat">
+      <svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span>Nowa rozmowa</span>
+    </button>
+
+    <nav id="chat-list" aria-label="Lista rozmów">
+      <h2 class="group-label">Dziś</h2>
+      <ul>
+        <li><button type="button" class="chat-item" data-chat-id="c1" aria-current="true"><span>Endpoint JSON w PHP</span></button></li>
+        <li><button type="button" class="chat-item" data-chat-id="c2"><span>Plan wdrożenia na piątek</span></button></li>
+      </ul>
+      <h2 class="group-label">Wczoraj</h2>
+      <ul>
+        <li><button type="button" class="chat-item" data-chat-id="c3"><span>Zapytanie SQL do raportu miesięcznego z podziałem na regiony</span></button></li>
+        <li><button type="button" class="chat-item" data-chat-id="c4"><span>Streszczenie umowy najmu</span></button></li>
+      </ul>
+      <h2 class="group-label">Ostatnie 7 dni</h2>
+      <ul>
+        <li><button type="button" class="chat-item" data-chat-id="c5"><span>Pomysły na nazwę projektu</span></button></li>
+        <li><button type="button" class="chat-item" data-chat-id="c6"><span>Regex do walidacji NIP</span></button></li>
+      </ul>
+      <h2 class="group-label">Starsze</h2>
+      <ul>
+        <li><button type="button" class="chat-item" data-chat-id="c7"><span>Refaktoryzacja klasy UserService</span></button></li>
+      </ul>
+    </nav>
+
+    <div class="side-foot">
+      <a class="home" id="home-link" href="/"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg><span>Strona główna</span></a>
+      <div class="demo" data-demo>
+        <p>Podgląd stanów (demo)</p>
+        <div>
+          <button type="button" class="btn btn-sm" data-demo-state="chat">Rozmowa</button>
+          <button type="button" class="btn btn-sm" data-demo-state="empty">Pusta</button>
+          <button type="button" class="btn btn-sm" data-demo-state="pending">Oczekiwanie</button>
+          <button type="button" class="btn btn-sm" data-demo-state="error">Błąd</button>
+          <button type="button" class="btn btn-sm" data-demo-state="loggedout">Brak logowania</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" data-toggle-sidebar></div>
+
+  <main class="main">
+    <header class="top">
+      <button type="button" class="btn btn-icon open-side" data-toggle-sidebar aria-controls="sidebar" aria-expanded="false" aria-label="Otwórz historię">
+        <svg class="i" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+      <h1 id="chat-title">Endpoint JSON w PHP</h1>
+      <div class="picks">
+        <label class="select conn">
+          <span class="sr-only">Połączenie</span>
+          <svg class="i" aria-hidden="true"><use href="#i-plug"/></svg>
+          <select id="chat-connection">
+            <option>Połączenie główne</option>
+            <option>OpenRouter — konto firmowe</option>
+            <option>Serwer lokalny (Ollama)</option>
+          </select>
+          <svg class="i caret" aria-hidden="true"><use href="#i-caret"/></svg>
+        </label>
+        <label class="select model">
+          <span class="sr-only">Model AI</span>
+          <svg class="i" aria-hidden="true"><use href="#i-chip"/></svg>
+          <select id="chat-model">
+            <option>Claude Sonnet 4.5</option>
+            <option>anthropic/claude-sonnet-4-5-20250929-extended-thinking-preview</option>
+            <option>gpt-5.1-codex-max-high-reasoning-2026-09</option>
+            <option>Llama 3.3 70B Instruct (lokalnie)</option>
+          </select>
+          <svg class="i caret" aria-hidden="true"><use href="#i-caret"/></svg>
+        </label>
+      </div>
+    </header>
+
+    <div id="chat-messages" role="log" aria-live="polite" aria-relevant="additions" tabindex="-1">
+      <div class="empty">
+        <svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg>
+        <h2>W czym mogę pomóc?</h2>
+        <p>Napisz wiadomość albo zacznij od jednej z podpowiedzi.</p>
+        <div class="suggest">
+          <button type="button" class="btn btn-sm" data-suggest="Wyjaśnij Markdown w trzech zdaniach.">Wyjaśnij Markdown</button>
+          <button type="button" class="btn btn-sm" data-suggest="Napisz w PHP funkcję, która waliduje numer NIP.">Funkcja w PHP</button>
+          <button type="button" class="btn btn-sm" data-suggest="Streść poniższy tekst w pięciu punktach:">Streść tekst</button>
+        </div>
+      </div>
+      <div class="thread" id="thread"></div>
+    </div>
+
+    <footer class="dock">
+      <div class="dock-in">
+        <div id="chat-status" role="status" aria-live="polite"></div>
+
+        <form id="chat-form" class="composer" autocomplete="off">
+          <label class="sr-only" for="chat-input">Wiadomość</label>
+          <textarea id="chat-input" rows="1" placeholder="Napisz wiadomość…" enterkeyhint="send"></textarea>
+          <button type="submit" id="send-button" class="btn btn-silver" aria-label="Wyślij" disabled>
+            <svg class="i send-ico" aria-hidden="true" style="stroke-width:2.4"><use href="#i-send"/></svg>
+            <span class="send-spin" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <div class="gate" id="login-gate">
+          <div class="panel">
+            <p>Sesja wygasła. Zaloguj się, aby kontynuować rozmowę.</p>
+            <a class="btn btn-silver" href="/login">Zaloguj się</a>
+          </div>
+        </div>
+
+        <p class="hint"><kbd>Enter</kbd> — wyślij · <kbd>Shift+Enter</kbd> — nowa linia</p>
+
+        <details id="markdown-help">
+          <summary class="help-sum">
+            <span>Markdown — krótka ściąga</span>
+            <svg class="i" aria-hidden="true"><use href="#i-caret"/></svg>
+          </summary>
+          <div class="help-body">
+            <table>
+              <thead><tr><th>Zapis</th><th>Zastosowanie</th></tr></thead>
+              <tbody>
+                <tr><td><code>**ważne**</code></td><td><strong>Pogrubienie</strong></td></tr>
+                <tr><td><code>*tekst*</code></td><td><em>Kursywa</em></td></tr>
+                <tr><td><code>`kod`</code></td><td><code>Kod w zdaniu</code></td></tr>
+                <tr><td><code>## Nagłówek</code></td><td><span class="fx-h">Nagłówek</span><small>spacja po <code>##</code> jest wymagana</small></td></tr>
+                <tr><td><code>- element</code></td><td><span class="fx-li">Lista</span></td></tr>
+                <tr><td><code>&gt; cytat</code></td><td><span class="fx-q">Cytat</span></td></tr>
+                <tr><td><code>[nazwa](https://example.com)</code></td><td><a href="https://example.com" target="_blank" rel="noopener">Link</a></td></tr>
+              </tbody>
+            </table>
+            <div class="help-ex">
+              <p>Blok kodu:</p>
+<pre>```php
+echo "Cześć";
+```</pre>
+            </div>
+          </div>
+        </details>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<template id="tpl-sample">
+  <article class="msg user">Jak w PHP zwrócić listę rozmów jako JSON? Pokaż krótki przykład i co sprawdzić po drodze.</article>
+
+  <article class="msg ai">
+    <div class="avatar" aria-hidden="true"><svg class="mark"><use href="#i-mark"/></svg></div>
+    <div class="body">
+      <div class="prose">
+        <p>Najprościej ustawić nagłówek <code>Content-Type</code>, zamienić tablicę na JSON i zakończyć skrypt. Poniżej minimalny przykład, a pod nim kilka rzeczy, o których łatwo zapomnieć.</p>
+        <h2>Minimalny endpoint</h2>
+        <figure class="code" style="margin-inline:0">
+          <div class="code-head"><span class="lang">php</span><button type="button" class="btn btn-sm" data-copy-code><svg class="i ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><span>Kopiuj</span></button></div>
+<pre><code><span class="k">&lt;?php</span>
+<span class="k">declare</span>(strict_types=1);
+
+<span class="c">// Lista rozmów zalogowanego użytkownika</span>
+header(<span class="s">'Content-Type: application/json; charset=utf-8'</span>);
+
+$chats = [
+    [<span class="s">'id'</span> =&gt; 1, <span class="s">'title'</span> =&gt; <span class="s">'Plan wdrożenia'</span>, <span class="s">'updated_at'</span> =&gt; <span class="s">'2026-10-12T09:14:00+02:00'</span>],
+    [<span class="s">'id'</span> =&gt; 2, <span class="s">'title'</span> =&gt; <span class="s">'Zapytanie SQL do raportu'</span>, <span class="s">'updated_at'</span> =&gt; <span class="s">'2026-10-11T17:40:00+02:00'</span>],
+];
+
+<span class="k">echo</span> json_encode([<span class="s">'data'</span> =&gt; $chats, <span class="s">'meta'</span> =&gt; [<span class="s">'total'</span> =&gt; count($chats), <span class="s">'generated_at'</span> =&gt; (<span class="k">new</span> DateTimeImmutable())-&gt;format(DATE_ATOM)]], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);</code></pre>
+        </figure>
+        <p>Co sprawdzić po drodze:</p>
+        <ul>
+          <li><strong>Kod odpowiedzi</strong> — <code>200</code> dla listy, <code>401</code> bez sesji.</li>
+          <li><strong>Polskie znaki</strong> — flaga <code>JSON_UNESCAPED_UNICODE</code> zostawia je czytelne.</li>
+          <li><strong>Błędy kodowania</strong> — <code>JSON_THROW_ON_ERROR</code> zamiast cichego <code>false</code>.</li>
+        </ul>
+        <blockquote><p>Nie buduj JSON ręcznie ze stringów — <code>json_encode</code> zadba o cudzysłowy i znaki specjalne.</p></blockquote>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Flaga</th><th>Efekt</th><th>Kiedy użyć</th></tr></thead>
+            <tbody>
+              <tr><td><code>JSON_UNESCAPED_UNICODE</code></td><td>Zostawia polskie znaki</td><td>Zawsze w API</td></tr>
+              <tr><td><code>JSON_THROW_ON_ERROR</code></td><td>Wyjątek zamiast <code>false</code></td><td>Zawsze</td></tr>
+              <tr><td><code>JSON_PRETTY_PRINT</code></td><td>Wcięcia i nowe linie</td><td>Tylko do debugowania</td></tr>
+              <tr><td><code>JSON_PARTIAL_OUTPUT_ON_ERROR</code></td><td>Zwraca to, co się da</td><td>Raczej unikać — ukrywa błędy</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Więcej w <a href="https://www.php.net/manual/pl/function.json-encode.php" target="_blank" rel="noopener">dokumentacji PHP</a>.</p>
+      </div>
+      <div class="msg-actions"><button type="button" class="btn-ghost" data-copy-msg><svg class="i ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><span>Kopiuj</span></button></div>
+    </div>
+  </article>
+
+  <article class="msg user">A jak obsłużyć brak sesji?</article>
+
+  <article class="msg ai">
+    <div class="avatar" aria-hidden="true"><svg class="mark"><use href="#i-mark"/></svg></div>
+    <div class="body">
+      <div class="prose">
+        <p>Przed <code>json_encode</code> sprawdź sesję i zwróć <code>401</code> z krótkim komunikatem. Front pokaże wtedy ekran logowania zamiast pustej listy.</p>
+      </div>
+      <div class="msg-actions"><button type="button" class="btn-ghost" data-copy-msg><svg class="i ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><span>Kopiuj</span></button></div>
+    </div>
+  </article>
+</template>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const app = $('app'), side = $('sidebar'), msgs = $('chat-messages'), thread = $('thread'),
+        input = $('chat-input'), send = $('send-button'), form = $('chat-form'),
+        status = $('chat-status'), title = $('chat-title'), list = $('chat-list');
+  const mobile = matchMedia('(max-width: 860px)'), coarse = matchMedia('(pointer: coarse)');
+  let current = 'c1', timer = 0;
+
+  const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  const AV = '<div class="avatar" aria-hidden="true"><svg class="mark"><use href="#i-mark"/></svg></div>';
+  const ACT = '<div class="msg-actions"><button type="button" class="btn-ghost" data-copy-msg><svg class="i ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><span>Kopiuj</span></button></div>';
+  const toBottom = () => requestAnimationFrame(() => msgs.scrollTo({ top: msgs.scrollHeight }));
+
+  /* ---- historia: zwijanie / szuflada ---- */
+  function setSidebar(open) {
+    app.dataset.sidebar = open ? 'open' : 'closed';
+    side.inert = !open;
+    document.querySelectorAll('button[data-toggle-sidebar]').forEach((b) => b.setAttribute('aria-expanded', String(open)));
+  }
+  setSidebar(!mobile.matches);
+  mobile.addEventListener('change', () => setSidebar(!mobile.matches));
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-toggle-sidebar]')) setSidebar(app.dataset.sidebar !== 'open');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobile.matches && app.dataset.sidebar === 'open') {
+      setSidebar(false); document.querySelector('.open-side').focus();
+    }
+  });
+
+  /* ---- stany widoku ---- */
+  const MSG = { pending: ['VirralAI pisze odpowiedź…', 'busy'], error: ['Błąd połączenia. Spróbuj ponownie.', 'error'], loggedout: ['Brak zalogowania.', 'error'] };
+  function syncSend() {
+    const s = app.dataset.state;
+    send.disabled = s === 'pending' || s === 'loggedout' || !input.value.trim();
+    send.setAttribute('aria-busy', String(s === 'pending'));
+  }
+  function setState(s) {
+    app.dataset.state = s;
+    input.disabled = s === 'loggedout';
+    const m = MSG[s] || ['', ''];
+    status.textContent = m[0]; status.dataset.kind = m[1];
+    syncSend();
+  }
+
+  /* ---- wątek ---- */
+  const clearThread = () => thread.replaceChildren();
+  function addUser(text) { const a = el('<article class="msg user"></article>'); a.textContent = text; thread.append(a); toBottom(); }
+  function addAI(text) {
+    const a = el('<article class="msg ai">' + AV + '<div class="body"><div class="prose"><p></p></div>' + ACT + '</div></article>');
+    a.querySelector('p').textContent = text; thread.append(a); toBottom();
+  }
+  function addTyping() { thread.append(el('<article class="msg ai" data-typing>' + AV + '<div class="body"><div class="typing" aria-hidden="true"><i></i><i></i><i></i></div></div></article>')); toBottom(); }
+  const removeTyping = () => thread.querySelectorAll('[data-typing]').forEach((n) => n.remove());
+  function addError() {
+    thread.append(el('<article class="msg ai" data-error>' + AV + '<div class="body"><div class="alert" role="alert"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><div><strong>Nie udało się uzyskać odpowiedzi.</strong><span>Sprawdź połączenie i spróbuj ponownie.</span></div><button type="button" class="btn btn-sm" data-retry>Spróbuj ponownie</button></div></div></article>'));
+    toBottom();
+  }
+
+  const itemOf = (id) => list.querySelector('[data-chat-id="' + id + '"]');
+  function markActive(id) {
+    list.querySelectorAll('.chat-item').forEach((b) => b.removeAttribute('aria-current'));
+    if (id) itemOf(id)?.setAttribute('aria-current', 'true');
+  }
+  function loadChat(id) {
+    clearTimeout(timer); current = id; clearThread();
+    const name = itemOf(id).textContent.trim();
+    title.textContent = name; markActive(id);
+    if (id === 'c1') thread.append($('tpl-sample').content.cloneNode(true));
+    else { addUser('Zacznijmy od tematu: „' + name + '”.'); addAI('Jasne. Napisz, co jest najważniejsze, a przygotuję pierwszą wersję.'); }
+    setState('chat'); msgs.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  function newChat() {
+    clearTimeout(timer); current = null; clearThread();
+    title.textContent = 'Nowa rozmowa'; markActive(null); setState('empty');
+    if (!mobile.matches) input.focus();
+  }
+  function createChat(first) {
+    const id = 'n' + Date.now(), li = el('<li><button type="button" class="chat-item"><span></span></button></li>');
+    const b = li.firstElementChild; b.dataset.chatId = id;
+    b.firstElementChild.textContent = first.length > 46 ? first.slice(0, 46) + '…' : first;
+    list.querySelector('ul').prepend(li); current = id; title.textContent = b.textContent; markActive(id);
+  }
+  function respond() {
+    addTyping(); setState('pending');
+    timer = setTimeout(() => {
+      removeTyping(); addAI('To podgląd widoku — odpowiedź pojawi się po podłączeniu API.'); setState('chat');
+    }, 1400);
+  }
+
+  list.addEventListener('click', (e) => {
+    const b = e.target.closest('.chat-item'); if (!b) return;
+    loadChat(b.dataset.chatId); if (mobile.matches) setSidebar(false);
+  });
+  $('new-chat').addEventListener('click', () => { newChat(); if (mobile.matches) setSidebar(false); });
+
+  document.querySelectorAll('[data-demo-state]').forEach((b) => b.addEventListener('click', () => {
+    const s = b.dataset.demoState;
+    if (s === 'empty') return newChat();
+    loadChat(current && itemOf(current) ? current : 'c1');
+    if (s === 'pending') addTyping();
+    if (s === 'error') addError();
+    setState(s);
+    if (mobile.matches) setSidebar(false);
+  }));
+
+  /* ---- pole wiadomości ---- */
+  function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 200) + 'px'; }
+  input.addEventListener('input', () => { autosize(); syncSend(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !coarse.matches) { e.preventDefault(); form.requestSubmit(); }
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = input.value.trim(), s = app.dataset.state;
+    if (!t || s === 'pending' || s === 'loggedout') return;
+    if (!current) createChat(t);
+    addUser(t); input.value = ''; autosize(); respond();
+  });
+
+  /* ---- akcje w wątku ---- */
+  async function copy(text, btn) {
+    try { await navigator.clipboard.writeText(text); }
+    catch { const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }
+    const l = btn.querySelector('span'), old = l.textContent;
+    l.textContent = 'Skopiowano'; btn.dataset.done = '1';
+    setTimeout(() => { l.textContent = old; delete btn.dataset.done; }, 1500);
+  }
+  function proseText(p) {
+    const c = p.cloneNode(true); c.querySelectorAll('.code-head').forEach((n) => n.remove());
+    c.style.cssText = 'position:fixed;left:-9999px;white-space:pre-wrap'; document.body.append(c);
+    const t = c.innerText.trim(); c.remove(); return t;
+  }
+  document.addEventListener('click', (e) => {
+    const code = e.target.closest('[data-copy-code]');
+    if (code) return copy(code.closest('.code').querySelector('pre').textContent, code);
+    const m = e.target.closest('[data-copy-msg]');
+    if (m) return copy(proseText(m.closest('.body').querySelector('.prose')), m);
+    if (e.target.closest('[data-retry]')) { thread.querySelectorAll('[data-error]').forEach((n) => n.remove()); return respond(); }
+    const sg = e.target.closest('[data-suggest]');
+    if (sg) { input.value = sg.dataset.suggest; autosize(); syncSend(); input.focus(); }
+  });
+
+  loadChat('c1');
+})();
+</script>
+</body>
+</html>

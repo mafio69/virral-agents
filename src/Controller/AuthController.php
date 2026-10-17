@@ -29,9 +29,11 @@ final class AuthController
         $data = (array)$request->getParsedBody();
         $input = $this->registerInputMapper->map($data);
 
-        $this->authService->register($input);
-
-        return JsonResponder::respond($response, ['message' => 'User registered successfully'], 201);
+        $confirmationSent = $this->authService->register($input);
+        return JsonResponder::respond($response, [
+            'message' => 'Konto zostało utworzone.',
+            'confirmation_sent' => $confirmationSent,
+        ], 201);
     }
 
     public function login(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -41,17 +43,36 @@ final class AuthController
 
         $result = $this->authService->login($input);
 
-        setcookie('token', $result->token, [
-            'expires' => strtotime($result->expiresAt),
-            'path' => '/',
-            'secure' => ($_ENV['APP_ENV'] ?? 'dev') === 'prod',
-            'httponly' => true,
-            'samesite' => ($_ENV['APP_ENV'] ?? 'dev') === 'prod' ? 'Strict' : 'Lax',
-        ]);
-
         return JsonResponder::respond($response, [
             'token' => $result->token,
-        ]);
+        ])->withAddedHeader('Set-Cookie', $this->sessionCookie($request, $result->token, strtotime($result->expiresAt)));
+    }
+
+    public function logout(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        try {
+            $token = $this->resolveToken($request);
+        } catch (UnauthorizedException) {
+            $token = '';
+        }
+        $cookieToken = $request->getCookieParams()['token'] ?? '';
+        foreach (array_unique([$token, is_string($cookieToken) ? $cookieToken : '']) as $sessionToken) {
+            if ($sessionToken !== '') {
+                $this->authService->logout($sessionToken);
+            }
+        }
+        return $response->withStatus(204)
+            ->withHeader('Cache-Control', 'no-store')
+            ->withAddedHeader('Set-Cookie', $this->sessionCookie($request, '', 0));
+    }
+
+    private function sessionCookie(ServerRequestInterface $request, string $token, int $expiresAt): string
+    {
+        $secure = $request->getUri()->getScheme() === 'https' || ($_ENV['APP_ENV'] ?? 'dev') === 'prod';
+        return 'token='.rawurlencode($token)
+            .'; Expires='.gmdate('D, d M Y H:i:s', $expiresAt).' GMT'
+            .'; Path=/; HttpOnly; SameSite='.($secure ? 'Strict' : 'Lax')
+            .($secure ? '; Secure' : '');
     }
 
     public function verifyEmail(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

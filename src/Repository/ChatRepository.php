@@ -5,26 +5,24 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use PDO;
+use App\Infrastructure\DataProtection\DataCipherInterface;
+use App\Infrastructure\DataProtection\ProtectedStore;
 
 final readonly class ChatRepository
 {
-    public function __construct(private readonly PDO $pdo)
+    private ProtectedStore $store;
+
+    public function __construct(private readonly PDO $pdo, DataCipherInterface $cipher)
     {
+        $this->store = new ProtectedStore($pdo, $cipher);
     }
 
     public function create(int $userId, string $title, ?string $model = null): int
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO chats (user_id, title, created_at, model) VALUES (:user_id, :title, :created_at, :model)'
-        );
-        $stmt->execute([
-            'user_id' => $userId,
-            'title' => $title,
-            'created_at' => date('Y-m-d H:i:s'),
-            'model' => $model ?? 'Qwen3-Coder-30B-A3B-Instruct',
+        return $this->store->insert('chats', [
+            'user_id' => $userId, 'title' => $title, 'created_at' => date('Y-m-d H:i:s'),
+            'model' => \App\Infrastructure\AI\OvhModelDefaults::resolve($model),
         ]);
-
-        return (int)$this->pdo->lastInsertId();
     }
 
     public function findByUserId(int $userId): array
@@ -34,7 +32,7 @@ final readonly class ChatRepository
         );
         $stmt->execute(['user_id' => $userId]);
 
-        return $stmt->fetchAll();
+        return array_map(fn(array $row): array => $this->store->decrypt('chats', $row), $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function findById(int $id): ?array
@@ -44,34 +42,46 @@ final readonly class ChatRepository
         );
         $stmt->execute(['id' => $id]);
 
-        $result = $stmt->fetch();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result ?: null;
+        return $result ? $this->store->decrypt('chats', $result) : null;
     }
 
-    public function addMessage(int $chatId, string $role, string $content): int
+    public function addMessage(int $chatId, string $role, string $content, array $images = []): int
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO chat_messages (chat_id, role, content, created_at) VALUES (:chat_id, :role, :content, :created_at)'
-        );
-        $stmt->execute([
-            'chat_id' => $chatId,
-            'role' => $role,
-            'content' => $content,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return (int)$this->pdo->lastInsertId();
+        $transaction = $images !== [];
+        if ($transaction) $this->pdo->beginTransaction();
+        try {
+            $id = $this->store->insert('chat_messages', [
+                'chat_id' => $chatId, 'role' => $role, 'content' => $content, 'created_at' => date('Y-m-d H:i:s'),
+            ]);
+            if ($images !== []) {
+                $this->store->insert('chat_message_images', ['message_id' => $id, 'data_url' => $images[0]]);
+            }
+            if ($transaction) $this->pdo->commit();
+            return $id;
+        } catch (\Throwable $error) {
+            if ($transaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
+        }
     }
 
     public function findMessagesByChatId(int $chatId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, role, content, created_at FROM chat_messages WHERE chat_id = :chat_id ORDER BY created_at ASC'
+            'SELECT m.id, m.chat_id, m.role, m.content, m.created_at, i.data_url FROM chat_messages m LEFT JOIN chat_message_images i ON i.message_id = m.id WHERE m.chat_id = :chat_id ORDER BY m.id ASC'
         );
         $stmt->execute(['chat_id' => $chatId]);
 
-        return $stmt->fetchAll();
+        return array_map(function (array $row): array {
+            $row = $this->store->decrypt('chat_messages', $row);
+            if ($row['data_url'] !== null) {
+                $image = $this->store->decrypt('chat_message_images', ['message_id' => $row['id'], 'data_url' => $row['data_url']]);
+                $row['images'] = [$image['data_url']];
+            }
+            unset($row['data_url'], $row['chat_id']);
+            return $row;
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -81,19 +91,12 @@ final readonly class ChatRepository
     {
         $this->pdo->beginTransaction();
         try {
-            $stmt = $this->pdo->prepare(
-                'INSERT INTO chat_messages (chat_id, role, content, created_at) VALUES (:chat_id, :role, :content, :created_at)'
-            );
-            
             foreach ($messages as $message) {
-                $stmt->execute([
-                    'chat_id' => $message['chat_id'],
-                    'role' => $message['role'],
-                    'content' => $message['content'],
-                    'created_at' => $message['created_at'],
+                $this->store->insert('chat_messages', [
+                    'chat_id' => $message['chat_id'], 'role' => $message['role'],
+                    'content' => $message['content'], 'created_at' => $message['created_at'],
                 ]);
             }
-            
             $this->pdo->commit();
         } catch (\Throwable $e) {
             $this->pdo->rollback();

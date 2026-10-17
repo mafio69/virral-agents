@@ -104,7 +104,7 @@ SQL);
             new SecretDecryptor($key),
         );
 
-        $this->chatRepository = new ChatRepository($this->pdo);
+        $this->chatRepository = new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $this->aiUrlRepository = new AiUrlRepository($this->pdo);
         $this->aiProviderRepository = new AiProviderRepository($this->pdo, $this->secretService);
         $this->aiModelRepository = new AiModelRepository($this->pdo);

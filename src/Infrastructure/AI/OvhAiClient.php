@@ -4,50 +4,53 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\AI;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
-use RuntimeException;
+use GuzzleHttp\ClientInterface;
 
-final readonly class OvhAiClient
+final readonly class OvhAiClient implements WebToolClientInterface
 {
-    private Client $httpClient;
+    private OpenAiCompatClient $client;
 
     public function __construct(
         private string $url,
-        private string $token,
+        string $token,
         private string $model,
         int $timeout = 120,
+        ?ClientInterface $httpClient = null,
     ) {
-        $this->httpClient = new Client([
-            'base_uri' => $url,
-            'timeout' => $timeout,
-        ]);
+        $this->client = new OpenAiCompatClient($this->getBaseUrl(), $token, $this->getDefaultModel(), $timeout, $httpClient);
+    }
+
+    public function getDefaultModel(): string
+    {
+        return OvhModelDefaults::resolve($this->model);
+    }
+
+    public function resolveModel(?string $model): string
+    {
+        return OvhModelDefaults::resolve($model, $this->getDefaultModel());
     }
 
     public function generate(array $messages, ?string $model = null): string
     {
-        try {
-            $response = $this->httpClient->post('chat/completions', [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$this->token,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'model' => $model ?? $this->model,
-                    'messages' => $messages,
-                ],
-            ]);
+        return $this->client->generate($messages, $this->resolveModel($model));
+    }
 
-            $body = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+    public function generateWebReply(array $messages, string $model): \App\Dto\AI\AiReply
+    {
+        return $this->client->generateWebReply($messages, $this->resolveModel($model));
+    }
 
-            return $body['choices'][0]['message']['content'] ?? '';
-        } catch (GuzzleException $e) {
-            throw new RuntimeException('AI request failed: '.$e->getMessage(), 0, $e);
-        }
+    /** @return list<array<string, mixed>> */
+    public function listModels(): array
+    {
+        return $this->client->listModels();
     }
 
     public function getBaseUrl(): string
     {
-        return $this->url;
+        if (parse_url($this->url, PHP_URL_HOST) === 'qwen3-coder-30b-a3b-instruct.endpoints.kepler.ai.cloud.ovh.net') {
+            return 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/';
+        }
+        return rtrim($this->url, '/').'/';
     }
 }

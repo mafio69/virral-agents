@@ -6,17 +6,17 @@
 <title>WirralAI — Panel API</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; color: #2d3436; min-height: 100vh; }
-nav { background: #2d3436; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 32px; height: 56px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+nav { background: var(--text); color: var(--text); padding: 0 24px; display: flex; align-items: center; gap: 32px; height: 56px; }
 nav h1 { font-size: 18px; font-weight: 600; }
-nav a { color: #b2bec3; text-decoration: none; font-size: 14px; cursor: pointer; padding: 4px 0; border-bottom: 2px solid transparent; transition: .15s; }
-nav a:hover, nav a.active { color: #fff; border-bottom-color: #00b894; }
+nav a { color: var(--muted); text-decoration: none; font-size: 14px; cursor: pointer; padding: 4px 0; border-bottom: 2px solid transparent; transition: .15s; }
+nav a:hover, nav a.active { color: var(--text); border-bottom-color: var(--accent); }
 .loading {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #00b894;
+  border: 3px solid var(--line);
+  border-top: 3px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-left: 8px;
@@ -28,66 +28,67 @@ nav a:hover, nav a.active { color: #fff; border-bottom-color: #00b894; }
 .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
 .section { display: none; }
 .section.active { display: block; }
-.card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 24px; margin-bottom: 20px; }
-.card h2 { font-size: 18px; margin-bottom: 16px; color: #2d3436; }
+.card { background: var(--field); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 24px; margin-bottom: 20px; }
+.card h2 { font-size: 18px; margin-bottom: 16px; color: var(--text); }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
 .field { flex: 1; min-width: 180px; }
-.field label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #636e72; margin-bottom: 4px; }
-.field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border: 1.5px solid #dfe6e9; border-radius: 6px; font-size: 14px; outline: none; transition: .15s; background: #fff; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: #00b894; }
+.field label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 6px; font-size: 14px; outline: none; transition: .15s; background: var(--field); }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 60px; font-family: inherit; }
 button { padding: 8px 18px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; white-space: nowrap; }
-.btn-primary { background: #00b894; color: #fff; }
-.btn-primary:hover { background: #00a381; }
-.btn-danger { background: #d63031; color: #fff; }
-.btn-danger:hover { background: #b71c1c; }
-.btn-outline { background: transparent; border: 1.5px solid #dfe6e9; color: #636e72; }
-.btn-outline:hover { border-color: #00b894; color: #00b894; }
+.btn-primary { background: var(--accent); color: var(--text); }
+.btn-primary:hover { background: var(--accent); }
+.btn-danger { background: var(--danger); color: var(--text); }
+.btn-danger:hover { background: var(--danger); }
+.btn-outline { background: transparent; border: 1.5px solid var(--line); color: var(--muted); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
 .btn-sm { padding: 4px 12px; font-size: 12px; }
-.btn-success { background: #00b894; color: #fff; }
-.btn-success:hover { background: #00a381; }
-pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; max-height: 300px; white-space: pre-wrap; word-break: break-all; }
-pre.error { color: #d63031; background: #fff5f5; border-color: #fab1b1; }
-pre.success { color: #00b894; background: #f0fff4; border-color: #81ecec; }
+.btn-success { background: var(--accent); color: var(--text); }
+.btn-success:hover { background: var(--accent); }
+pre { background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; max-height: 300px; white-space: pre-wrap; word-break: break-all; }
+pre.error { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line); }
+pre.success { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 8px; }
-.badge-auth { background: #6c5ce7; color: #fff; }
-.badge-ok { background: #00b894; color: #fff; }
+.badge-auth { background: #6c5ce7; color: var(--text); }
+.badge-ok { background: var(--accent); color: var(--text); }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #f1f2f6; }
-th { font-size: 12px; text-transform: uppercase; color: #636e72; font-weight: 600; background: #f8f9fa; }
-tr:hover td { background: #f8f9fa; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+th { font-size: 12px; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--field); }
+tr:hover td { background: var(--field); }
 .actions { display: flex; gap: 6px; }
-.empty { text-align: center; color: #b2bec3; padding: 32px; font-size: 14px; }
+.empty { text-align: center; color: var(--muted); padding: 32px; font-size: 14px; }
 .mt-2 { margin-top: 12px; }
 .mb-2 { margin-bottom: 12px; }
 .flex { display: flex; gap: 12px; align-items: center; }
 .justify-between { display: flex; justify-content: space-between; align-items: center; }
 #chat-messages { max-height: 500px; overflow-y: auto; }
 .msg { padding: 10px 14px; margin-bottom: 8px; border-radius: 8px; font-size: 14px; }
-.msg.user { background: #dfe6e9; margin-left: 32px; }
-.msg.assistant { background: #e8f8f5; border-left: 3px solid #00b894; }
-.msg .meta { font-size: 11px; color: #636e72; margin-bottom: 4px; }
+.msg.user { background: var(--line); margin-left: 32px; }
+.msg.assistant { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.msg .meta { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
 .msg .role { font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; }
-.auth-status { padding: 8px 16px; border-radius: 6px; background: #dfe6e9; font-size: 13px; font-weight: 500; }
-.auth-status.logged-in { background: #e8f8f5; color: #00b894; }
-.auth-status.logged-out { background: #ffeaa7; color: #d68910; }
-.msg-json { 
-  background: #f8f9fa; 
-  border: 1px solid #e9ecef; 
-  border-radius: 4px; 
-  padding: 8px; 
-  margin-top: 8px; 
-  font-size: 11px; 
-  overflow-x: auto; 
-  white-space: pre-wrap; 
+.auth-status { padding: 8px 16px; border-radius: 6px; background: var(--line); font-size: 13px; font-weight: 500; }
+.auth-status.logged-in { background: var(--accent-soft); color: var(--accent); }
+.auth-status.logged-out { background: var(--warning-soft); color: var(--warning); }
+.msg-json {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  overflow-x: auto;
+  white-space: pre-wrap;
   word-break: break-all;
 }
 pre {
   display: none;
 }
 </style>
+<link rel="stylesheet" href="/ui/theme.css">
 </head>
-<body>
+<body class="legacy-ui">
 
 <nav>
   <h1>WirralAI</h1>
@@ -217,14 +218,14 @@ pre {
         <button class="btn-outline btn-sm" onclick="closeChatDetail()">Zamknij</button>
       </div>
     </div>
-    
+
     <!-- Chat Controls -->
     <div class="row mb-2">
       <button class="btn-outline btn-sm" onclick="replayChat()">Odtwórz komunikację</button>
     </div>
-    
+
     <div id="chat-messages"></div>
-    
+
     <div class="row mt-2">
       <div class="field" style="flex:4">
         <label>Wiadomość</label>
@@ -233,12 +234,12 @@ pre {
       <button class="btn-primary" onclick="addMessage()" id="send-button">Wyślij</button>
       <button class="btn-outline" id="toggle-send-enter" onclick="toggleSendOnEnter()">Enter: Wyślij</button>
     </div>
-    
+
     <div id="loading-indicator" style="display: none; margin-top: 10px;">
       <span class="loading"></span>
       <span>Oczekiwanie na odpowiedź AI...</span>
     </div>
-    
+
     <pre id="chat-msg-result" class="mt-2"></pre>
   </div>
 </div>
@@ -416,7 +417,7 @@ async function openChat(id) {
   if (!isAuth()) return;
   currentChatId = id;
   chatHistory = []; // Reset chat history
-  
+
   const r = await api('GET', '/chats/' + id);
   if (r.ok) {
     const chat = r.data;
@@ -433,14 +434,14 @@ async function openChat(id) {
           <div class="meta"><span class="role">${esc(m.role)}</span> · ${esc(m.created_at || '')}</div>
           <div>${esc(m.content)}</div>
         </div>`;
-        
+
         // Record message for replay
         recordMessage(m.role, m.content, { created_at: m.created_at });
       });
       container.scrollTop = container.scrollHeight;
     }
   }
-  
+
   show(document.getElementById('chat-msg-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
 }
 
@@ -457,28 +458,28 @@ async function addMessage() {
   if (!currentChatId) return;
   const content = document.getElementById('chat-msg-input').value;
   if (!content) return;
-  
+
   // Pokaż animację ładowania
   document.getElementById('loading-indicator').style.display = 'block';
   document.getElementById('send-button').disabled = true;
-  
+
   try {
     const r = await api('POST', '/chats/' + currentChatId + '/messages', { content });
-    
+
     // Record user message for replay
     recordMessage('user', content);
-    
+
     show(document.getElementById('chat-msg-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
-    
+
     if (r.ok) {
       document.getElementById('chat-msg-input').value = '';
-      
+
       // Record AI response if available
       if (r.data && Array.isArray(r.data) && r.data.length > 1) {
         const aiResponse = r.data[1]; // Second message is AI response
         recordMessage('assistant', aiResponse.content);
       }
-      
+
       openChat(currentChatId);
     }
   } finally {
@@ -498,7 +499,7 @@ document.addEventListener('keydown', function(e) {
         // Pozostaw domyślne zachowanie (nowa linia)
         return;
       }
-      
+
       // Wysyłaj wiadomość
       if (sendOnEnter) {
         e.preventDefault();
@@ -514,11 +515,11 @@ function showAllPre() {
   preVisible = !preVisible;
   const preElements = document.querySelectorAll('pre');
   const button = document.getElementById('show-pre-btn');
-  
+
   preElements.forEach(el => {
     el.style.display = preVisible ? 'block' : 'none';
   });
-  
+
   if (preVisible) {
     button.textContent = 'ukryj';
     button.classList.remove('btn-success');
@@ -547,52 +548,52 @@ function recordMessage(role, content, metadata = null) {
 
 async function replayChat() {
   if (!currentChatId || isReplaying) return;
-  
+
   isReplaying = true;
   const originalMessages = [...chatHistory];
-  
+
   // Wyczyść widok wiadomości
   const container = document.getElementById('chat-messages');
   container.innerHTML = '';
-  
+
   // Odtwórz wiadomości z opóźnieniem
   for (let i = 0; i < originalMessages.length; i++) {
     const msg = originalMessages[i];
-    
+
     // Dodaj wiadomość z animacją
     await animateMessage(msg);
-    
+
     // Opóźnienie między wiadomościami
     await sleep(800);
   }
-  
+
   isReplaying = false;
 }
 
 async function animateMessage(msg) {
   const container = document.getElementById('chat-messages');
-  
+
   const msgDiv = document.createElement('div');
   msgDiv.className = `msg ${msg.role}`;
   msgDiv.innerHTML = `
     <div class="meta"><span class="role">${esc(msg.role)}</span> · ${new Date(msg.timestamp).toLocaleTimeString()}</div>
     <div>${esc(msg.content)}</div>
   `;
-  
+
   // Dodaj animację pojawiania się
   msgDiv.style.opacity = '0';
   msgDiv.style.transform = 'translateY(10px)';
   msgDiv.style.transition = 'all 0.3s ease';
-  
+
   container.appendChild(msgDiv);
-  
+
   // Trigger reflow
   msgDiv.offsetHeight;
-  
+
   // Pokaż wiadomość
   msgDiv.style.opacity = '1';
   msgDiv.style.transform = 'translateY(0)';
-  
+
   container.scrollTop = container.scrollHeight;
 }
 
@@ -651,9 +652,9 @@ async function loadModels() {
     showSection(section);
   }
 
-  if (isAuth()) { 
-    listTasks(); 
-    listChats(); 
+  if (isAuth()) {
+    listTasks();
+    listChats();
     loadModels();
   }
 

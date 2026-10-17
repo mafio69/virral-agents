@@ -10,12 +10,8 @@ use Symfony\Component\Mime\Email;
 
 final readonly class MailService
 {
-    private Mailer $mailer;
-
-    public function __construct(string $dsn)
+    public function __construct(private string $dsn)
     {
-        $transport = Transport::fromDsn($dsn);
-        $this->mailer = new Mailer($transport);
     }
 
     public function send(string $to, string $subject, string $body): void
@@ -26,6 +22,8 @@ final readonly class MailService
             ->subject($subject)
             ->html($body);
 
-        $this->mailer->send($email);
+        // Konfiguracja poczty jest potrzebna dopiero przy wysyłaniu, nie podczas logowania.
+        $mailer = new Mailer(Transport::fromDsn($this->dsn));
+        $mailer->send($email);
     }
 }

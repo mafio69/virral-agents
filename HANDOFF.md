@@ -1,4 +1,11 @@
 
+## 2026-10-18 — przekazane potwierdzenie kontraktu searxng
+
+Właściciel przekazał syntetyczne odpowiedzi serwera: poprawny brak wyników ma status empty, source null, results [] i errors []; awaria ma status error, source null, results [] i błędy searxng_timeout/perplexity_no_key. Klient przyjmuje pierwszy wariant i odrzuca drugi; dokładny wariant awarii dodano do testu pełnej sekwencji MCP bez ponawiania. Dokładny wariant empty jest już objęty istniejącym testem.
+
+Według raportu przekazanego przez właściciela serwer przeszedł 3/3 testy kontraktu przez pełne sesje MCP, Ruff, 46 testów backendu, 18 frontendu, build i kontrole Git. Raport po stronie drugiego repo: docs/contract/MCP-COMPATIBILITY.md. Agent tego pliku nie odczytywał i nie wykonywał tam testów. To potwierdzenie kodu na syntetycznych danych, bez rzeczywistych wyszukiwań i bez potwierdzenia działającego wdrożenia. W przekazanym fragmencie brakuje przypiętej wersji biblioteki MCP i protocolVersion zwracanego przy initialize, więc K3 pozostaje częściowo otwarte. Lokalna walidacja po dodaniu przekazanej awarii: composer check-all — formatter czysty, PHP 173/173 (788 asercji), UI/skrypty 75/75; Composer strict/platform i diff-check poprawne.
+
+
 ## 2026-10-18 — zamknięcie lokalnych poprawek audytu A1–A6
 
 - A6: za zgodą właściciela dodano friendsofphp/php-cs-fixer ^3.95 (lock 3.95.27), bez aktualizowania dotychczasowych pakietów. Konfiguracja php-cs-fixer.php obejmuje warstwy objęte audytem, bez sekretów, ustawień środowiska, zależności i cache. PSR-12 oraz wymagane klamry; sformatowano 19 plików. Dodano composer lint, format, test-ui i check-all; polecenia opisano w README.

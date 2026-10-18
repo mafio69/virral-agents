@@ -65,6 +65,7 @@ final class McpSearchClientTest extends TestCase
         foreach ([
             ['content' => [['type' => 'text', 'text' => '{bad']]],
             ['isError' => true, 'content' => []],
+            ['content' => [['type' => 'text', 'text' => '{"status":"error","source":null,"results":[],"errors":["searxng_timeout","perplexity_no_key"]}']]],
             ['content' => [['type' => 'text', 'text' => '{"source":null,"results":[],"errors":["unavailable"]}']]],
         ] as $result) {
             $history = [];

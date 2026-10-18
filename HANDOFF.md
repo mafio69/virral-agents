@@ -1,4 +1,11 @@
 
+## 2026-10-18 — K3: zgodność wersji MCP potwierdzona
+
+Właściciel przekazał potwierdzenie drugiego repo: `mcp==1.30.0` przypięte w `mcp/requirements.txt`. Testy rzeczywistej lokalnej inicjalizacji w `tests/test_mcp_protocol.py` potwierdzają negocjację: żądane `2024-11-05`, `2025-03-26`, `2025-06-18` i `2025-11-25` są zwracane bez zmiany; żądanie nieobsługiwanej wersji otrzymuje `2025-11-25`. Wszystkie te odpowiedzi akceptuje klient WirralAI. Agent otrzymał wyniki od właściciela, bez odczytu drugiego repo i bez wykonywania tam testów.
+
+K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma zgodne syntetyczne przykłady pustego wyniku i awarii. Nie potwierdzono działającego wdrożenia ani rzeczywistego wyszukania. P1 nadal wymaga procesu PR develop → master na GitHub z zielonymi kontrolami; bez push lub operacji na master przez agenta.
+
+
 ## 2026-10-18 — przekazane potwierdzenie kontraktu searxng
 
 Właściciel przekazał syntetyczne odpowiedzi serwera: poprawny brak wyników ma status empty, source null, results [] i errors []; awaria ma status error, source null, results [] i błędy searxng_timeout/perplexity_no_key. Klient przyjmuje pierwszy wariant i odrzuca drugi; dokładny wariant awarii dodano do testu pełnej sekwencji MCP bez ponawiania. Dokładny wariant empty jest już objęty istniejącym testem.

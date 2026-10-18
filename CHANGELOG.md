@@ -392,3 +392,10 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 Właściciel przekazał syntetyczne odpowiedzi serwera: poprawny brak wyników ma status empty, source null, results [] i errors []; awaria ma status error, source null, results [] i błędy searxng_timeout/perplexity_no_key. Klient przyjmuje pierwszy wariant i odrzuca drugi; dokładny wariant awarii dodano do testu pełnej sekwencji MCP bez ponawiania. Dokładny wariant empty jest już objęty istniejącym testem.
 
 Według raportu przekazanego przez właściciela serwer przeszedł 3/3 testy kontraktu przez pełne sesje MCP, Ruff, 46 testów backendu, 18 frontendu, build i kontrole Git. Raport po stronie drugiego repo: docs/contract/MCP-COMPATIBILITY.md. Agent tego pliku nie odczytywał i nie wykonywał tam testów. To potwierdzenie kodu na syntetycznych danych, bez rzeczywistych wyszukiwań i bez potwierdzenia działającego wdrożenia. W przekazanym fragmencie brakuje przypiętej wersji biblioteki MCP i protocolVersion zwracanego przy initialize, więc K3 pozostaje częściowo otwarte. Lokalna walidacja po dodaniu przekazanej awarii: composer check-all — formatter czysty, PHP 173/173 (788 asercji), UI/skrypty 75/75; Composer strict/platform i diff-check poprawne.
+
+
+## 2026-10-18 — K3: zgodność wersji MCP potwierdzona
+
+Właściciel przekazał potwierdzenie drugiego repo: `mcp==1.30.0` przypięte w `mcp/requirements.txt`. Testy rzeczywistej lokalnej inicjalizacji w `tests/test_mcp_protocol.py` potwierdzają negocjację: żądane `2024-11-05`, `2025-03-26`, `2025-06-18` i `2025-11-25` są zwracane bez zmiany; żądanie nieobsługiwanej wersji otrzymuje `2025-11-25`. Wszystkie te odpowiedzi akceptuje klient WirralAI. Agent otrzymał wyniki od właściciela, bez odczytu drugiego repo i bez wykonywania tam testów.
+
+K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma zgodne syntetyczne przykłady pustego wyniku i awarii. Nie potwierdzono działającego wdrożenia ani rzeczywistego wyszukania. P1 nadal wymaga procesu PR develop → master na GitHub z zielonymi kontrolami; bez push lub operacji na master przez agenta.

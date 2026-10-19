@@ -469,3 +469,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Nazwa produktu „Virral Agents” w UI (landing, czat, panel API), dokumentacji i projektach w `Design/`; `package.json` `virral-agents-e2e`, `clientInfo` MCP `virral-agents`, User-Agent fetchera `VirralAgents-Research/1.0`, nadawca poczty `noreply@virral-agents.local`, kontener Mailpit w `docs/E2E.md`.
 - Bez zmian celowo: stałe kontekstu szyfrowania `virralAI/user-data/v1` i `virralAI/email-index/v1` (zmiana uniemożliwiłaby odczyt danych), historia w CHANGELOG, nazwa listy DT „virralAI”.
 - Walidacja: formatter 0/46, PHP 182/182 (862 asercje), UI 82/82.
+
+## 2026-10-19 — #62-484: snippet i tytuł wyniku zawsze w evidence
+
+- `ResearchService::evidence()` dodaje do każdego źródła `snippet` z wyszukiwarki (≤ 400 znaków) i przycina `title` do 300 znaków, także przy statusach `failed`/`denied`; fetch bez wyszukania ma pusty snippet.
+- Prompt badania: `title`/`snippet` pochodzą z wyszukiwarki i nie są przeczytaną treścią strony.
+- Dokumentacja: `REPO.md`, `docs/MCP-USAGE.md`.
+- Walidacja: formatter 0/46, PHP 183/183 (872 asercje), UI 82/82.

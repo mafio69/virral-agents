@@ -34,6 +34,9 @@ Limit: odpowiedź 1 MiB, tekst 16 000 znaków na stronę, 100 000 znaków kontek
 Skrócenie oraz odmowa/błąd są jawne. Nieudany fetch ma kod przyczyny z zamkniętej
 listy `SearchException::FETCH_REASONS` (`page.reason` w stanie, `reason` w evidence,
 opis w panelu źródeł), bez treści odpowiedzi serwera. Ponowienie wymaga nowej prośby i zgody.
+Każde źródło w evidence ma `title` (≤ 300 znaków) i `snippet` (≤ 400 znaków) z wyszukiwarki,
+także przy statusach `failed`/`denied`; przy fetch bez wcześniejszego wyszukania snippet jest pusty.
+Model dostaje instrukcję, że nie są to treści przeczytanej strony.
 
 API chronione istniejącą sesją:
 - `GET /api/research?chat_id=0` — szkic; identyfikator rozmowy zamiast 0 wybiera jej listę.

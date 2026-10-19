@@ -87,6 +87,9 @@ final class ResearchServiceTest extends ChatServiceTestCase
         self::assertSame('Actually fetched fixture text', $evidence['sources'][0]['text']);
         self::assertSame('denied', $evidence['sources'][1]['status']);
         self::assertSame('', $evidence['sources'][1]['text']);
+        self::assertSame('page2', $evidence['sources'][1]['title']);
+        self::assertSame('Fixture snippet', $evidence['sources'][1]['snippet']);
+        self::assertSame('Fixture snippet', $evidence['sources'][0]['snippet']);
         self::assertSame([], $evidence['decisions']);
         self::assertStringNotContainsString('page3', json_encode($evidence));
         self::assertStringNotContainsString('Actually fetched fixture text', $this->pdo->query('SELECT payload FROM research_workspaces')->fetchColumn());
@@ -109,6 +112,28 @@ final class ResearchServiceTest extends ChatServiceTestCase
         self::assertSame('failed', $evidence['sources'][0]['status']);
         self::assertSame('http_blocked', $evidence['sources'][0]['reason']);
         self::assertSame('', $evidence['sources'][0]['text']);
+        self::assertSame('page1', $evidence['sources'][0]['title']);
+        self::assertSame('Fixture snippet', $evidence['sources'][0]['snippet']);
+    }
+
+    public function testEvidenceSnippetIsCappedAndEmptyForDirectFetch(): void
+    {
+        $search = $this->createMock(SearchClientInterface::class);
+        $search->method('search')->willReturn(['source' => 'searxng', 'results' => [['title' => str_repeat('T', 350), 'url' => 'https://example.org/long', 'snippet' => str_repeat('ś', 450)]]]);
+        $fetch = $this->createMock(WebPageFetcherInterface::class);
+        $fetch->method('fetch')->willThrowException(new \App\Infrastructure\Search\SearchException('timeout', 'fetch'));
+        $service = $this->service($search, $fetch);
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Public query']);
+        $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        $service->decide($this->userId, 0, $this->pending($service->prepare($this->userId, 0))[0]['id'], false);
+        $state = $service->propose($this->userId, 0, ['kind' => 'fetch', 'url' => 'https://example.org/direct']);
+        $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        $evidence = $service->evidence($this->userId, 0);
+        self::assertSame('denied', $evidence['sources'][0]['status']);
+        self::assertSame(300, mb_strlen($evidence['sources'][0]['title']));
+        self::assertSame(str_repeat('ś', 400), $evidence['sources'][0]['snippet']);
+        self::assertSame('failed', $evidence['sources'][1]['status']);
+        self::assertSame('', $evidence['sources'][1]['snippet']);
     }
 
     public function testAiProposalsCannotExecuteBeforeUserDecisionOrOverrideDeny(): void

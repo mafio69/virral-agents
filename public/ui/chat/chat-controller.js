@@ -1,5 +1,15 @@
-import { aiFailureMessage } from './chat-api.js?v=20261013-6';
+import { aiFailureMessage } from './chat-api.js?v=20261018-chat-retry';
 import { isInlineImage } from './chat-images.js?v=20261013-6';
+
+function deliveryFailureDetail(error) {
+    if (error.status) {
+        return ` HTTP ${error.status}.`;
+    }
+    if (error.reason === 'invalid_app_response') {
+        return ' Aplikacja zwróciła odpowiedź w nieoczekiwanym formacie.';
+    }
+    return ' Błąd połączenia z aplikacją.';
+}
 
 /**
  * Conversation state independent of the graphic design and the HTTP transport.
@@ -16,7 +26,7 @@ export class ChatController {
         this.state = {
             chats: [], models: [], connections: initialConnections, selectedConnection: this.preferredConnection(initialConnections)?.id || '', modelsLoading: false, activeChat: null, messages: [], draft: '', images: [],
             selectedModel: '', authenticated: null, loading: false, busy: false,
-            pendingMessage: null, error: '', notice: '', deliveryUncertain: false, searchActivity: 'idle',
+            pendingMessage: null, retryMessageId: null, error: '', notice: '', deliveryUncertain: false, searchActivity: 'idle',
         };
     }
 
@@ -114,7 +124,7 @@ export class ChatController {
         this.uncertainDelivery = null;
         this.update({
             activeChat: null, messages: [], draft: '', images: [], loading: false, searchActivity: 'idle',
-            pendingMessage: null, error: '', notice: '', deliveryUncertain: false,
+            pendingMessage: null, retryMessageId: null, error: '', notice: '', deliveryUncertain: false,
         });
         const connection = this.preferredConnection(this.state.connections)?.id;
         if (connection) void this.selectConnection(connection);
@@ -128,10 +138,13 @@ export class ChatController {
         try {
             const chat = await this.api.getChat(id);
             if (version !== this.selectionVersion) return false;
-            this.uncertainDelivery = null;
+            const last = chat.messages.at(-1);
+            const running = last?.role === 'user' && last.reply_status === 'running';
+            this.uncertainDelivery = running ? { content: last.content, images: last.images || [], previousIds: new Set(chat.messages.slice(0, -1).map(message => message.id)) } : null;
             this.update({
                 activeChat: chat, messages: chat.messages, selectedModel: chat.model || '',
-                draft: '', images: [], loading: false, deliveryUncertain: false, notice: '', searchActivity: 'idle',
+                draft: '', images: [], loading: false, deliveryUncertain: running, retryMessageId: this.retryableMessage(chat.messages),
+                notice: running ? 'Serwer nadal przetwarza tę wiadomość. Sprawdź zapis za chwilę.' : '', searchActivity: 'idle',
             });
             const namespace = chat.model?.split(':', 1)[0];
             const connection = namespace === 'db' ? 'zai'
@@ -166,7 +179,7 @@ export class ChatController {
         }
         const previousIds = new Set(this.state.messages.map(message => message.id));
         let messageRequestStarted = false;
-        this.update({ busy: true, error: '', notice: '', pendingMessage: { role: 'user', content, images }, searchActivity: search ? 'searching' : 'idle' });
+        this.update({ busy: true, error: '', notice: '', retryMessageId: null, pendingMessage: { role: 'user', content, images }, searchActivity: search ? 'searching' : 'idle' });
         try {
             if (!this.state.activeChat) {
                 const title = Array.from((content || 'Analiza obrazu').split(/\r?\n/, 1)[0]).slice(0, 72).join('');
@@ -186,7 +199,7 @@ export class ChatController {
                 pendingMessage: null,
                 searchActivity: search ? 'error' : 'idle',
                 authenticated: error.status === 401 ? false : this.state.authenticated,
-                error: error.status === 401 ? '' : aiFailureMessage(error) || 'Nie udało się odebrać odpowiedzi. Treść wiadomości została zachowana.',
+                error: error.status === 401 ? '' : aiFailureMessage(error) || 'Nie udało się odebrać odpowiedzi.' + deliveryFailureDetail(error) + ' Treść wiadomości została zachowana.',
             });
             if (messageRequestStarted && error.status !== 401) {
                 // The backend saves the user message before contacting AI.
@@ -212,14 +225,16 @@ export class ChatController {
             const answered = saved && chat.messages.some((message, index) =>
                 message.role === 'assistant' && chat.messages.slice(0, index).some(previous =>
                     matches(previous)));
-            this.uncertainDelivery = null;
+            const running = saved && !answered && chat.messages.some(message => matches(message) && message.reply_status === 'running');
+            if (!running) this.uncertainDelivery = null;
             this.update({
-                activeChat: chat, messages: chat.messages, deliveryUncertain: false,
+                activeChat: chat, messages: chat.messages, deliveryUncertain: running,
+                retryMessageId: running ? null : this.retryableMessage(chat.messages),
                 draft: saved ? '' : this.state.draft,
                 images: saved ? [] : this.state.images,
                 error: answered ? '' : saved ? this.state.error || 'Wiadomość została zapisana, ale model nie odpowiedział.' : this.state.error,
-                notice: answered ? 'Odpowiedź jest już w rozmowie.' : saved
-                    ? 'Możesz napisać kolejną wiadomość.' : 'Wiadomość nie została zapisana. Możesz wysłać ją ponownie.',
+                notice: running ? 'Serwer nadal przetwarza tę wiadomość. Sprawdź zapis za chwilę.' : answered ? 'Odpowiedź jest już w rozmowie.' : saved
+                    ? this.retryableMessage(chat.messages) ? 'Użyj przycisku Ponów.' : 'Nie ma potwierdzonego stanu tej próby. Ponowienie jest niedostępne.' : 'Wiadomość nie została zapisana. Możesz wysłać ją ponownie.',
             });
             return true;
         } catch {
@@ -228,6 +243,39 @@ export class ChatController {
                 notice: 'Sprawdź zapis rozmowy przed ponownym wysłaniem wiadomości.',
             });
             return false;
+        }
+    }
+
+    retryableMessage(messages) {
+        const last = messages.at(-1);
+        return last?.role === 'user' && last.reply_status === 'failed' ? last.id : null;
+    }
+
+    async retryReply() {
+        const id = this.state.retryMessageId;
+        if (!id || this.state.busy || this.state.loading || this.state.deliveryUncertain || this.state.authenticated !== true) return false;
+        const target = this.state.messages.find(message => message.id === id);
+        if (!target) return false;
+        this.update({ busy: true, error: '', notice: '', retryMessageId: null });
+        try {
+            // Read first: another tab or the slow original request may already have completed.
+            const chat = await this.api.getChat(this.state.activeChat.id);
+            this.update({ activeChat: chat, messages: chat.messages });
+            if (this.retryableMessage(chat.messages) !== id) {
+                this.update({ notice: 'Zapis rozmowy został odświeżony. Nie ponowiono wywołania AI.' });
+                return false;
+            }
+            const pair = await this.api.retryMessage(chat.id, id);
+            const ids = new Set(pair.map(message => message.id));
+            this.update({ messages: [...chat.messages.filter(message => !ids.has(message.id)), ...pair], notice: '' });
+            return true;
+        } catch (error) {
+            this.update({ error: aiFailureMessage(error) || 'Ponowienie odpowiedzi nie powiodło się.', authenticated: error.status === 401 ? false : this.state.authenticated });
+            this.uncertainDelivery = { content: target.content, images: target.images || [], previousIds: new Set(this.state.messages.filter(message => message.id !== id).map(message => message.id)) };
+            await this.reconcileDelivery();
+            return false;
+        } finally {
+            this.update({ busy: false });
         }
     }
 

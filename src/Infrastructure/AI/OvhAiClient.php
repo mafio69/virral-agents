@@ -14,7 +14,7 @@ final readonly class OvhAiClient implements WebToolClientInterface
         private string $url,
         string $token,
         private string $model,
-        int $timeout = 120,
+        int $timeout = 300,
         ?ClientInterface $httpClient = null,
     ) {
         $this->client = new OpenAiCompatClient($this->getBaseUrl(), $token, $this->getDefaultModel(), $timeout, $httpClient);

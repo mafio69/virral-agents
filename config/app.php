@@ -13,7 +13,7 @@ return [
     'ovh_ai' => [
         'url' => 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1',
         'model' => 'Qwen3.6-27B',
-        'timeout' => 120,
+        'timeout' => 300,
     ],
     'logger' => [
         'log_dir' => dirname(__DIR__).'/var/logs',

@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS chat_reply_attempts (
+    message_id INTEGER PRIMARY KEY,
+    research INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL CHECK (status IN ('running', 'failed', 'done')),
+    FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS chat_message_images (
     message_id INTEGER PRIMARY KEY,
     data_url TEXT NOT NULL,

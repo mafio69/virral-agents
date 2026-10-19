@@ -1,4 +1,5 @@
 const AI_ERRORS = {
+    provider_timeout: 'Model przekroczył limit czasu odpowiedzi. Możesz ponowić po zakończeniu poprzedniej próby.',
     catalogue_unavailable: 'Nie udało się pobrać katalogu modeli od dostawcy. Spróbuj ponownie.',
     missing_configuration: 'Brakuje konfiguracji dostawcy AI lub klucza szyfrowania rejestru. Sprawdź bezpieczne ustawienia aplikacji.',
     provider_auth: 'Dostawca AI odrzucił dostęp. Sprawdź klucz w bezpiecznych ustawieniach, nie w czacie.',
@@ -46,7 +47,7 @@ export class ChatApi {
                 ...(payload !== undefined ? { body: JSON.stringify(payload) } : {}),
             });
         } catch {
-            throw new ChatApiError('Nie udało się połączyć z aplikacją.');
+            throw new ChatApiError('Nie udało się połączyć z aplikacją.', 0, 'app_unreachable');
         }
 
         if (!response.ok) {
@@ -54,14 +55,14 @@ export class ChatApi {
                 ? 'Zaloguj się, aby korzystać z czatu.'
                 : 'Aplikacja nie mogła wykonać tej operacji.';
             // Error bodies can contain provider diagnostics; never expose them in the UI.
-            const reason = response.headers?.get?.('X-AI-Error') || '';
+            const reason = response.headers?.get?.('X-AI-Error') || (response.status === 504 ? 'provider_timeout' : '');
             throw new ChatApiError(aiFailureMessage({ reason }) || message, response.status, reason);
         }
 
         try {
             return await response.json();
         } catch {
-            throw new ChatApiError('Aplikacja zwróciła nieprawidłową odpowiedź.', response.status);
+            throw new ChatApiError('Aplikacja zwróciła nieprawidłową odpowiedź.', response.status, 'invalid_app_response');
         }
     }
 
@@ -105,7 +106,17 @@ export class ChatApi {
         if (!Array.isArray(messages) || messages.length !== 2
             || messages[0]?.role !== 'user' || messages[1]?.role !== 'assistant'
             || messages.some(message => !Number.isInteger(message.id) || typeof message.content !== 'string')) {
-            throw new ChatApiError('Nieprawidłowa odpowiedź modelu.');
+            throw new ChatApiError('Nieprawidłowa odpowiedź modelu.', 0, 'invalid_app_response');
+        }
+        return messages;
+    }
+
+    async retryMessage(chatId, messageId) {
+        const messages = await this.request('POST', '/chats/' + this.chatId(chatId) + '/messages/' + this.chatId(messageId) + '/retry', {});
+        if (!Array.isArray(messages) || messages.length !== 2 || messages[0]?.role !== 'user'
+            || messages[0]?.id !== messageId || messages[1]?.role !== 'assistant'
+            || messages.some(message => !Number.isInteger(message.id) || typeof message.content !== 'string')) {
+            throw new ChatApiError('Nieprawidłowa odpowiedź ponowienia.', 0, 'invalid_app_response');
         }
         return messages;
     }

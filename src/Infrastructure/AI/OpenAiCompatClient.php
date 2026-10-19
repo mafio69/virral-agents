@@ -19,7 +19,7 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
         private string $baseUri,
         private string $apiKey,
         private string $defaultModel,
-        int $timeout = 120,
+        int $timeout = 300,
         ?ClientInterface $httpClient = null,
     ) {
         $this->httpClient = $httpClient ?? new Client([
@@ -89,11 +89,13 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
             $response = $this->httpClient->request($method, $path, [
                 'headers' => ['Authorization' => 'Bearer '.$this->apiKey, 'Accept' => 'application/json'],
                 'allow_redirects' => false,
-                'timeout' => $path === 'models' ? 30 : $this->httpClient->getConfig('timeout') ?? 120,
+                'timeout' => $path === 'models' ? 30 : $this->httpClient->getConfig('timeout') ?? 300,
                 ...($payload !== null ? ['json' => $payload] : []),
             ]);
         } catch (RequestException $error) {
-            throw new AiConnectionException($this->statusReason($error->getResponse()?->getStatusCode() ?? 0));
+            throw new AiConnectionException(($error->getHandlerContext()['errno'] ?? null) === 28 ? 'provider_timeout' : $this->statusReason($error->getResponse()?->getStatusCode() ?? 0));
+        } catch (\GuzzleHttp\Exception\ConnectException $error) {
+            throw new AiConnectionException(($error->getHandlerContext()['errno'] ?? null) === 28 ? 'provider_timeout' : 'connection_failed');
         } catch (GuzzleException) {
             throw new AiConnectionException('connection_failed');
         }
@@ -109,6 +111,7 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
             401, 403 => 'provider_auth',
             404 => 'model_unavailable',
             429 => 'provider_limit',
+            408, 504 => 'provider_timeout',
             default => 'connection_failed',
         };
     }

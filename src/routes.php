@@ -52,6 +52,7 @@ return function (App $app) {
             $group->post('/chats', [ChatController::class, 'create']);
             $group->get('/chats/{id}', [ChatController::class, 'get']);
             $group->post('/chats/{id}/messages', [ChatController::class, 'addMessage']);
+            $group->post('/chats/{id}/messages/{messageId}/retry', [ChatController::class, 'retryMessage']);
 
             // Research and diagnostics
             $group->get('/search/status', [ChatController::class, 'searchStatus']);

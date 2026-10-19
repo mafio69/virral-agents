@@ -1,10 +1,10 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261018-research-modal';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-research-modal';
+import { ChatApi } from './chat-api.js?v=20261018-chat-retry';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-chat-retry';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchModal } from './chat-research-modal.js?v=20261018-research-modal';
-import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-research-modal';
+import { ResearchModal } from './chat-research-modal.js?v=20261018-chat-retry';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261018-chat-retry';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
@@ -123,6 +123,12 @@ function render(state) {
         const retry = element('button', 'btn btn-sm', 'Pobierz modele');
         retry.type = 'button';
         retry.addEventListener('click', () => controller.selectConnection(state.selectedConnection));
+        status.append(retry);
+    }
+    if (state.retryMessageId && !state.busy && !state.deliveryUncertain) {
+        const retry = element('button', 'btn btn-sm', 'Ponów');
+        retry.type = 'button';
+        retry.addEventListener('click', async () => { await controller.retryReply(); await researchPanel.refresh(); });
         status.append(retry);
     }
     if (state.deliveryUncertain && !state.busy) {

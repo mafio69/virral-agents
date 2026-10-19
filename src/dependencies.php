@@ -56,7 +56,7 @@ return function (ContainerBuilder $containerBuilder) {
                 url: $config['url'],
                 token: $config['token'],
                 model: $config['model'],
-                timeout: $config['timeout'] ?? 120,
+                timeout: $config['timeout'] ?? 300,
             );
         },
         \App\Infrastructure\AI\ChatModelRegistryInterface::class => function (ContainerInterface $c) {

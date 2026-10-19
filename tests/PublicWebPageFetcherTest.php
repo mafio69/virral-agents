@@ -19,6 +19,21 @@ final class PublicWebPageFetcherTest extends TestCase
         foreach (['127.0.0.1', '10.1.2.3', '172.16.1.1', '192.168.1.1', '169.254.169.254', '100.64.1.1', '198.18.0.1', '192.0.2.1', '224.0.0.1', '::1', '0.0.0.0'] as $ip) self::assertFalse(PublicWebUrl::publicIp($ip), $ip);
         self::assertTrue(PublicWebUrl::publicIp('93.184.216.34'));
     }
+    public function testOnlyDefaultPortsAndUrlsWithoutCredentialsAreAccepted(): void
+    {
+        self::assertSame('http://example.org/a', PublicWebUrl::normalize('http://example.org:80/a'));
+        self::assertSame('https://example.org/', PublicWebUrl::normalize('https://example.org'));
+        self::assertSame('https://example.org:80/', PublicWebUrl::normalize('https://example.org:80/'));
+        foreach (['https://example.org:8443/', 'http://example.org:22/', 'https://user:pass@example.org/', 'https://user@example.org/',
+            'ftp://example.org/', 'https://localhost/', 'https://127.0.0.1/', 'https://intranet/', 'https://example.org/<script>'] as $url) {
+            try {
+                PublicWebUrl::normalize($url);
+                self::fail('Expected rejected URL: '.$url);
+            } catch (\App\Exception\ValidationException) {
+                self::assertTrue(true);
+            }
+        }
+    }
     public function testDnsRebindingOrPrivateAddressIsBlockedBeforeHttp(): void
     {
         $fetcher = new PublicWebPageFetcher(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), static fn() => ['93.184.216.34', '127.0.0.1']);

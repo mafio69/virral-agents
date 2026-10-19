@@ -491,3 +491,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `ConnectionFactory`: tworzenie katalogu bazy odporne na wyścig (`!mkdir(...) && !is_dir(...)`), czytelny wyjątek, gdy katalogu nie da się utworzyć.
 - `SearchOptions::fromInput()` i `PublicWebUrl::normalize()`: jawne nawiasy przy mieszaniu `&&` i `||` (bez zmiany logiki).
 - Walidacja: formatter 0/46, PHP 185/185 (905 asercji), UI 82/82.
+
+## 2026-10-19 — Testy obsługi błędów dla poprawek Qodana
+
+- `ConnectionFactoryTest`: tworzenie zagnieżdżonego katalogu bazy, ponowne użycie istniejącego, błąd utworzenia (plik w miejscu katalogu) z ogólnym komunikatem bez ścieżki.
+- `ChatSearchTest`: `SearchOptions::fromInput()` odrzuca tekst, `null`, liczbę i listy, akceptuje pusty obiekt z wartościami domyślnymi.
+- `PublicWebPageFetcherTest`: `PublicWebUrl::normalize()` przyjmuje tylko porty 80/443, odrzuca dane logowania, inne schematy, hosty lokalne i adresy IP.
+- Walidacja: formatter 0/46, PHP 190/190 (931 asercji), UI 82/82.

@@ -30,7 +30,8 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         $existingUser = $this->userRepository->findByEmail($input->email);
         if ($existingUser) {
             $this->logger->warning('Register failed: email taken');
-            throw new ValidationException('Ten adres email ma już konto. Potwierdź email, a następnie zaloguj się.');
+            // Same message for confirmed and unconfirmed accounts: no confirmation state is disclosed.
+            throw new ValidationException('Ten adres email ma już konto. Zaloguj się; jeśli konto nie jest jeszcze potwierdzone, użyj linku z wiadomości potwierdzającej.');
         }
 
         $passwordHash = password_hash($input->password, PASSWORD_DEFAULT);

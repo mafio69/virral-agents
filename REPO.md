@@ -60,7 +60,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Wybór modelu | `ModelSelector` rozdziela `provider:model`; rozmowa jest związana z dostawcą — zmiana dostawcy wymaga nowej rozmowy (historia nie jest przekazywana innemu dostawcy) | `src/Dto/Chat/ModelSelector.php`, `ProviderRegistry` |
 | Zapis odpowiedzi | wiadomość użytkownika jest zapisywana **przed** wywołaniem AI; po błędzie UI odczytuje rozmowę zamiast ponownie wysyłać POST (ochrona przed duplikatem) | `ChatService::addMessage`, `chat-controller.js` |
 | Zgoda na WWW (ASK) | każde wyszukanie i fetch wymaga jawnej decyzji; zgoda jest jednorazowa i nie przechodzi na kolejną wiadomość; model nie może sam uruchomić sieci (prośby AI tworzą tylko oczekującą decyzję) | `ResearchService`, `ChatReplyGenerator`, `chat-search.js` |
-| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, bez redirectów, cookies i JS | `PublicWebPageFetcher`, `PublicWebUrl` |
+| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, bez redirectów, cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
 | Migracje | `bin/migrate.php` przed startem FPM; HTTP tylko `assertReady`. Inicjalizacja szyfrowania automatyczna wyłącznie dla pustej bazy | `docker/start-app.sh`, `DatabaseInitializer`, `MigrationRunner` |
 | Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków | `AiConnectionException`, `chat-api.js` |
 
@@ -173,7 +173,7 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 
 - `chat-research-modal.js` zarządza natywnym dialogiem umieszczonym poza `#app`, przywołaniem z bocznej listy i przywracaniem fokusu. `chat-research.js` renderuje wyniki i aktualizuje pojedynczy przycisk w stopce dialogu; źródła nie zajmują wysokości formularza czatu.
 - Zamknięcie modalu nie czyści magazynu. Wyniki ostatniego wyszukania, wybrane źródła i pobrane teksty są w szyfrowanym `research_workspaces`, nie w jawnym localStorage. Powrót do rozmowy po reload odtwarza jej magazyn; niewybrane wyniki kolejnych wyszukiwań nie stanowią historii wszystkich wyszukań.
-- Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.
+- Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, kod przyczyny przy `failed`, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.
 
 
 ### Audyt: autoryzacja, katalog i start bazy

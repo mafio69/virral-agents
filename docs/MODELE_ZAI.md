@@ -1,4 +1,4 @@
-# Modele Z.ai — integracja VirralAI
+# Modele Z.ai — integracja Virral Agents
 
 Sprawdzono w oficjalnej dokumentacji: 2026-10-13.
 
@@ -18,13 +18,13 @@ Sprawdzono w oficjalnej dokumentacji: 2026-10-13.
 | GLM-5.3-Flash | glm-5.3-flash | Czat i analiza wizualna | Tak, image_url z Base64 Data URL |
 | GLM-5.3-FlashX | glm-5.3-flashx | Szybszy wariant multimodalny | Tak, image_url z Base64 Data URL |
 
-Dokumentacja Flash/FlashX podaje kontekst 1M i maksymalną odpowiedź 128K tokenów. Są to limity dostawcy, nie ustawienia VirralAI. Modele zwracają tekst; obsługa obrazów wejściowych nie oznacza generowania grafik. Thinking nie można wyłączyć w tych wariantach.
+Dokumentacja Flash/FlashX podaje kontekst 1M i maksymalną odpowiedź 128K tokenów. Są to limity dostawcy, nie ustawienia Virral Agents. Modele zwracają tekst; obsługa obrazów wejściowych nie oznacza generowania grafik. Thinking nie można wyłączyć w tych wariantach.
 
 Źródła: [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3), [Flash/FlashX](https://docs.z.ai/guides/vlm/glm-5.3-flash).
 
 ## Coding Plan
 
-Coding Plan ma oddzielną konfigurację endpointu. Jego zasady ograniczają użycie do oficjalnie wspieranych narzędzi i produktów. Nie potwierdzono uprawnienia VirralAI do tego planu; pierwsza integracja powinna korzystać ze standardowego API.
+Coding Plan ma oddzielną konfigurację endpointu. Jego zasady ograniczają użycie do oficjalnie wspieranych narzędzi i produktów. Nie potwierdzono uprawnienia Virral Agents do tego planu; pierwsza integracja powinna korzystać ze standardowego API.
 
 Źródło: [Usage Policy](https://docs.z.ai/devpack/usage-policy).
 

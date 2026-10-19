@@ -94,6 +94,23 @@ final class ResearchServiceTest extends ChatServiceTestCase
         $service->decide($this->userId, 0, $pending[0]['id'], true);
     }
 
+    public function testFailedFetchKeepsClosedReasonForUserAndModel(): void
+    {
+        $search = $this->createMock(SearchClientInterface::class);
+        $search->method('search')->willReturn($this->results('page', 1));
+        $fetch = $this->createMock(WebPageFetcherInterface::class);
+        $fetch->method('fetch')->willThrowException(new \App\Infrastructure\Search\SearchException('http_blocked', 'fetch'));
+        $service = $this->service($search, $fetch);
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Public query']);
+        $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        $state = $service->decide($this->userId, 0, $this->pending($service->prepare($this->userId, 0))[0]['id'], true);
+        self::assertSame(['status' => 'failed', 'reason' => 'http_blocked'], $state['sources'][0]['page']);
+        $evidence = $service->evidence($this->userId, 0);
+        self::assertSame('failed', $evidence['sources'][0]['status']);
+        self::assertSame('http_blocked', $evidence['sources'][0]['reason']);
+        self::assertSame('', $evidence['sources'][0]['text']);
+    }
+
     public function testAiProposalsCannotExecuteBeforeUserDecisionOrOverrideDeny(): void
     {
         $search = $this->createMock(SearchClientInterface::class);

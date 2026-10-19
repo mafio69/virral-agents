@@ -57,4 +57,40 @@ final class PublicWebPageFetcherTest extends TestCase
             } catch (SearchException) { self::assertCount(1, $history); }
         }
     }
+
+    public function testEveryFetchFailureHasClosedReasonWithoutResponseContent(): void
+    {
+        $request = new \GuzzleHttp\Psr7\Request('GET', 'https://example.org/');
+        $cases = [
+            'redirect' => new Response(301, ['Location' => 'https://www.example.org/']),
+            'http_blocked' => new Response(403, ['Content-Type' => 'text/html'], 'Private denial body'),
+            'http_not_found' => new Response(404, ['Content-Type' => 'text/html'], 'Missing'),
+            'timeout' => new \GuzzleHttp\Exception\ConnectException('Private transport detail', $request, handlerContext: ['errno' => 28]),
+            'connection_failed' => new \GuzzleHttp\Exception\ConnectException('Private transport detail', $request),
+            'http_error' => new Response(500, ['Content-Type' => 'text/html'], 'Server failure'),
+            'unsupported_type' => new Response(200, ['Content-Type' => 'application/pdf'], 'fixture'),
+            'unsupported_encoding' => new Response(200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip'], 'fixture'),
+            'too_large' => new Response(200, ['Content-Type' => 'text/plain'], str_repeat('a', 1048577)),
+            'empty_content' => new Response(200, ['Content-Type' => 'text/html'], '<html><body><script>render()</script></body></html>'),
+        ];
+        foreach ($cases as $expected => $response) {
+            $client = new Client(['handler' => HandlerStack::create(new MockHandler([$response]))]);
+            try {
+                (new PublicWebPageFetcher($client, static fn() => ['93.184.216.34']))->fetch('https://example.org/');
+                self::fail('Expected failure: '.$expected);
+            } catch (SearchException $error) {
+                self::assertSame($expected, $error->reason, $expected);
+                self::assertSame('fetch', $error->stage, $expected);
+                self::assertStringNotContainsString('Private', $error->getMessage());
+            }
+        }
+        foreach (['dns_failed' => [], 'private_address' => ['10.0.0.8']] as $expected => $addresses) {
+            try {
+                (new PublicWebPageFetcher(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), static fn() => $addresses))->fetch('https://example.org/');
+                self::fail('Expected failure: '.$expected);
+            } catch (SearchException $error) {
+                self::assertSame($expected, $error->reason);
+            }
+        }
+    }
 }

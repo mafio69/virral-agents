@@ -19,13 +19,15 @@ Szablon:
 
 ---
 
-## 2026-10-19 — DT 01 domknięte, kolejka w DevBrain-Todo
+## 2026-10-19 — #62-483 zamknięte, dokumentacja zaktualizowana
 
-- **Gałąź:** `develop` lokalnie, z commitami DT 01 (retry/timeout/E2E) i dokumentacji. **Bez push** — wymaga zgody właściciela; `codex/chat-retry-timeout` usunąć dopiero po udanym push.
-- **Kolejka:** DevBrain-Todo, lista „virralAI” (id 62), zadania 01–25 (id 480–504). Rezerwacja komentarzem `[CLAIMED]`, `done` dopiero po weryfikacji.
-- **Od czego zacząć:** DT 02 (CI: `develop` w triggerach, `composer lint`, `composer test-ui`), potem PR develop → master na GitHub.
+- **Gałąź:** `develop`; lokalne commity `684fbf7`, `1fee123`, `733edb9` (+ commit dokumentacji) czekają na push właściciela.
+- **Kolejka:** DevBrain-Todo, lista „virralAI” (62). Zadania jako `#62-<id>` (480–508), nie numerem z tytułu. Rezerwacja `[CLAIMED]`, `done` po spełnieniu DoD. Zamknięte: 480–483, 505–508.
+- **Od czego zacząć:** #62-484 (tytuł i fragment ≤400 znaków zawsze w evidence, także przy `failed`/`denied`), potem kolejno do #62-493.
 - **Pułapki:**
-  - W katalogu leżą poza Git: `http/*` (w tym `http-client.env.json` — może zawierać tokeny, nie czytać, nie commitować), `artifacts/chat-retry-*.png`.
-  - E2E wymaga Mailpita uruchamianego przez właściciela (`sudo` z kluczem FIDO — agent nie ma terminala do autoryzacji).
-  - `ChatRepository` sprawdza istnienie `chat_reply_attempts` przy odczytach do czasu migracji na instalacji.
-  - 6 starych zadań Multi-AI w DT (id 386–391, 2026-08-30) wygląda na wykonane — czeka na decyzję właściciela.
+  - Poza Git: `http/*` (`http-client.env.json` może zawierać tokeny — nie czytać, nie commitować), `artifacts/chat-retry-*.png`, `.junie/plans/`.
+  - 3 stare stashe `research-source-selection: paused …` do usunięcia przez właściciela (`git stash drop` zablokowany dla agenta).
+  - Zdalna gałąź `origin/codex/chat-retry-timeout` — usunięcie po stronie właściciela.
+  - E2E wymaga Mailpita uruchamianego przez właściciela (`sudo` z kluczem FIDO); po #62-483 nie powtarzane.
+  - Plik środowiska: nazwy zmiennych bez myślników (dotenv rzuca `InvalidFileException` → migrator nie startuje → 502).
+  - 6 starych zadań Multi-AI w DT (id 386–391) — decyzja właściciela.

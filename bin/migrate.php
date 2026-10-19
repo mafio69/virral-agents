@@ -22,7 +22,15 @@ try {
     $cipher = $container->get(DataCipherInterface::class);
     $container->get(DatabaseInitializer::class)->initialize();
     fwrite(STDOUT, "Database ready.\n");
-} catch (Throwable) {
-    fwrite(STDERR, "Database migration unavailable. Check configuration and the data protection procedure.\n");
+} catch (Throwable $error) {
+    // Report only a closed reason code or the exception class, never its message or data.
+    $cause = $error;
+    while ($cause->getPrevious() !== null && !$cause instanceof \App\Exception\DataProtectionException) {
+        $cause = $cause->getPrevious();
+    }
+    $reason = $cause instanceof \App\Exception\DataProtectionException && $cause->reason !== null
+        ? $cause->reason
+        : (new \ReflectionClass($cause))->getShortName();
+    fwrite(STDERR, "Database migration unavailable (reason: {$reason}). Check configuration and the data protection procedure.\n");
     exit(1);
 }

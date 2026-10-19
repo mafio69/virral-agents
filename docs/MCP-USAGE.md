@@ -1,6 +1,6 @@
 # MCP Search — instrukcja dla AI i integratorów
 
-## Integracja w VirralAI — tryb ASK
+## Integracja w Virral Agents — tryb ASK
 
 W widoku czatu „Szukaj stron…” działa niezależnie od wiadomości i modelu.
 Każde wyszukanie pokazuje dokładne zapytanie i osobne Allow / Deny. Zatwierdzone
@@ -25,13 +25,15 @@ zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wynik�
    sama prośba AI nie daje zgody. Wyniki wyszukania zleconego przez AI również
    są domyślnie zaznaczone. Ręczne prośby AI nadal są pokazywane z Allow / Deny w modalu.
 
-Fetch wykonuje backend VirralAI, nie serwer MCP: wyłącznie publiczny HTML/tekst,
+Fetch wykonuje backend Virral Agents, nie serwer MCP: wyłącznie publiczny HTML/tekst,
 bez cookies, autoryzacji, JS i zasobów podrzędnych. Adresy lokalne/prywatne są
 blokowane; DNS jest sprawdzany, a połączenie przypięte do zweryfikowanego IPv4.
 Przekierowania nie są śledzone: trzeba osobno wskazać i zatwierdzić adres docelowy.
 PDF, strony wymagające JS/logowania i IPv6 nie są obecnie obsługiwane.
 Limit: odpowiedź 1 MiB, tekst 16 000 znaków na stronę, 100 000 znaków kontekstu.
-Skrócenie oraz odmowa/błąd są jawne. Ponowienie wymaga nowej prośby i zgody.
+Skrócenie oraz odmowa/błąd są jawne. Nieudany fetch ma kod przyczyny z zamkniętej
+listy `SearchException::FETCH_REASONS` (`page.reason` w stanie, `reason` w evidence,
+opis w panelu źródeł), bez treści odpowiedzi serwera. Ponowienie wymaga nowej prośby i zgody.
 
 API chronione istniejącą sesją:
 - `GET /api/research?chat_id=0` — szkic; identyfikator rozmowy zamiast 0 wybiera jej listę.

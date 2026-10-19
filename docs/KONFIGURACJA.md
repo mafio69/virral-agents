@@ -1,4 +1,4 @@
-# Konfiguracja VirralAI
+# Konfiguracja Virral Agents
 
 ## Ustawienia zwykłe
 

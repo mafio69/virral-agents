@@ -417,3 +417,55 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Lokalne E2E Playwright (`tests/e2e`, `docs/E2E.md`, `package.json`): konto z potwierdzeniem przez Mailpit, czat przez natywny transport, badanie źródeł z częściowym błędem fetch, puste wyniki i awaria MCP.
 - Walidacja: `composer check-all` — formatter 0/46, PHP 179/179 (822 asercje), UI 81/81; `npm run test:e2e` 4/4. Migracja `chat_reply_attempts` na rzeczywistej instalacji nie była wykonywana przez agenta.
 - Dokumentacja: odnośniki do usuniętego przez właściciela `TODO-zrodla.md` zastąpione listą DevBrain-Todo „virralAI” (zadania 01–25). Usunięte `MCP-INSTRUKCJA-DLA-AI.md` i `TASKS.md`; dodane instrukcje DT i MCP Search w `docs/`.
+
+
+## 2026-10-19 — DT 02: CI sprawdza develop, formatter i testy UI
+
+- `.github/workflows/test.yml` uruchamia się dla push i PR na `develop`, `main`, `master` (wcześniej tylko `main/master`).
+- Kroki jak lokalne `composer check-all`: `composer validate --strict --no-check-publish`, `check-platform-reqs`, `composer lint`, PHPUnit oraz testy UI na Node 22. PHP 8.4 z `pdo_sqlite` i `sodium`. E2E pozostaje lokalne (wymaga Mailpita).
+- Lokalnie: formatter 0/46, PHP 179/179 (822 asercje), UI 81/81. Wynik na GitHub Actions będzie znany po push `develop`.
+
+
+## 2026-10-19 — #62-482: sprzątanie repozytorium
+
+- Usunięte nieużywane pliki: katalogi notatek agentów `.devin/` i `.junie/przykazaniaAi.md`, skrypt `przyklad_szyfrowania_deszyfrowania_używania.php`, szkic `src/Infrastructure/AI/GroundedClientInterface.php` (brak odwołań w `src/` i `tests/`).
+- `STATUS.md` i `HANDOFF.md`: P1 zamknięte (master zaktualizowany przez PR właściciela), numeracja zadań jako `#62-<id>` z DevBrain-Todo.
+- Walidacja: formatter 0/46, PHP 179/179 (822 asercje), UI 81/81. Trzy stare stashe pozostają do usunięcia przez właściciela.
+
+
+## 2026-10-19 — poprawki z przeglądu Copilota (PR #5) i diagnostyka migratora
+
+- #62-505 (High): `AuthController` otrzymuje środowisko z `settings['environment']` (domyślnie `prod`) zamiast `$_ENV['APP_ENV']` z domyślnym `dev`. Ciasteczko sesji bez `Secure` tylko przy jawnym `dev` na HTTP. Test: prod przez HTTP ustawia `SameSite=Strict; Secure`.
+- #62-506: komunikat blokady logowania pokazuje czas z nagłówka `Retry-After` (s/min) albo „później”, zamiast stałych 15 minut.
+- #62-507: nazwa projektu „WirralAI” w nagłówku `TODO-zrodla.md`.
+- #62-508: jeden neutralny komunikat rejestracji na istniejący adres, bez ujawniania stanu potwierdzenia konta.
+- `bin/migrate.php` podaje bezpieczną przyczynę błędu: kod z zamkniętej listy ochrony danych albo nazwę klasy wyjątku, bez treści i wartości. Pozwoliło to zdiagnozować 502 (`InvalidFileException` — błąd składni w pliku środowiska, poprawiony przez właściciela).
+- Walidacja: formatter 0/46, PHP 180/180 (826 asercji), UI 81/81.
+
+
+## 2026-10-19 — #62-483: kody przyczyn nieudanego pobrania strony
+
+- `PublicWebPageFetcher` rzuca `SearchException` z kodem z zamkniętej listy `FETCH_REASONS` (etap `fetch`): `dns_failed`, `private_address`, `timeout`, `connection_failed`, `http_blocked`, `http_not_found`, `http_error`, `redirect`, `unsupported_type`, `unsupported_encoding`, `too_large`, `charset_error`, `empty_content`. Bez treści odpowiedzi serwera i komunikatów transportu.
+- `ResearchService` zapisuje kod w `page.reason`; evidence dla modelu ma pole `reason` przy statusie `failed`, a instrukcja systemowa trybu badania każe nie zgadywać treści i zaproponować inne źródło.
+- UI badania pokazuje czytelny opis przyczyny (np. „strona odmówiła dostępu”, „brak tekstu (strona wymaga JavaScript)”).
+- Testy: każdy kod poza `charset_error` (iconv z `//IGNORE` praktycznie nie zwraca błędu) na atrapach HTTP, zapis i evidence w `ResearchServiceTest`, etykiety UI. Formatter 0/46, PHP 182/182 (862 asercje), UI 82/82.
+
+
+## 2026-10-19 — dokumentacja po #62-483
+
+- `STATUS.md`: aktualne wyniki (PHP 182/182, UI 82/82), commity czekające na push, zmiany konta z #62-505/506/508, kody przyczyn fetch, następny priorytet #62-484.
+- `HANDOFF.md`: nowa pałeczka — start od #62-484, pułapka z nazwami zmiennych w pliku środowiska (przyczyna 502).
+- `REPO.md`, `docs/MCP-USAGE.md`: kod przyczyny nieudanego fetch w stanie, evidence i panelu źródeł.
+
+
+## 2026-10-19 — CI: Node 24 dla testów UI
+
+- GitHub Actions używał Node 22, który nie zna flagi `--test-isolation=none` (`composer test-ui` kończył się kodem 9). `setup-node` podniesiony do 24, zgodnie z lokalnym środowiskiem.
+
+
+## 2026-10-19 — #62-509: nazwa repo i produktu Virral Agents
+
+- Repo GitHub: `mafio69/virral-agents` (remote `origin` zaktualizowany).
+- Nazwa produktu „Virral Agents” w UI (landing, czat, panel API), dokumentacji i projektach w `Design/`; `package.json` `virral-agents-e2e`, `clientInfo` MCP `virral-agents`, User-Agent fetchera `VirralAgents-Research/1.0`, nadawca poczty `noreply@virral-agents.local`, kontener Mailpit w `docs/E2E.md`.
+- Bez zmian celowo: stałe kontekstu szyfrowania `virralAI/user-data/v1` i `virralAI/email-index/v1` (zmiana uniemożliwiłaby odczyt danych), historia w CHANGELOG, nazwa listy DT „virralAI”.
+- Walidacja: formatter 0/46, PHP 182/182 (862 asercje), UI 82/82.

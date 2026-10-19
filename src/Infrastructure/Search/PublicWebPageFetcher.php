@@ -20,11 +20,11 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
         $host = parse_url($url, PHP_URL_HOST);
         $addresses = $this->resolve !== null ? ($this->resolve)($host) : gethostbynamel($host);
         if (!is_array($addresses) || $addresses === []) {
-            throw new SearchException();
+            throw self::failure('dns_failed');
         }
         foreach ($addresses as $ip) {
             if (!PublicWebUrl::publicIp($ip)) {
-                throw new SearchException();
+                throw self::failure('private_address');
             }
         }
         $port = parse_url($url, PHP_URL_PORT) ?? (parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80);
@@ -32,7 +32,7 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             $options = [
                 'allow_redirects' => false, 'http_errors' => false, 'cookies' => false, 'proxy' => '', 'verify' => true,
                 'connect_timeout' => 5, 'timeout' => 15, 'read_timeout' => 10, 'stream' => true, 'decode_content' => false,
-                'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAI-Research/1.0'],
+                'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAgents-Research/1.0'],
             ];
             $requestUrl = $url;
             $streams = $this->useStreams || !extension_loaded('curl');
@@ -49,17 +49,28 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             $stream = $response->getBody();
             try {
                 $type = strtolower(trim(explode(';', $response->getHeaderLine('Content-Type'))[0]));
-                if ($response->getStatusCode() !== 200 || !in_array($type, ['text/html', 'text/plain'], true)
-                    || !in_array(strtolower($response->getHeaderLine('Content-Encoding')), ['', 'identity'], true)
-                    || (int)$response->getHeaderLine('Content-Length') > 1048576) {
-                    throw new SearchException();
+                $status = $response->getStatusCode();
+                if ($status !== 200) {
+                    throw self::failure(self::statusReason($status));
+                }
+                if (!in_array($type, ['text/html', 'text/plain'], true)) {
+                    throw self::failure('unsupported_type');
+                }
+                if (!in_array(strtolower($response->getHeaderLine('Content-Encoding')), ['', 'identity'], true)) {
+                    throw self::failure('unsupported_encoding');
+                }
+                if ((int)$response->getHeaderLine('Content-Length') > 1048576) {
+                    throw self::failure('too_large');
                 }
                 $raw = '';
                 $deadline = microtime(true) + 15;
                 while (!$stream->eof()) {
                     $raw .= $stream->read(8192);
-                    if (strlen($raw) > 1048576 || microtime(true) > $deadline) {
-                        throw new SearchException();
+                    if (strlen($raw) > 1048576) {
+                        throw self::failure('too_large');
+                    }
+                    if (microtime(true) > $deadline) {
+                        throw self::failure('timeout');
                     }
                 }
             } finally {
@@ -72,7 +83,7 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             }
             $converted = iconv($encoding, 'UTF-8//IGNORE', $raw);
             if ($converted === false) {
-                throw new SearchException();
+                throw self::failure('charset_error');
             }
             $raw = $converted;
             if ($type === 'text/html') {
@@ -97,11 +108,32 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             }
             $text = trim(preg_replace('/[ \t]+/u', ' ', preg_replace('/\n\s*\n/u', "\n\n", $text)));
             if ($text === '') {
-                throw new SearchException();
+                // Typically a page rendered only by JavaScript, which is never executed here.
+                throw self::failure('empty_content');
             }
             return ['url' => $url, 'text' => mb_substr($text, 0, 16000), 'truncated' => mb_strlen($text) > 16000];
+        } catch (SearchException $error) {
+            throw $error;
+        } catch (\GuzzleHttp\Exception\ConnectException $error) {
+            throw self::failure(($error->getHandlerContext()['errno'] ?? null) === 28 ? 'timeout' : 'connection_failed');
         } catch (\Throwable) {
-            throw new SearchException();
+            throw self::failure('connection_failed');
         }
+    }
+
+    private static function failure(string $reason): SearchException
+    {
+        return new SearchException($reason, 'fetch');
+    }
+
+    private static function statusReason(int $status): string
+    {
+        return match (true) {
+            $status >= 300 && $status < 400 => 'redirect',
+            in_array($status, [401, 403, 451], true) => 'http_blocked',
+            in_array($status, [404, 410], true) => 'http_not_found',
+            $status === 408, $status === 504 => 'timeout',
+            default => 'http_error',
+        };
     }
 }

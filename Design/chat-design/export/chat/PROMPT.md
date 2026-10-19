@@ -1,4 +1,4 @@
-# Prompt dla programisty / agenta — czat VirralAI
+# Prompt dla programisty / agenta — czat Virral Agents
 
 Masz gotowy widok `chat.html` (jeden plik: HTML + CSS + krótki JS demo, bez zewnętrznych zasobów). Twoje zadanie: **podłącz go do backendu bez zmiany wyglądu**.
 

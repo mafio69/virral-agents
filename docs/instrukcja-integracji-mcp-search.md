@@ -15,7 +15,7 @@ Obecnie używamy **HTTP** i poniższych stałych adresów:
 | Gdzie działa backend aplikacji | Endpoint MCP |
 |---|---|
 | Bezpośrednio na tym samym hoście co wyszukiwarka | `http://127.0.0.1:8890/mcp` |
-| W kontenerze Docker, także backend WirralAI | **`http://mcp-search:8000/mcp`** |
+| W kontenerze Docker, także backend Virral Agents | **`http://mcp-search:8000/mcp`** |
 
 W Dockerze aplikacja i wyszukiwarka muszą należeć do istniejącej sieci `ai`.
 `127.0.0.1` w kontenerze oznacza ten kontener, a nie host ani wyszukiwarkę.
@@ -337,7 +337,7 @@ z backendu, niepustego wyniku rzeczywistego narzędzia, odpowiedzi modelu z tymi
 źródłami i poprawnej obsługi empty/error na atrapach. Samo HTTP 200 lub tools/list
 nie wystarcza. Każdy niewykonany krok oznacz „niepotwierdzony”.
 
-**Stabilne 1.0.0 wymaga pozytywnej opinii WirralAI o integracji MCP.** Testy tego
+**Stabilne 1.0.0 wymaga pozytywnej opinii Virral Agents o integracji MCP.** Testy tego
 repozytorium nie zastępują akceptacji klienta ani otwartych kontroli wdrożenia.
 Zmiana numeru, push, tag i release to osobne czynności zgodne z zasadami projektu.
 

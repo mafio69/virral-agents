@@ -173,7 +173,7 @@ final readonly class ResearchService implements ResearchServiceInterface
                 $id = self::sourceId($request['url']);
                 // A removed source is not silently reselected by an in-flight request.
                 if (isset($state['sources'][$id])) {
-                    $state['sources'][$id]['page'] = $result === null ? ['status' => 'failed']
+                    $state['sources'][$id]['page'] = $result === null ? ['status' => 'failed', 'reason' => $reason]
                         : ['status' => 'loaded', 'text' => $result['text'], 'truncated' => $result['truncated'], 'fetched_at' => gmdate('c')];
                 }
             }
@@ -196,7 +196,9 @@ final readonly class ResearchService implements ResearchServiceInterface
             $text = $page['status'] === 'loaded' ? mb_substr($page['text'], 0, max(0, $budget)) : '';
             $budget -= mb_strlen($text);
             $evidence[] = ['url' => $source['url'], 'title' => $source['title'], 'status' => $page['status'], 'text' => $text,
-                'truncated' => ($page['truncated'] ?? false) || mb_strlen($text) < mb_strlen($page['text'] ?? ''), 'fetched_at' => $page['fetched_at'] ?? null];
+                'truncated' => ($page['truncated'] ?? false) || mb_strlen($text) < mb_strlen($page['text'] ?? ''), 'fetched_at' => $page['fetched_at'] ?? null,
+                // Closed fetch failure code so the model can prefer another source instead of guessing.
+                'reason' => $page['status'] === 'failed' ? ($page['reason'] ?? 'unavailable') : null];
         }
         $decisions = array_filter($state['actions'], static fn (array $action): bool => $action['origin'] === 'ai');
         return ['sources' => $evidence, 'decisions' => array_values(array_map(static fn (array $action): array => ['request' => $action['request'], 'status' => $action['status']], $decisions))];

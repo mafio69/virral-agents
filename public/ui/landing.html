@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WirralAI</title>
+<title>Virral Agents</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { --bg:#fff; --text:#202124; --muted:#62666d; --field:#fff; --line:#c7cbd0; --accent:#202124; --danger:#a4262c; --danger-soft:#fff; --danger-line:#e3b9bc; --warning:#62666d; --warning-soft:transparent; --accent-soft:transparent; color-scheme:light; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -57,7 +57,7 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
 <body class="minimal-ui">
 
 <nav>
-  <h1>WirralAI</h1>
+  <h1>Virral Agents</h1>
   <span style="flex:1"></span>
   <button type="button" id="theme-toggle" onclick="toggleTheme()" aria-pressed="false">Ciemne tło</button>
   <span id="auth-indicator" class="auth-status logged-out">Niezalogowany</span>
@@ -65,7 +65,7 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
 
 <div class="container" id="landing-view">
   <div class="hero">
-    <h2>WirralAI</h2>
+    <h2>Virral Agents</h2>
     <p>Platforma z AI — zadania, czaty, integracje</p>
     <div class="hero-buttons" id="hero-buttons">
       <button class="btn-primary btn-lg" onclick="showForm('register')">Rejestracja</button>
@@ -174,7 +174,18 @@ async function api(method, path, body) {
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = text; }
-  return { ok: res.ok, status: res.status, data };
+  return { ok: res.ok, status: res.status, data, retryAfter: res.headers?.get?.('Retry-After') ?? null };
+}
+
+function retryWaitText(retryAfter) {
+  const seconds = Number.parseInt(retryAfter ?? '', 10);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return 'później';
+  }
+  if (seconds < 60) {
+    return 'za ' + seconds + ' s';
+  }
+  return 'za ' + Math.ceil(seconds / 60) + ' min';
 }
 
 function showLoading(msg) {
@@ -259,7 +270,7 @@ async function login() {
       show(el, r.status === 401 ? 'Nieprawidłowy email lub hasło.'
         : r.status === 403 && r.data?.code === 'email_confirmation_required' ? 'Potwierdź adres email przed zalogowaniem. Sprawdź wiadomość z linkiem potwierdzającym.'
         : r.status === 422 ? 'Sprawdź email i hasło.'
-        : r.status === 429 ? 'Zbyt wiele prób logowania. Spróbuj ponownie za 15 minut.'
+        : r.status === 429 ? 'Zbyt wiele prób logowania. Spróbuj ponownie ' + retryWaitText(r.retryAfter) + '.'
         : 'Logowanie jest niedostępne z powodu błędu serwera.', 'error');
     }
   } catch {

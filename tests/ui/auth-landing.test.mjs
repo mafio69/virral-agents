@@ -30,7 +30,7 @@ async function fixture({ blockedStorage = false, restoreCookie = false, response
                     ? { ok: false, status: 401, data: { error: 'No session' } }
                     : { ok: true, status: 200, data: { email: 'fixture@example.invalid' } }
                 : response;
-            return { ...result, text: async () => JSON.stringify(result.data) };
+            return { ...result, headers: { get: name => result.headers?.[name] ?? null }, text: async () => JSON.stringify(result.data) };
         },
     });
     vm.runInContext(script, context);
@@ -139,10 +139,12 @@ for (const [action, emailId, passwordId] of [['login', 'login-email', 'login-pas
 
 test('rate-limited login shows a retry message without saving a session', async () => {
     const { context, elements, buttons, requests } = await fixture({
-        response: { ok: false, status: 429, data: { error: 'Rate limited' } },
+        response: { ok: false, status: 429, data: { error: 'Rate limited' }, headers: { 'Retry-After': '61' } },
     });
     await vm.runInContext('login()', context);
-    assert.match(elements.get('login-result').textContent, /Zbyt wiele prób logowania/);
+    assert.match(elements.get('login-result').textContent, /Zbyt wiele prób logowania\. Spróbuj ponownie za 2 min\./);
+    assert.equal(vm.runInContext("retryWaitText('7')", context), 'za 7 s');
+    assert.equal(vm.runInContext('retryWaitText(null)', context), 'później');
     assert.equal(elements.get('dashboard-view').classList.contains('hidden'), true);
     assert.equal(buttons.get('login').disabled, false);
     assert.equal(requests.length, 1);

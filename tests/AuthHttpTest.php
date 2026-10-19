@@ -26,6 +26,7 @@ final class AuthHttpTest extends TestCase
     private \PDO $pdo;
     private MailService $mail;
     private string $verificationToken;
+    private string $environment = 'dev';
 
     protected function setUp(): void
     {
@@ -47,7 +48,7 @@ final class AuthHttpTest extends TestCase
         $container = new Container([
             LoggerInterface::class => $logger,
             'settings' => ['displayErrorDetails' => false],
-            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, $repository, new \App\Http\SessionTokenResolver()),
+            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, $repository, new \App\Http\SessionTokenResolver(), $this->environment),
             \App\Service\SessionAuthenticatorInterface::class => $service,
         ]);
         $this->app = AppFactory::create(container: $container);
@@ -136,6 +137,16 @@ final class AuthHttpTest extends TestCase
     {
         $this->registerConfirmed();
         $response = $this->request('POST', '/api/auth/login', $this->credentials(), scheme: 'https');
+        self::assertStringContainsString('SameSite=Strict; Secure', $response->getHeaderLine('Set-Cookie'));
+    }
+
+    public function testProductionLoginOverHttpStillSetsSecureCookie(): void
+    {
+        $this->environment = 'prod';
+        $this->setUp();
+        $this->registerConfirmed();
+        $response = $this->request('POST', '/api/auth/login', $this->credentials());
+        self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('SameSite=Strict; Secure', $response->getHeaderLine('Set-Cookie'));
     }
 

@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, master]
+    branches: [develop, main, master]
   pull_request:
-    branches: [main, master]
+    branches: [develop, main, master]
 
 jobs:
   test:
@@ -21,7 +21,12 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: pdo_sqlite
+          extensions: pdo_sqlite, sodium
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Validate composer.json
         run: composer validate --strict --no-check-publish
@@ -29,5 +34,14 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Run tests
+      - name: Check platform requirements
+        run: composer check-platform-reqs
+
+      - name: Check formatting
+        run: composer lint
+
+      - name: Run PHP tests
         run: composer test
+
+      - name: Run UI tests
+        run: composer test-ui

@@ -14,7 +14,7 @@ Z katalogu repozytorium, po instalacji zależności Composer:
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
 PLAYWRIGHT_BROWSERS_PATH=tests/e2e/runtime/browsers npx playwright install chromium
-sudo docker run --detach --rm --name virralai-e2e-mailpit \
+sudo docker run --detach --rm --name virral-agents-e2e-mailpit \
   --publish 127.0.0.1:18025:8025 --publish 127.0.0.1:11025:1025 \
   --env MP_MAX_MESSAGES=100 axllent/mailpit:v1.31.6
 ```
@@ -70,7 +70,7 @@ najpierw potwierdź tryb z operatorem, zamiast zmieniać asercję pod otrzymany 
 ## Sprzątanie
 
 ```bash
-sudo docker stop virralai-e2e-mailpit
+sudo docker stop virral-agents-e2e-mailpit
 ```
 
 `--rm` usuwa tylko ten kontener wraz z jego syntetyczną pocztą. Nie zatrzymuj

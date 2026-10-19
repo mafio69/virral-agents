@@ -2,7 +2,7 @@
 
 Stan sprawdzenia publicznej dokumentacji: **2026-10-13**.
 Źródło: [katalog OVHcloud](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/).
-Zestawienie obejmuje modele uwzględnione w kodzie VirralAI oraz kandydatów do dalszych integracji. Obecność w katalogu nie oznacza potwierdzonego połączenia z naszego konta.
+Zestawienie obejmuje modele uwzględnione w kodzie Virral Agents oraz kandydatów do dalszych integracji. Obecność w katalogu nie oznacza potwierdzonego połączenia z naszego konta.
 
 ## Adresy API
 
@@ -24,7 +24,7 @@ Model wskazujemy identyfikatorem w polu `model`; nie tworzymy osobnego URL z naz
 
 | Nazwa | ID modelu w API | Endpoint | Krótki opis / zastosowanie |
 | --- | --- | --- | --- |
-| [Qwen3.6 27B](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/qwen-3-6-27b/) | `Qwen3.6-27B` | CZAT | Domyślny w VirralAI. Tekst, analiza obrazów, rozumowanie; kontekst 262K. |
+| [Qwen3.6 27B](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/qwen-3-6-27b/) | `Qwen3.6-27B` | CZAT | Domyślny w Virral Agents. Tekst, analiza obrazów, rozumowanie; kontekst 262K. |
 | [Qwen3.8 27B](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/qwen-3-8-27b/) | `Qwen3.8-27B` | CZAT | Kandydat do kodowania i zadań wieloetapowych; także obrazy, 262K. |
 | [Qwen3.5 397B A17B](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/qwen-3-5-397b/) | `Qwen3.5-397B-A17B` | CZAT | Duży model MoE do trudniejszych analiz, kodu i obrazów; 262K. |
 | [Qwen3.5 9B](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/qwen-3-5-9b/) | `Qwen3.5-9B` | CZAT | Mniejszy model tekstowo-obrazowy do prostszych zadań; 262K. |
@@ -34,7 +34,7 @@ Model wskazujemy identyfikatorem w polu `model`; nie tworzymy osobnego URL z naz
 | [Llama 3.3 70B Instruct](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/llama-3-3-70b-instruct/) | `Meta-Llama-3_3-70B-Instruct` | CZAT | Wielojęzyczny czat tekstowy, 131K; alternatywa dla Qwena. |
 
 Qweny oznaczone jako Vision przyjmują tekst i obrazy, a zwracają tekst. **Nie generują obrazków.**
-Obsługa function calling przez dostawcę nie włącza narzędzi ani Bash w VirralAI. GPT OSS w OVH nie jest usługą ChatGPT.
+Obsługa function calling przez dostawcę nie włącza narzędzi ani Bash w Virral Agents. GPT OSS w OVH nie jest usługą ChatGPT.
 
 ## Warte uwagi — osobne integracje do przygotowania
 
@@ -61,4 +61,4 @@ Stary Qwen Coder został zastąpiony w wyborze domyślnym przez `Qwen3.6-27B`. D
 
 ## Używanie tej listy
 
-Przed zmianą modelu sprawdzić aktualny wynik LISTA dla konta. Ten dokument zapisuje publiczny katalog i nasze wybory; nie przechowuje kluczy, poświadczeń ani wyników rozmów. Audio, embeddingi, Guard i generowanie obrazów nie są obecnie osobnymi działającymi funkcjami VirralAI.
+Przed zmianą modelu sprawdzić aktualny wynik LISTA dla konta. Ten dokument zapisuje publiczny katalog i nasze wybory; nie przechowuje kluczy, poświadczeń ani wyników rozmów. Audio, embeddingi, Guard i generowanie obrazów nie są obecnie osobnymi działającymi funkcjami Virral Agents.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ResearchPanel, continueResearch } from '../../public/ui/chat/chat-research.js';
+import { ResearchPanel, continueResearch, fetchReasonText } from '../../public/ui/chat/chat-research.js';
 
 class Element {
     constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this.value = ''; }
@@ -311,4 +311,12 @@ test('modal footer owns the single Continue control and survives panel redraws',
     finish(); await sending;
     assert.equal(control.disabled, false);
     assert.equal(snapshots.at(-1).sources[0].id, 'a');
+});
+
+test('fetch failure codes map to readable labels and unknown codes stay visible', () => {
+    assert.equal(fetchReasonText('http_blocked'), 'strona odmówiła dostępu');
+    assert.equal(fetchReasonText('empty_content'), 'brak tekstu (strona wymaga JavaScript)');
+    assert.equal(fetchReasonText('redirect'), 'przekierowanie (nieobsługiwane)');
+    assert.equal(fetchReasonText('future_code'), 'future_code');
+    assert.equal(fetchReasonText(undefined), '');
 });

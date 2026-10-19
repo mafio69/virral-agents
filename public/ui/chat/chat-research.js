@@ -1,4 +1,21 @@
 const empty = () => ({ results: [], sources: [], actions: [] });
+const FETCH_REASONS = {
+    dns_failed: 'nie znaleziono adresu',
+    private_address: 'adres prywatny lub lokalny',
+    timeout: 'przekroczony czas',
+    connection_failed: 'brak połączenia',
+    http_blocked: 'strona odmówiła dostępu',
+    http_not_found: 'strona nie istnieje',
+    http_error: 'błąd serwera strony',
+    redirect: 'przekierowanie (nieobsługiwane)',
+    unsupported_type: 'nieobsługiwany format (np. PDF)',
+    unsupported_encoding: 'nieobsługiwana kompresja',
+    too_large: 'strona zbyt duża',
+    charset_error: 'nieczytelne kodowanie znaków',
+    empty_content: 'brak tekstu (strona wymaga JavaScript)',
+};
+export const fetchReasonText = reason => FETCH_REASONS[reason] || reason || '';
+const withReason = (text, reason) => reason ? `${text}: ${fetchReasonText(reason)}` : text;
 const node = (tag, text, className = '') => {
     const el = document.createElement(tag);
     if (text !== undefined) el.textContent = text;
@@ -235,7 +252,7 @@ export class ResearchPanel {
             this.body.append(card);
         });
         this.state.actions.filter(action => ['failed', 'running'].includes(action.status)).slice(-3).forEach(action => {
-            this.body.append(node('p', `${action.status === 'failed' ? 'Nie udało się wykonać operacji' : 'Operacja w toku — nie ponawiaj decyzji'}: ${action.request.query || action.request.url}${action.reason ? ' (' + action.reason + ')' : ''}`, 'research-address'));
+            this.body.append(node('p', `${action.status === 'failed' ? 'Nie udało się wykonać operacji' : 'Operacja w toku — nie ponawiaj decyzji'}: ${action.request.query || action.request.url}${action.reason ? ' (' + fetchReasonText(action.reason) + ')' : ''}`, 'research-address'));
         });
         if (this.state.results.length) {
             this.body.append(node('h3', 'Wyniki ostatniego udanego wyszukiwania'));
@@ -247,7 +264,7 @@ export class ResearchPanel {
         earlierSources.forEach(source => {
             const row = node('div', undefined, 'research-source');
             const link = node('a', source.title || source.url); link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
-            const labels = { unread: 'Czeka na zgodę i pobranie', loaded: source.page.truncated ? 'Tekst pobrany (skrócony)' : 'Tekst pobrany', denied: 'Odmowa — nie przeczytano', failed: 'Nie udało się pobrać' };
+            const labels = { unread: 'Czeka na zgodę i pobranie', loaded: source.page.truncated ? 'Tekst pobrany (skrócony)' : 'Tekst pobrany', denied: 'Odmowa — nie przeczytano', failed: withReason('Nie udało się pobrać', source.page.reason) };
             row.append(link, node('small', labels[source.page.status] || 'Nie przeczytano'));
             if (['denied', 'failed'].includes(source.page.status)) {
                 const retry = node('button', 'Poproś ponownie o pobranie…', 'btn btn-sm'); retry.type = 'button'; retry.disabled = this.busy || this.continuing;
@@ -267,7 +284,7 @@ export class ResearchPanel {
         checkbox.addEventListener('change', () => this.run('select', { id: source.id, selected: checkbox.checked }));
         const text = node('span'); text.append(node('strong', source.title || source.url), node('small', source.url), node('span', source.snippet));
         const selected = this.state.sources.find(item => item.id === source.id);
-        if (selected) text.append(node('small', selected.page.status === 'loaded' ? 'Treść pobrana i zachowana' : selected.page.status === 'failed' ? 'Pobranie nie powiodło się' : 'Wybrane do opracowania'));
+        if (selected) text.append(node('small', selected.page.status === 'loaded' ? 'Treść pobrana i zachowana' : selected.page.status === 'failed' ? withReason('Pobranie nie powiodło się', selected.page.reason) : 'Wybrane do opracowania'));
         row.append(checkbox, text); return row;
     }
 }

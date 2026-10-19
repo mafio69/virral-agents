@@ -441,3 +441,11 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - #62-508: jeden neutralny komunikat rejestracji na istniejący adres, bez ujawniania stanu potwierdzenia konta.
 - `bin/migrate.php` podaje bezpieczną przyczynę błędu: kod z zamkniętej listy ochrony danych albo nazwę klasy wyjątku, bez treści i wartości. Pozwoliło to zdiagnozować 502 (`InvalidFileException` — błąd składni w pliku środowiska, poprawiony przez właściciela).
 - Walidacja: formatter 0/46, PHP 180/180 (826 asercji), UI 81/81.
+
+
+## 2026-10-19 — #62-483: kody przyczyn nieudanego pobrania strony
+
+- `PublicWebPageFetcher` rzuca `SearchException` z kodem z zamkniętej listy `FETCH_REASONS` (etap `fetch`): `dns_failed`, `private_address`, `timeout`, `connection_failed`, `http_blocked`, `http_not_found`, `http_error`, `redirect`, `unsupported_type`, `unsupported_encoding`, `too_large`, `charset_error`, `empty_content`. Bez treści odpowiedzi serwera i komunikatów transportu.
+- `ResearchService` zapisuje kod w `page.reason`; evidence dla modelu ma pole `reason` przy statusie `failed`, a instrukcja systemowa trybu badania każe nie zgadywać treści i zaproponować inne źródło.
+- UI badania pokazuje czytelny opis przyczyny (np. „strona odmówiła dostępu”, „brak tekstu (strona wymaga JavaScript)”).
+- Testy: każdy kod poza `charset_error` (iconv z `//IGNORE` praktycznie nie zwraca błędu) na atrapach HTTP, zapis i evidence w `ResearchServiceTest`, etykiety UI. Formatter 0/46, PHP 182/182 (862 asercje), UI 82/82.

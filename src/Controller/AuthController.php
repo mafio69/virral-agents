@@ -22,6 +22,7 @@ final class AuthController
         private readonly AuthService $authService,
         private readonly UserRepository $userRepository,
         private readonly \App\Http\SessionTokenResolver $sessionTokens,
+        private readonly string $environment = 'prod',
     ) {
     }
 
@@ -70,7 +71,8 @@ final class AuthController
 
     private function sessionCookie(ServerRequestInterface $request, string $token, int $expiresAt): string
     {
-        $secure = $request->getUri()->getScheme() === 'https' || ($_ENV['APP_ENV'] ?? 'dev') === 'prod';
+        // Only an explicit dev environment may issue a cookie without Secure over plain HTTP.
+        $secure = $request->getUri()->getScheme() === 'https' || $this->environment !== 'dev';
         return 'token='.rawurlencode($token)
             .'; Expires='.gmdate('D, d M Y H:i:s', $expiresAt).' GMT'
             .'; Path=/; HttpOnly; SameSite='.($secure ? 'Strict' : 'Lax')

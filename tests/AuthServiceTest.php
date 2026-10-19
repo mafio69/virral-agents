@@ -86,7 +86,7 @@ class AuthServiceTest extends TestCase
         $this->authService->register($input);
 
         $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('Ten adres email ma już konto. Potwierdź email, a następnie zaloguj się.');
+        $this->expectExceptionMessage('Ten adres email ma już konto. Zaloguj się; jeśli konto nie jest jeszcze potwierdzone, użyj linku z wiadomości potwierdzającej.');
         
         $this->authService->register($input);
     }

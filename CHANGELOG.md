@@ -431,3 +431,13 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Usunięte nieużywane pliki: katalogi notatek agentów `.devin/` i `.junie/przykazaniaAi.md`, skrypt `przyklad_szyfrowania_deszyfrowania_używania.php`, szkic `src/Infrastructure/AI/GroundedClientInterface.php` (brak odwołań w `src/` i `tests/`).
 - `STATUS.md` i `HANDOFF.md`: P1 zamknięte (master zaktualizowany przez PR właściciela), numeracja zadań jako `#62-<id>` z DevBrain-Todo.
 - Walidacja: formatter 0/46, PHP 179/179 (822 asercje), UI 81/81. Trzy stare stashe pozostają do usunięcia przez właściciela.
+
+
+## 2026-10-19 — poprawki z przeglądu Copilota (PR #5) i diagnostyka migratora
+
+- #62-505 (High): `AuthController` otrzymuje środowisko z `settings['environment']` (domyślnie `prod`) zamiast `$_ENV['APP_ENV']` z domyślnym `dev`. Ciasteczko sesji bez `Secure` tylko przy jawnym `dev` na HTTP. Test: prod przez HTTP ustawia `SameSite=Strict; Secure`.
+- #62-506: komunikat blokady logowania pokazuje czas z nagłówka `Retry-After` (s/min) albo „później”, zamiast stałych 15 minut.
+- #62-507: nazwa projektu „WirralAI” w nagłówku `TODO-zrodla.md`.
+- #62-508: jeden neutralny komunikat rejestracji na istniejący adres, bez ujawniania stanu potwierdzenia konta.
+- `bin/migrate.php` podaje bezpieczną przyczynę błędu: kod z zamkniętej listy ochrony danych albo nazwę klasy wyjątku, bez treści i wartości. Pozwoliło to zdiagnozować 502 (`InvalidFileException` — błąd składni w pliku środowiska, poprawiony przez właściciela).
+- Walidacja: formatter 0/46, PHP 180/180 (826 asercji), UI 81/81.

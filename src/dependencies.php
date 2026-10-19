@@ -20,6 +20,10 @@ use Psr\Log\LoggerInterface;
 return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
         \App\Service\SessionAuthenticatorInterface::class => \DI\get(AuthService::class),
+        \App\Controller\AuthController::class => \DI\autowire()->constructorParameter(
+            'environment',
+            \DI\factory(fn (ContainerInterface $c) => $c->get('settings')['environment'] ?? 'prod'),
+        ),
         \App\Service\ModelCatalogInterface::class => \DI\autowire(\App\Service\ModelCatalogService::class),
         \App\Infrastructure\DataProtection\DataCipherInterface::class => function (ContainerInterface $c) {
             $settings = $c->get('settings');

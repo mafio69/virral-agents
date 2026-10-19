@@ -1,4 +1,4 @@
-# VirralAI — jakość źródeł badania (lista DevBrain-Todo)
+# WirralAI — jakość źródeł badania (lista DevBrain-Todo)
 
 > Kontekst: GLM 5.3 (Z.ai) w aplikacji zgłaszał strony nieładujące się i obcięte treści
 > w trybie badania źródeł. Diagnoza: `src/Infrastructure/Search/PublicWebPageFetcher.php`

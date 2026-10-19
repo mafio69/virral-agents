@@ -456,3 +456,8 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `STATUS.md`: aktualne wyniki (PHP 182/182, UI 82/82), commity czekające na push, zmiany konta z #62-505/506/508, kody przyczyn fetch, następny priorytet #62-484.
 - `HANDOFF.md`: nowa pałeczka — start od #62-484, pułapka z nazwami zmiennych w pliku środowiska (przyczyna 502).
 - `REPO.md`, `docs/MCP-USAGE.md`: kod przyczyny nieudanego fetch w stanie, evidence i panelu źródeł.
+
+
+## 2026-10-19 — CI: Node 24 dla testów UI
+
+- GitHub Actions używał Node 22, który nie zna flagi `--test-isolation=none` (`composer test-ui` kończył się kodem 9). `setup-node` podniesiony do 24, zgodnie z lokalnym środowiskiem.

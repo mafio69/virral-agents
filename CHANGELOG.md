@@ -399,3 +399,21 @@ Według raportu przekazanego przez właściciela serwer przeszedł 3/3 testy kon
 Właściciel przekazał potwierdzenie drugiego repo: `mcp==1.30.0` przypięte w `mcp/requirements.txt`. Testy rzeczywistej lokalnej inicjalizacji w `tests/test_mcp_protocol.py` potwierdzają negocjację: żądane `2024-11-05`, `2025-03-26`, `2025-06-18` i `2025-11-25` są zwracane bez zmiany; żądanie nieobsługiwanej wersji otrzymuje `2025-11-25`. Wszystkie te odpowiedzi akceptuje klient WirralAI. Agent otrzymał wyniki od właściciela, bez odczytu drugiego repo i bez wykonywania tam testów.
 
 K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma zgodne syntetyczne przykłady pustego wyniku i awarii. Nie potwierdzono działającego wdrożenia ani rzeczywistego wyszukania. P1 nadal wymaga procesu PR develop → master na GitHub z zielonymi kontrolami; bez push lub operacji na master przez agenta.
+
+
+## 2026-10-19 — porządek dokumentacji projektu
+
+- `HANDOFF.md` wyzerowany do zasad prowadzenia, szablonu i jednej bieżącej pałeczki (gałąź `codex/chat-retry-timeout` z niezacommitowanym ponawianiem odpowiedzi, timeoutem i E2E). Dotychczasowe wpisy były duplikatem historii zachowanej w tym pliku.
+- `STATUS.md` przepisany jako stan na teraz: gotowe funkcje, otwarte/niepotwierdzone punkty, kolejne priorytety. Historia sesji pozostaje wyłącznie w CHANGELOG.
+- `REPO.md`: wypełnione sekcje 1–6 (przeznaczenie, uruchamianie, architektura, mechanizmy krytyczne, decyzje i pułapki, stałe operacyjne); dotychczasowe sekcje tematyczne bez zmian.
+- `README.md` uaktualniony: pięciu dostawców AI, wyszukiwanie i badanie źródeł, pełna lista endpointów (w tym logout, verify-email, retry, research), aktualna struktura, polecenia jakości i mapa dokumentacji.
+- Zmiana wyłącznie dokumentacji; bez zmian kodu, testów, sekretów i bez commitu.
+
+
+## 2026-10-19 — DT 01: ponawianie odpowiedzi, wspólny timeout i lokalne E2E
+
+- `POST /api/chats/{id}/messages/{messageId}/retry` ponawia odpowiedź na ostatnią wiadomość bez odpowiedzi; stan prób w `chat_reply_attempts` (`running/failed/done`), powtórzone ponowienie z utraconą odpowiedzią zwraca istniejącą parę, zgoda na wyszukanie nie jest używana ponownie. UI: przycisk „Ponów”, rozpoznanie trwającej odpowiedzi po reload, szczegół błędu dostarczenia (HTTP/format/połączenie).
+- Jeden budżet 300 s dla wszystkich dostawców: `config/app.php` (OVH), `OpenAiCompatClient` i `ProviderTransport` (Gemini/OpenAI/Anthropic, wcześniej na sztywno 120 s). cURL 28 oraz HTTP 408/504 dają `provider_timeout`, bez treści transportu. Nginx `fastcgi_read_timeout 360s`.
+- Lokalne E2E Playwright (`tests/e2e`, `docs/E2E.md`, `package.json`): konto z potwierdzeniem przez Mailpit, czat przez natywny transport, badanie źródeł z częściowym błędem fetch, puste wyniki i awaria MCP.
+- Walidacja: `composer check-all` — formatter 0/46, PHP 179/179 (822 asercje), UI 81/81; `npm run test:e2e` 4/4. Migracja `chat_reply_attempts` na rzeczywistej instalacji nie była wykonywana przez agenta.
+- Dokumentacja: odnośniki do usuniętego przez właściciela `TODO-zrodla.md` zastąpione listą DevBrain-Todo „virralAI” (zadania 01–25). Usunięte `MCP-INSTRUKCJA-DLA-AI.md` i `TASKS.md`; dodane instrukcje DT i MCP Search w `docs/`.

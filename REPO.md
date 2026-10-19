@@ -6,74 +6,89 @@
 
 ## 1. Przeznaczenie
 
-- **Problem rozwiązywany:** [jedno zdanie]
-- **Główni użytkownicy:** [kto]
-- **Najważniejszy przepływ:** [wejście → przetworzenie → wynik]
-- **Granice systemu:** [co świadomie nie należy do tego repozytorium]
+- **Problem rozwiązywany:** prywatny, wielodostawcowy czat AI z kontrolowanym (zatwierdzanym przez użytkownika) dostępem do WWW i szyfrowaną historią.
+- **Główni użytkownicy:** właściciel instalacji i niewielka liczba kont z potwierdzonym e-mailem (polskojęzyczny UI).
+- **Najważniejszy przepływ:** wiadomość (+ opcjonalny obraz / zatwierdzone wyszukanie / wybrane źródła) → `ChatService` → generator odpowiedzi → klient wybranego dostawcy AI → szyfrowany zapis pary wiadomości → odpowiedź JSON → render Markdown (DOMPurify).
+- **Granice systemu:** serwer wyszukiwania MCP (repo `searxng`, kontener `mcp-search`) jest osobnym projektem; tutaj jest wyłącznie klient. Brak własnego modelu AI, brak płatności, brak publicznej rejestracji bez e-maila. Moduł zadań (`/api/tasks`) to prosty CRUD poboczny.
 
 ## 2. Uruchamianie
 
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
-| Instalacja | `[komenda]` | `[warunek / wersja]` |
-| Development | `[komenda]` | `[port, URL, zachowanie watch/HMR]` |
-| Pełne środowisko | `dxrun -- [komenda]` | Używaj dla procesów wymagających zmiennych środowiskowych |
-| Testy kompletne | `[komenda]` | Musi przejść przed commitem |
-| Build | `[komenda]` | `[gdzie jest wynik]` |
-| Produkcja | `[komenda lub procedura]` | `[wyłącznie faktycznie dozwolony sposób]` |
+| Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
+| Development | `./dev-start.sh dev` | Compose + Mailpit (`127.0.0.1:8025`), `APP_ENV=dev`, aplikacja `http://localhost:8181`; Docker przez sudo |
+| Produkcja (lokalnie) | `./dev-start.sh prod` | wymusza `APP_ENV=prod`, zatrzymuje Mailpit; `--dry-run` tylko wypisuje komendy |
+| Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
+| Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
+| Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
+| E2E (opcjonalnie) | `npm run test:e2e` / `npm run test:local` | Playwright + osobny Mailpit na 18025/11025; szczegóły `docs/E2E.md` |
+| Build | brak | frontend to statyczne moduły ES w `public/ui`, bez bundlera |
 
-Nie wpisuj tu sekretów, prywatnych kluczy ani ich ścieżek. Opisz jedynie bezpieczny sposób uruchomienia, np. `dxrun -- [komenda]`.
+Sekrety (klucze dostawców, `USER_DATA_KEY`, `DB_HASH`, `MAIL_DSN`) trafiają do kontenera wyłącznie przez zmienne Compose → `docker/php-fpm-env.conf`. Nie wpisuj ich do `config/app.php` ani dokumentacji.
 
 ## 3. Architektura
 
 ```text
-[klient / CLI / integracja]
+przeglądarka: public/ui/landing.html, public/ui/chat.html (+ moduły public/ui/chat/*.js)
+        ↓  fetch JSON, cookie HttpOnly / Bearer
+Nginx :8181 → PHP-FPM: public/index.php (Slim 4, PHP-DI)
+        ↓  src/routes.php → AuthMiddleware → Controller → Mapper → DTO
+Service: AuthService, ChatService, ChatReplyGenerator, ResearchService, ModelCatalogService, TaskService
         ↓
-[punkt wejścia / API / worker]
-        ↓
-[domena / usługi]
-        ↓
-[baza / pliki / zewnętrzne API]
+Repository (ProtectedStore, szyfrowanie pól) → SQLite var/database/app.sqlite
+Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchClient → mcp-search:8000,
+                PublicWebPageFetcher → publiczne strony, MailService → SMTP
 ```
 
 | Obszar | Lokalizacja | Odpowiedzialność |
 |---|---|---|
-| Wejście aplikacji | `[plik/katalog]` | `[co inicjuje]` |
-| Interfejs / API | `[plik/katalog]` | `[co obsługuje]` |
-| Logika domenowa | `[plik/katalog]` | `[reguły biznesowe]` |
-| Dane | `[plik/katalog]` | `[źródło danych i trwałość]` |
-| Integracje | `[plik/katalog]` | `[z czym i w jakim celu]` |
-| Testy | `[plik/katalog]` | `[zakres]` |
+| Wejście aplikacji | `public/index.php`, `src/settings.php`, `src/dependencies.php`, `src/middleware.php` | konfiguracja, DI, sprawdzenie gotowości bazy (bez migracji), obsługa błędów |
+| Interfejs / API | `src/routes.php`, `src/Controller/*`, `src/Mapper/*`, `src/Middleware/AuthMiddleware.php` | cienkie kontrolery; walidacja wejścia w mapperach |
+| Logika domenowa | `src/Service/*` | rozmowy, wybór modelu, generowanie odpowiedzi, badanie źródeł, konto |
+| Dane | `src/Repository/*`, `src/Infrastructure/Database/*`, `src/Infrastructure/DataProtection/*` | SQLite przez PDO, migracje idempotentne, szyfrowanie pól |
+| Integracje | `src/Infrastructure/AI/*`, `src/Infrastructure/Search/*`, `src/Infrastructure/Mail/*` | dostawcy AI, MCP, fetch stron, poczta |
+| Frontend | `public/ui/chat/*.js`, `public/ui/theme.css`, `public/ui/lib/*` | stan czatu (`chat-controller.js`), transport (`chat-api.js`), badanie (`chat-research*.js`) |
+| CLI | `bin/*.php` | migracje, ochrona danych, reset hasła, diagnostyka MCP |
+| Testy | `tests/*.php`, `tests/ui/*.test.mjs`, `tests/e2e/`, `tests/browser/` | PHPUnit z SQLite w pamięci i atrapami HTTP; Node test runner; Playwright; routery atrap do testów ręcznych |
 
 ## 4. Mechanizmy krytyczne
 
-Zapisuj tylko rzeczy, których nie widać od razu po nazwie pliku i których błędne zrozumienie powoduje błąd.
-
 | Mechanizm | Jak działa | Gdzie szukać |
 |---|---|---|
-| `[np. autoryzacja]` | `[krótki przebieg i warunek sukcesu]` | `[plik/moduł]` |
-| `[np. kolejka]` | `[kiedy zapis, retry, sukces]` | `[plik/moduł]` |
-| `[np. stan runtime]` | `[co przetrwa restart, co nie]` | `[katalog/moduł]` |
-| `[np. integracja]` | `[granica odpowiedzialności]` | `[plik/moduł]` |
+| Autoryzacja | `SessionTokenResolver` (Bearer ma pierwszeństwo przed cookie) → `AuthMiddleware` ustawia atrybut `userId`; sesja wymaga potwierdzonego e-maila. Katalog modeli/połączeń jest publiczny | `src/Http`, `src/Middleware`, `AuthService` |
+| Szyfrowanie danych | `ProtectedStore` szyfruje pola z `ProtectedFields` i wiąże szyfrogram z tabelą/polem/ID/właścicielem; bez `USER_DATA_KEY` lub znacznika migracji aplikacja zwraca 503 | `src/Infrastructure/DataProtection`, `docs/OCHRONA_DANYCH.md` |
+| Wybór modelu | `ModelSelector` rozdziela `provider:model`; rozmowa jest związana z dostawcą — zmiana dostawcy wymaga nowej rozmowy (historia nie jest przekazywana innemu dostawcy) | `src/Dto/Chat/ModelSelector.php`, `ProviderRegistry` |
+| Zapis odpowiedzi | wiadomość użytkownika jest zapisywana **przed** wywołaniem AI; po błędzie UI odczytuje rozmowę zamiast ponownie wysyłać POST (ochrona przed duplikatem) | `ChatService::addMessage`, `chat-controller.js` |
+| Zgoda na WWW (ASK) | każde wyszukanie i fetch wymaga jawnej decyzji; zgoda jest jednorazowa i nie przechodzi na kolejną wiadomość; model nie może sam uruchomić sieci (prośby AI tworzą tylko oczekującą decyzję) | `ResearchService`, `ChatReplyGenerator`, `chat-search.js` |
+| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, bez redirectów, cookies i JS | `PublicWebPageFetcher`, `PublicWebUrl` |
+| Migracje | `bin/migrate.php` przed startem FPM; HTTP tylko `assertReady`. Inicjalizacja szyfrowania automatyczna wyłącznie dla pustej bazy | `docker/start-app.sh`, `DatabaseInitializer`, `MigrationRunner` |
+| Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków | `AiConnectionException`, `chat-api.js` |
 
 ## 5. Decyzje i pułapki
 
 | Temat | Przyjęte rozwiązanie | Dlaczego / czego nie robić |
 |---|---|---|
-| `[np. konfiguracja]` | `[konkret]` | `[typowy błąd i skutek]` |
-| `[np. dane]` | `[konkret]` | `[ograniczenie lub ryzyko]` |
-| `[np. uruchamianie]` | `[konkret]` | `[co nie zadziała]` |
-| `[np. Git/deploy]` | `[konkret]` | `[czego nie usuwać / nie omijać]` |
-
-Dodaj wpis tutaj dopiero, gdy informacja jest trwała, zweryfikowana i oszczędzi kolejnym osobom realnego szukania lub awarii.
+| Konfiguracja | jawne ustawienia w `config/app.php`, sekrety tylko ze środowiska procesu (`src/settings.php`) | nie przenosić kluczy do `config/app.php`; zmiana Compose/FPM wymaga odtworzenia kontenerów przez operatora |
+| Nazwy kluczy | `OPEN_AI_KEY`, `GEMINI_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `OVH_AI_ENDPOINTS_ACCESS_TOKEN` | nazwy wybrane przez właściciela; nie „poprawiać” na `OPENAI_API_KEY` itp. |
+| Sieć MCP | aplikacja w sieciach `default` i zewnętrznej `ai`; `MCP_SEARCH_URL=http://mcp-search:8000/mcp` | brak sieci `ai` = `search.status: unavailable` (DNS); PHP na hoście potrzebuje `http://127.0.0.1:8890/mcp` |
+| Podgląd UI | otwierać `http://localhost:8181/chat` | `file:///…/chat.html` nie działa (brak API); po zmianie JS podbić `?v=` w importach, bo przeglądarka trzyma cache modułów |
+| Reverse proxy | limit logowań liczy `REMOTE_ADDR` | `X-Forwarded-For` celowo ignorowany; za proxy trzeba skonfigurować zaufany peer po stronie serwera WWW |
+| Szyfrowanie | szyfrowane są wybrane pola, nie cały plik SQLite | metadane (czasy, ID, liczba wiadomości) pozostają jawne; dostawca AI widzi treść rozmowy |
+| Git | gałęzie z `develop`, push tylko `develop`, `master` tylko przez PR | patrz `GIT-FLOW.md`; nie scalać lokalnie do `master` |
+| Testy UI | `node --test --test-isolation=none` | w ograniczonym środowisku agenta izolacja procesów zawodzi |
 
 ## 6. Stałe operacyjne
 
-- **Porty / endpointy publiczne:** `[tylko niejawne adresy i porty]`
-- **Limity / timeouty / retry:** `[wartość + miejsce definicji]`
-- **Dane runtime:** `[lokalizacja, czy są wersjonowane, czy przetrwają restart]`
-- **Języki / formaty / konwencje UI:** `[tylko istotne wyjątki]`
-- **Zależności infrastrukturalne:** `[wymagane usługi bez danych dostępowych]`
+- **Porty:** aplikacja `8181` (Nginx), Mailpit dev `127.0.0.1:8025` (HTTP) / `127.0.0.1:1025` (SMTP), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
+- **Limity / timeouty:**
+  - logowanie: 5 nieudanych prób / 900 s osobno dla IP i e-maila (`LoginAttemptLimiter`); hasło min. 10 znaków;
+  - obraz wejściowy: max 512 KiB po stronie serwera (`ChatImageValidator::MAX_BYTES`), przeglądarka skaluje do 1600 px; obraz generowany Gemini: max 8 MiB;
+  - MCP: odpowiedź max 1 MiB, timeout 45 s; wspierane wersje protokołu w `McpSearchClient::SUPPORTED_PROTOCOLS`;
+  - fetch: 1 MiB / 16 000 znaków na stronę; badanie: 20 źródeł, 100 000 znaków kontekstu, 80 zapamiętanych wykluczeń;
+  - AI: OVH `ovh_ai.timeout` 120 s (`config/app.php`), katalog modeli 30 s.
+- **Dane runtime:** `var/database/app.sqlite`, `var/logs/` — poza Git, przetrwają restart kontenera (bind mount katalogu repo). Mailpit bez wolumenu (poczta znika po restarcie).
+- **Języki:** rozmowa/dokumentacja projektowa po polsku; nazwy w kodzie po angielsku; komunikaty UI obecnie po polsku bezpośrednio w JS/HTML (brak warstwy i18n).
+- **Zależności infrastrukturalne:** Docker + Compose, zewnętrzna sieć Docker `ai` z kontenerem `mcp-search`, SMTP (prod) lub Mailpit (dev), dostęp HTTPS do API dostawców AI.
 
 ## Aktualizacja
 

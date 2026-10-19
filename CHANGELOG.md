@@ -417,3 +417,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Lokalne E2E Playwright (`tests/e2e`, `docs/E2E.md`, `package.json`): konto z potwierdzeniem przez Mailpit, czat przez natywny transport, badanie źródeł z częściowym błędem fetch, puste wyniki i awaria MCP.
 - Walidacja: `composer check-all` — formatter 0/46, PHP 179/179 (822 asercje), UI 81/81; `npm run test:e2e` 4/4. Migracja `chat_reply_attempts` na rzeczywistej instalacji nie była wykonywana przez agenta.
 - Dokumentacja: odnośniki do usuniętego przez właściciela `TODO-zrodla.md` zastąpione listą DevBrain-Todo „virralAI” (zadania 01–25). Usunięte `MCP-INSTRUKCJA-DLA-AI.md` i `TASKS.md`; dodane instrukcje DT i MCP Search w `docs/`.
+
+
+## 2026-10-19 — DT 02: CI sprawdza develop, formatter i testy UI
+
+- `.github/workflows/test.yml` uruchamia się dla push i PR na `develop`, `main`, `master` (wcześniej tylko `main/master`).
+- Kroki jak lokalne `composer check-all`: `composer validate --strict --no-check-publish`, `check-platform-reqs`, `composer lint`, PHPUnit oraz testy UI na Node 22. PHP 8.4 z `pdo_sqlite` i `sodium`. E2E pozostaje lokalne (wymaga Mailpita).
+- Lokalnie: formatter 0/46, PHP 179/179 (822 asercje), UI 81/81. Wynik na GitHub Actions będzie znany po push `develop`.

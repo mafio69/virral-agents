@@ -6,24 +6,24 @@ W widoku czatu „Szukaj stron…” działa niezależnie od wiadomości i model
 Każde wyszukanie pokazuje dokładne zapytanie i osobne Allow / Deny. Zatwierdzone
 zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wyników.
 
-1. Zaznacz checkboxy przy interesujących wynikach i wyszukuj dalej. Lista zachowuje
-   wcześniejsze zaznaczenia, usuwa duplikaty URL i mieści maksymalnie 20 stron.
-2. Lista jest szyfrowana w bazie, oddzielna dla użytkownika i rozmowy. Przed pierwszą
-   wiadomością jest szkicem; utworzenie rozmowy przenosi do niej szkic. Odświeżenie
-   i ponowne otwarcie rozmowy zachowują wybór oraz decyzje.
-3. Checkbox nie pobiera strony. „Przeczytaj wybrane strony…” lub wysłanie polecenia
-   przygotowuje osobne Allow / Deny dla każdego nieprzeczytanego adresu.
-   Przy oczekujących pobraniach „Fetch all…” pokazuje dokładną listę adresów.
-   Jedno „Allow — pobierz całą listę” zatwierdza wyłącznie tę listę; kolejne strony
-   wymagają nowej zgody. Pobieranie jest sekwencyjne; błąd strony nie blokuje pozostałych adresów ani opracowania. AI dostaje status failed bez treści tej strony.
-4. Po rozstrzygnięciu zgód wyślij polecenie, np. „Na podstawie wybranych stron
-   opracuj temat”. Polecenie oczekujące w otwartej stronie jest wysyłane po decyzjach.
-   Po przeładowaniu wpisz je ponownie. Odmówione/nieudane strony nie mają treści.
-5. Domyślnie zaznaczony tryb badania przekazuje wybrane źródła do dostawcy AI
-   rozmowy. Wyłączenie trybu pozwala wysłać zwykłą wiadomość bez tych źródeł.
-   AI może proponować jedno wyszukanie lub fetch na odpowiedź; propozycja sama
-   niczego nie wykonuje. Panel pokazuje „AI prosi o zgodę” i Allow / Deny.
-   Wyniki propozycji wyszukania również wymagają wyboru checkboxami.
+1. Wyniki otwierają się w osobnym modalu poza układem czatu. Wyniki udanego wyszukiwania są domyślnie zaznaczone i trafiają na listę źródeł,
+   do łącznego limitu 20. Odznacz niepotrzebne strony. Kolejne wyszukiwanie nie
+   usuwa wcześniejszego wyboru ani nie zaznacza ponownie ręcznie wykluczonych URL
+   (pamiętanych jest ostatnich 80 wykluczeń). Zaznaczenie samo niczego nie pobiera.
+2. Lista i decyzje są szyfrowane, oddzielne dla użytkownika i rozmowy. Przed pierwszą
+   wiadomością lista jest szkicem przenoszonym do nowej rozmowy. Zamknięcie modalu nie usuwa danych. Po odświeżeniu otwórz tę samą rozmowę; boczna lista „Wyniki i źródła” przywołuje modal i zapisane źródła. Pobrane teksty również pozostają w szyfrowanym magazynie serwera; nie zapisujemy ich w jawnym localStorage.
+3. Kliknij jedyny przycisk **„Kontynuuj”** w stopce modalu. Okno się zamknie, a przycisk pozostanie zablokowany do końca pobierania i odpowiedzi AI. Ten jawny klik zatwierdza pobranie
+   zaznaczonej listy i przekazanie treści wybranemu dostawcy AI, bez dodatkowych
+   pytań o fetch. Odznaczone adresy, nowe wyniki i inne oczekujące prośby nie są
+   objęte tym kliknięciem. Treści już pobrane są używane ponownie.
+4. Po pobraniu aplikacja kontynuuje poprzednie zadanie. Nie trzeba dopisywać
+   wiadomości; własne polecenie w polu czatu jest zachowane. W nowej rozmowie
+   domyślne polecenie prosi o opracowanie wybranych źródeł. Błąd pojedynczej strony
+   nie blokuje pozostałych; niepewna odpowiedź API przerywa bez samoczynnego ponowienia.
+5. Przycisk włącza tryb badania. Zwykłe wysłanie wiadomości zachowuje dotychczasowy
+   sposób zbierania osobnych zgód. Wyszukanie WWW nadal wymaga Allow / Deny;
+   sama prośba AI nie daje zgody. Wyniki wyszukania zleconego przez AI również
+   są domyślnie zaznaczone. Ręczne prośby AI nadal są pokazywane z Allow / Deny w modalu.
 
 Fetch wykonuje backend VirralAI, nie serwer MCP: wyłącznie publiczny HTML/tekst,
 bez cookies, autoryzacji, JS i zasobów podrzędnych. Adresy lokalne/prywatne są

@@ -13,8 +13,7 @@ final readonly class SearchOptions
         public int $maxCalls = 1,
         public string $query = '',
         public bool $approved = false,
-    )
-    {
+    ) {
         if (!in_array($engine, ['off', 'mcp'], true) || $maxCalls !== 1
             || ($engine === 'mcp' && (!$approved || trim($query) === '' || strlen($query) > 1000))
             || ($engine === 'off' && ($approved || $query !== ''))) {

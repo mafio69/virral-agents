@@ -28,7 +28,7 @@ final class GeneratedImageChatTest extends ChatServiceTestCase
         $registry = $this->createMock(ChatModelRegistryInterface::class);
         $registry->method('resolve')->willReturn(new AiModel(0, 0, 'gemini-3.1-flash-image', 'Fixture', 0, null, null, 'llm', null, null, null, 'google'));
         $registry->method('clientFor')->willReturn($client);
-        $service = new ChatService($this->chatRepository, $this->createMock(OvhAiClient::class), new NullLogger(), $registry);
+        $service = ChatServiceFixture::create($this->chatRepository, $this->createMock(OvhAiClient::class), new NullLogger(), $registry);
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Fixture', 'google:gemini-3.1-flash-image'));
         $reply = $service->addMessage(new AddChatMessageInput($this->userId, $chat->id, 'Draw fixture'));
         self::assertSame([$image], $reply[1]['images']);

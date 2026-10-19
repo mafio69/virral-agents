@@ -63,7 +63,7 @@ final class ChatSearchTest extends ChatServiceTestCase
             }
             return 'Fixture answer';
         });
-        $service = new ChatService($this->chatRepository, $client, new NullLogger(), replyGenerator: new ChatReplyGenerator($search));
+        $service = ChatServiceFixture::create($this->chatRepository, $client, new NullLogger(), replyGenerator: new ChatReplyGenerator($search));
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Fixture', 'Qwen3.6-27B'));
         $pair = $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, 'Private chat fixture', search: new SearchOptions('mcp', 1, 'Public query', true)));
         self::assertStringContainsString('https://example.org/source', $pair[1]['content']);
@@ -93,7 +93,7 @@ final class ChatSearchTest extends ChatServiceTestCase
     {
         $search = $this->createMock(SearchClientInterface::class);
         $search->expects(self::never())->method('search');
-        $service = new ChatService($this->chatRepository, $this->createMock(OvhAiClient::class), new NullLogger(), replyGenerator: new ChatReplyGenerator($search));
+        $service = ChatServiceFixture::create($this->chatRepository, $this->createMock(OvhAiClient::class), new NullLogger(), replyGenerator: new ChatReplyGenerator($search));
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Fixture', 'Qwen3.6-27B'));
         $this->expectException(\App\Exception\NotFoundException::class);
         $service->addMessage(new AddChatMessageInput($chat->id, $this->userId + 1, 'Private', search: new SearchOptions('mcp', 1, 'Public', true)));

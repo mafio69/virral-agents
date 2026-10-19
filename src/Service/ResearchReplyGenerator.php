@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Dto\AI\AiReply;
@@ -9,7 +11,9 @@ use App\Infrastructure\AI\WebToolClientInterface;
 
 final readonly class ResearchReplyGenerator implements ResearchReplyGeneratorInterface
 {
-    public function __construct(private ResearchServiceInterface $research, private ChatReplyGeneratorInterface $plain) {}
+    public function __construct(private ResearchServiceInterface $research, private ChatReplyGeneratorInterface $plain)
+    {
+    }
 
     public function generate(AiClientInterface $client, array $messages, string $model, int $userId, int $chatId): AiReply
     {
@@ -20,13 +24,15 @@ final readonly class ResearchReplyGenerator implements ResearchReplyGeneratorInt
             : $this->plain->generate($client, $messages, $model, new SearchOptions());
         if ($reply->webRequest !== null) {
             $state = $this->research->propose($userId, $chatId, $reply->webRequest, 'ai');
-            $pending = array_filter($state['actions'], static fn(array $action): bool => $action['status'] === 'pending');
+            $pending = array_filter($state['actions'], static fn (array $action): bool => $action['status'] === 'pending');
             return new AiReply($pending !== [] ? 'Potrzebuję zgody na operację WWW. Dokładne zapytanie lub adres znajdziesz w panelu źródeł — wybierz Allow lub Deny.'
                 : 'Ta operacja WWW została wcześniej odrzucona. Nie wykonuję jej ponownie bez nowej prośby użytkownika.', search: ['status' => 'approval_required']);
         }
         $links = [];
         foreach ($evidence['sources'] as $source) {
-            if ($source['status'] === 'loaded' && $source['text'] !== '') $links[] = '- <'.$source['url'].'>'.($source['truncated'] ? ' (treść skrócona)' : '');
+            if ($source['status'] === 'loaded' && $source['text'] !== '') {
+                $links[] = '- <'.$source['url'].'>'.($source['truncated'] ? ' (treść skrócona)' : '');
+            }
         }
         return new AiReply($reply->text.($links !== [] ? "\n\nŹródła przekazane do opracowania:\n".implode("\n", $links) : ''), $reply->images);
     }

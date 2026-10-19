@@ -6,13 +6,14 @@ declare(strict_types=1);
 // Sekrety są dołączane przez src/settings.php z istniejącego środowiska.
 return [
     'displayErrorDetails' => false,
+    'environment' => 'prod',
     'db' => [
         'path' => dirname(__DIR__).'/var/database/app.sqlite',
     ],
     'ovh_ai' => [
         'url' => 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1',
         'model' => 'Qwen3.6-27B',
-        'timeout' => 120,
+        'timeout' => 300,
     ],
     'logger' => [
         'log_dir' => dirname(__DIR__).'/var/logs',

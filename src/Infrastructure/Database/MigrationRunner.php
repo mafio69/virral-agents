@@ -28,6 +28,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email_key TEXT NOT NULL,
+    ip_key TEXT NOT NULL,
+    attempted_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS login_attempts_email ON login_attempts (email_key, attempted_at);
+CREATE INDEX IF NOT EXISTS login_attempts_ip ON login_attempts (ip_key, attempted_at);
+CREATE INDEX IF NOT EXISTS login_attempts_expiry ON login_attempts (attempted_at);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -52,6 +62,13 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     content TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS chat_reply_attempts (
+    message_id INTEGER PRIMARY KEY,
+    research INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL CHECK (status IN ('running', 'failed', 'done')),
+    FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS chat_message_images (

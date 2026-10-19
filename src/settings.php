@@ -20,6 +20,7 @@ return function (ContainerBuilder $containerBuilder) {
         return $fallback;
     };
 
+    $settings['environment'] = $sensitiveValue('APP_ENV', $settings['environment']);
     $settings['user_data'] = ['key' => $sensitiveValue('USER_DATA_KEY')];
     $settings['ai_registry'] = ['key' => $sensitiveValue('DB_HASH')];
     $settings['zai'] = ['key' => $sensitiveValue('ZAI_API_KEY')];

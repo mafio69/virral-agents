@@ -1,0 +1,9 @@
+# Local mailbox: explicitly combine with docker-compose.yml and --profile dev.
+services:
+  app:
+    environment:
+      APP_ENV: dev
+      MAIL_DSN: smtp://mailpit:1025
+    depends_on:
+      mailpit:
+        condition: service_started

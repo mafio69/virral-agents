@@ -19,26 +19,23 @@ $container = $containerBuilder->build();
 
 $logger = $container->get(\Psr\Log\LoggerInterface::class);
 
-// Run database migrations
-$initializationStage = 'database_schema';
+// Readiness is checked without changing schema or user data during HTTP requests.
+$initializationStage = 'user_data_key';
 try {
-    $migrationRunner = $container->get(\App\Infrastructure\Database\MigrationRunner::class);
-    $migrationRunner->run();
-    $initializationStage = 'user_data_key';
     $cipher = $container->get(\App\Infrastructure\DataProtection\DataCipherInterface::class);
     $initializationStage = 'user_data_readiness';
     (new \App\Infrastructure\DataProtection\DataProtectionMigration(
         $container->get(PDO::class),
         $cipher,
-    ))->initializeEmptyDatabase();
-} catch (\Throwable $e) {
-    for ($cause = $e; $cause !== null; $cause = $cause->getPrevious()) {
+    ))->assertReady();
+} catch (\Throwable $error) {
+    for ($cause = $error; $cause !== null; $cause = $cause->getPrevious()) {
         if ($cause instanceof \App\Exception\DataProtectionException && $cause->reason !== null) {
             $initializationStage = $cause->reason;
             break;
         }
     }
-    $logger->critical('Database initialization unavailable', ['stage' => $initializationStage]);
+    $logger->critical('Database readiness unavailable', ['stage' => $initializationStage]);
     http_response_code(503);
     header('X-App-Error: '.$initializationStage);
     header('Cache-Control: no-store');

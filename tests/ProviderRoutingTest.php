@@ -53,11 +53,11 @@ final class ProviderRoutingTest extends TestCase
         $registry = new ProviderRegistry($this->createMock(ChatModelRegistryInterface::class), $providers);
         $pdo = new \PDO('sqlite::memory:', options: [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC]);
         (new MigrationRunner($pdo))->run();
-        $service = new ChatService(new ChatRepository($pdo, ProtectedDataFixture::cipher($pdo)),
+        $service = ChatServiceFixture::create(new ChatRepository($pdo, ProtectedDataFixture::cipher($pdo)),
             new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $registry);
         $chats = [];
         foreach (array_keys($providers) as $id) {
-            $selector = $service->getAvailableModels($id)[0]['id'];
+            $selector = (new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $registry, new NullLogger()))->getAvailableModels($id)[0]['id'];
             $chats[$id] = $service->createChat(new CreateChatInput(1, 'Fixture '.$id, $selector));
             $service->addMessage(new AddChatMessageInput($chats[$id]->id, 1, 'Private fixture '.$id));
         }
@@ -75,7 +75,7 @@ final class ProviderRoutingTest extends TestCase
                 self::assertStringNotContainsString('fixture-'.$other, $request->getHeaderLine('Authorization'));
             }
         }
-        self::assertSame(['ovh', 'zai', 'openai', 'anthropic', 'google'], array_column($service->getConnections(), 'id'));
+        self::assertSame(['ovh', 'zai', 'openai', 'anthropic', 'google'], array_column((new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $registry, new NullLogger()))->getConnections(), 'id'));
     }
 
     public function testEveryUnconfiguredProviderFailsBeforeUsingNetwork(): void

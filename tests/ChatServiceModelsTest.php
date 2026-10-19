@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use App\Service\ChatService;
+use App\Service\ModelCatalogService;
 use PHPUnit\Framework\TestCase;
 
 class ChatServiceModelsTest extends TestCase
 {
-    private ChatService $chatService;
+    private ModelCatalogService $chatService;
     private \PDO $pdo;
 
     protected function setUp(): void
@@ -61,7 +61,7 @@ class ChatServiceModelsTest extends TestCase
 
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
 
-        $this->chatService = new ChatService($chatRepository, $ovhAiClient, $logger);
+        $this->chatService = new ModelCatalogService($ovhAiClient, $this->createMock(\App\Infrastructure\AI\ChatModelRegistryInterface::class), $logger);
     }
 
     public function testGetAvailableModels(): void

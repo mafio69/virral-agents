@@ -1,6 +1,9 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Service;
+
 use App\Dto\AI\AiReply;
 use App\Infrastructure\AI\AiClientInterface;
 

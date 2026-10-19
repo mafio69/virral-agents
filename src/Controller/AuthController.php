@@ -20,7 +20,8 @@ final class AuthController
         private readonly RegisterInputMapper $registerInputMapper,
         private readonly LoginInputMapper $loginInputMapper,
         private readonly AuthService $authService,
-        private readonly UserRepository $userRepository
+        private readonly UserRepository $userRepository,
+        private readonly \App\Http\SessionTokenResolver $sessionTokens,
     ) {
     }
 
@@ -41,7 +42,8 @@ final class AuthController
         $data = (array)$request->getParsedBody();
         $input = $this->loginInputMapper->map($data);
 
-        $result = $this->authService->login($input);
+        $clientIp = $request->getServerParams()['REMOTE_ADDR'] ?? '';
+        $result = $this->authService->login($input, is_string($clientIp) ? $clientIp : '');
 
         return JsonResponder::respond($response, [
             'token' => $result->token,
@@ -51,7 +53,7 @@ final class AuthController
     public function logout(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         try {
-            $token = $this->resolveToken($request);
+            $token = $this->sessionTokens->resolveToken($request);
         } catch (UnauthorizedException) {
             $token = '';
         }
@@ -89,8 +91,7 @@ final class AuthController
 
     public function me(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $token = $this->resolveToken($request);
-        $userId = $this->authService->validateToken($token);
+        $userId = (int)$request->getAttribute('userId');
 
         $user = $this->userRepository->findById($userId);
 
@@ -100,18 +101,4 @@ final class AuthController
         ]);
     }
 
-    private function resolveToken(ServerRequestInterface $request): string
-    {
-        $header = $request->getHeaderLine('Authorization');
-        if (str_starts_with($header, 'Bearer ')) {
-            return substr($header, 7);
-        }
-
-        $cookies = $request->getCookieParams();
-        if (!empty($cookies['token'])) {
-            return $cookies['token'];
-        }
-
-        throw new UnauthorizedException('Missing or invalid Authorization header');
-    }
 }

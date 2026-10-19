@@ -99,6 +99,23 @@ test('a failed creation keeps the draft and never sends a message', async () => 
     assert.equal(sends, 0);
 });
 
+test('an unreachable application and an unexpected reply are reported differently', async () => {
+    const unreachable = new ChatApi({ fetcher: async () => { throw new TypeError('network'); } });
+    await assert.rejects(unreachable.sendMessage(5, 'Cześć'), { status: 0, reason: 'app_unreachable' });
+    const malformed = new ChatApi({ fetcher: async () => ({ ok: true, status: 201, json: async () => ({}) }) });
+    await assert.rejects(malformed.sendMessage(5, 'Cześć'), { status: 0, reason: 'invalid_app_response' });
+
+    for (const [reason, detail] of [['app_unreachable', 'Błąd połączenia z aplikacją.'], ['invalid_app_response', 'nieoczekiwanym formacie.']]) {
+        const controller = new ChatController(fixture({
+            sendMessage: async () => { throw new ChatApiError('Failure', 0, reason); },
+        }));
+        await controller.load();
+        controller.setDraft('Cześć');
+        assert.equal(await controller.send(), false);
+        assert.match(controller.state.error, new RegExp(detail.replace('.', '\\.')));
+    }
+});
+
 test('a saved user message after an AI failure is recovered without an automatic retry', async () => {
     let sends = 0;
     const controller = new ChatController(fixture({
@@ -277,4 +294,77 @@ test('malformed success responses do not clear a pending draft', async () => {
         fetcher: async () => ({ ok: true, json: async () => ({ role: 'assistant', content: 'Unexpected' }) }),
     });
     await assert.rejects(api.sendMessage(1, 'Cześć'), ChatApiError);
+});
+
+
+test('failed saved reply exposes manual retry, preserves draft and never duplicates the user message', async () => {
+    let saved = [{ id: 1, role: 'user', content: 'Cześć', reply_status: 'failed' }];
+    let retries = 0;
+    const response = deferred();
+    const controller = new ChatController(fixture({
+        sendMessage: async () => { throw new ChatApiError('Timeout', 504); },
+        getChat: async id => ({ ...chat(id), messages: saved }),
+        retryMessage: async (chatId, messageId) => { retries++; assert.equal(messageId, 1); return response.promise; },
+    }));
+    await controller.load(); controller.setDraft('Cześć'); await controller.send(null, true);
+    assert.equal(controller.state.retryMessageId, 1);
+    controller.setDraft('Nowa niezależna wiadomość');
+    const retry = controller.retryReply();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(await controller.retryReply(), false);
+    response.resolve(pair('Cześć'));
+    assert.equal(await retry, true);
+    assert.equal(retries, 1);
+    assert.equal(controller.state.messages.filter(message => message.role === 'user').length, 1);
+    assert.equal(controller.state.draft, 'Nowa niezależna wiadomość');
+});
+
+test('retry checks server state first and does not call AI if an answer arrived meanwhile', async () => {
+    let saved = [{ id: 1, role: 'user', content: 'Cześć', reply_status: 'failed' }];
+    let retries = 0;
+    const controller = new ChatController(fixture({
+        getChat: async id => ({ ...chat(id), messages: saved }),
+        retryMessage: async () => { retries++; },
+    }));
+    await controller.load(); await controller.openChat(5);
+    assert.equal(controller.state.retryMessageId, 1);
+    saved = pair('Cześć');
+    assert.equal(await controller.retryReply(), false);
+    assert.equal(retries, 0);
+    assert.equal(controller.state.messages.length, 2);
+});
+
+test('gateway timeout with server still generating offers state checks instead of a duplicate request', async () => {
+    let status = 'running';
+    const controller = new ChatController(fixture({
+        sendMessage: async () => { throw new ChatApiError('Timeout', 504); },
+        getChat: async id => ({ ...chat(id), messages: [{ id: 1, role: 'user', content: 'Cześć', reply_status: status }] }),
+    }));
+    await controller.load(); controller.setDraft('Cześć'); await controller.send();
+    assert.equal(controller.state.deliveryUncertain, true);
+    assert.equal(controller.state.retryMessageId, null);
+    assert.equal(await controller.retryReply(), false);
+    status = 'failed'; await controller.checkDelivery();
+    assert.equal(controller.state.deliveryUncertain, false);
+    assert.equal(controller.state.retryMessageId, 1);
+});
+
+test('retry transport carries only identifiers and an empty body, never search consent', async () => {
+    const calls = [];
+    const api = new ChatApi({ fetcher: async (url, options) => { calls.push([url, JSON.parse(options.body)]); return { ok: true, json: async () => pair('Cześć') }; } });
+    await api.retryMessage(5, 1);
+    assert.deepEqual(calls, [['/api/chats/5/messages/1/retry', {}]]);
+    await assert.rejects(api.retryMessage(5, '../1'), ChatApiError);
+});
+
+
+test('opening a running reply after reload keeps the state check available', async () => {
+    let saved = [{ id: 1, role: 'user', content: 'Cześć', reply_status: 'running' }];
+    const controller = new ChatController(fixture({ getChat: async id => ({ ...chat(id), messages: saved }) }));
+    await controller.load(); await controller.openChat(5);
+    assert.equal(controller.state.deliveryUncertain, true);
+    saved = pair('Cześć');
+    assert.equal(await controller.checkDelivery(), true);
+    assert.equal(controller.state.deliveryUncertain, false);
+    assert.equal(controller.state.messages.length, 2);
 });

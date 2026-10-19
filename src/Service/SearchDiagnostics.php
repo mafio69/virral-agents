@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Infrastructure\Search\SearchClientInterface;
@@ -7,7 +9,9 @@ use App\Infrastructure\Search\SearchException;
 
 final readonly class SearchDiagnostics implements SearchDiagnosticsInterface
 {
-    public function __construct(private SearchClientInterface $client, private string $url, private ?\Closure $resolve = null) {}
+    public function __construct(private SearchClientInterface $client, private string $url, private ?\Closure $resolve = null)
+    {
+    }
 
     public function status(): array
     {
@@ -16,7 +20,9 @@ final readonly class SearchDiagnostics implements SearchDiagnosticsInterface
             : ($host === 'mcp-search' ? 'docker-service' : 'custom');
         if ($target === 'docker-service') {
             $addresses = $this->resolve !== null ? ($this->resolve)($host) : gethostbynamel($host);
-            if (!$addresses) return ['available' => false, 'target' => $target, 'reason' => 'dns_failed', 'stage' => 'initialize', 'searched' => false];
+            if (!$addresses) {
+                return ['available' => false, 'target' => $target, 'reason' => 'dns_failed', 'stage' => 'initialize', 'searched' => false];
+            }
         }
         try {
             $definition = $this->client->definition();
@@ -24,6 +30,8 @@ final readonly class SearchDiagnostics implements SearchDiagnosticsInterface
         } catch (SearchException $error) {
             $reason = in_array($error->reason, ['dns_failed', 'connection_refused', 'timeout', 'connection_failed', 'http_error', 'protocol_error'], true) ? $error->reason : 'protocol_error';
             return ['available' => false, 'target' => $target, 'reason' => $reason, 'stage' => $error->stage, 'searched' => false];
-        } finally { $this->client->close(); }
+        } finally {
+            $this->client->close();
+        }
     }
 }

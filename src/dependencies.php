@@ -19,6 +19,8 @@ use Psr\Log\LoggerInterface;
 
 return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
+        \App\Service\SessionAuthenticatorInterface::class => \DI\get(AuthService::class),
+        \App\Service\ModelCatalogInterface::class => \DI\autowire(\App\Service\ModelCatalogService::class),
         \App\Infrastructure\DataProtection\DataCipherInterface::class => function (ContainerInterface $c) {
             $settings = $c->get('settings');
             $value = $settings['user_data']['key'];
@@ -54,7 +56,7 @@ return function (ContainerBuilder $containerBuilder) {
                 url: $config['url'],
                 token: $config['token'],
                 model: $config['model'],
-                timeout: $config['timeout'] ?? 120,
+                timeout: $config['timeout'] ?? 300,
             );
         },
         \App\Infrastructure\AI\ChatModelRegistryInterface::class => function (ContainerInterface $c) {
@@ -101,12 +103,18 @@ return function (ContainerBuilder $containerBuilder) {
 
             return new MailService($dsn);
         },
+        \App\Repository\LoginAttemptRepositoryInterface::class => fn(ContainerInterface $c) => new \App\Repository\LoginAttemptRepository($c->get(PDO::class)),
+        \App\Service\LoginAttemptLimiterInterface::class => fn(ContainerInterface $c) => new \App\Service\LoginAttemptLimiter(
+            $c->get(\App\Repository\LoginAttemptRepositoryInterface::class),
+            $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
+        ),
         AuthService::class => function (ContainerInterface $c) {
             return new AuthService(
                 userRepository: $c->get(UserRepository::class),
                 mailService: $c->get(MailService::class),
                 appUrl: $c->get('settings')['app_url'] ?? 'http://localhost:8181',
                 logger: $c->get(LoggerInterface::class),
+                loginLimiter: $c->get(\App\Service\LoginAttemptLimiterInterface::class),
             );
         },
         ChatService::class => function (ContainerInterface $c) {
@@ -116,6 +124,8 @@ return function (ContainerBuilder $containerBuilder) {
                 modelRegistry: $c->get(\App\Infrastructure\AI\ChatModelRegistryInterface::class),
                 logger: $c->get(LoggerInterface::class),
                 replyGenerator: $c->get(\App\Service\ChatReplyGeneratorInterface::class),
+                imageValidator: $c->get(\App\Service\ChatImageValidator::class),
+                modelCatalog: $c->get(\App\Service\ModelCatalogService::class),
                 research: $c->get(\App\Service\ResearchServiceInterface::class),
                 researchReply: $c->get(\App\Service\ResearchReplyGeneratorInterface::class),
             );
@@ -137,7 +147,7 @@ return function (ContainerBuilder $containerBuilder) {
             return new \App\Controller\ChatController(
                 $c->get(\App\Mapper\Chat\CreateChatInputMapper::class),
                 $c->get(\App\Mapper\Chat\AddChatMessageInputMapper::class),
-                $c->get(ChatService::class), $c->get(AuthService::class),
+                $c->get(ChatService::class), $c->get(\App\Service\ModelCatalogService::class),
                 $c->get(\App\Service\SearchDiagnosticsInterface::class),
                 $c->get(\App\Service\ResearchServiceInterface::class),
             );

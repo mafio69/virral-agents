@@ -67,7 +67,7 @@ class ChatServiceTest extends TestCase
         
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
 
-        $this->chatService = new ChatService($chatRepository, $ovhAiClient, $logger);
+        $this->chatService = ChatServiceFixture::create($chatRepository, $ovhAiClient, $logger);
     }
 
     public function testCreateChat(): void
@@ -212,7 +212,7 @@ class ChatServiceTest extends TestCase
                 return 'Analiza testowa';
             }
         );
-        $service = new ChatService(new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), $client, new \Psr\Log\NullLogger());
+        $service = ChatServiceFixture::create(new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), $client, new \Psr\Log\NullLogger());
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Obraz', 'Qwen3.6-27B'));
         $pair = $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, '', [$image]));
         $this->assertSame([$image], $pair[0]['images']);

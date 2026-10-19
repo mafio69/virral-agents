@@ -36,7 +36,8 @@ if (!str_starts_with($path, '/api/')) { http_response_code(404); return; }
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 
-$pdo = new PDO('sqlite:'.__DIR__.'/research-fixture.sqlite', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+$fixtureDatabase = getenv('RESEARCH_FIXTURE_DB') ?: __DIR__.'/research-fixture.sqlite';
+$pdo = new PDO('sqlite:'.$fixtureDatabase, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 (new MigrationRunner($pdo))->run();
 $cipher = new SodiumDataCipher(str_repeat('ab', 32)); // Dummy key for synthetic fixture data only.
 (new DataProtectionMigration($pdo, $cipher))->initializeEmptyDatabase();
@@ -55,12 +56,23 @@ $fetch = new class implements WebPageFetcherInterface {
     public function fetch(string $url): array { return ['url' => $url, 'text' => 'Fikcyjna pobrana treść strony '.$url.'. Materiał testowy do analizy.', 'truncated' => false]; }
 };
 $research = new ResearchService(new ResearchRepository($pdo, $cipher), $chats, $search, $fetch);
-$provider = new class implements ChatProviderInterface, WebToolClientInterface {
+$provider = new class($pdo) implements ChatProviderInterface, WebToolClientInterface {
+    public function __construct(private PDO $fixtureDb) {}
+    private function failOnce(array $messages): void {
+        foreach ($messages as $message) {
+            if ($message['role'] !== 'user' || !is_string($message['content']) || !str_contains($message['content'], 'TEST PONÓW')) continue;
+            $this->fixtureDb->exec('CREATE TABLE IF NOT EXISTS fixture_failures (id INTEGER PRIMARY KEY)');
+            $query = $this->fixtureDb->prepare('INSERT OR IGNORE INTO fixture_failures (id) VALUES (1)');
+            $query->execute();
+            if ($query->rowCount() === 1) throw new \App\Exception\AiConnectionException('provider_timeout');
+        }
+    }
     public function id(): string { return 'google'; }
     public function name(): string { return 'MODEL TESTOWY — bez sieci'; }
     public function listModels(): array { return [['id' => 'gemini-fixture', 'name' => 'Model testowy — fikcyjne odpowiedzi']]; }
-    public function generate(array $messages, ?string $model = null): string { return 'Opracowanie testowe na podstawie wybranych stron.'; }
+    public function generate(array $messages, ?string $model = null): string { return 'Opracowanie testowe na podstawie wybranych stron.'.str_repeat("\n\n## Fragment odpowiedzi testowej\n\nTo fikcyjny tekst do ręcznego sprawdzenia przewijania czatu. Źródła są zapisane poza układem rozmowy.", 24); }
     public function generateWebReply(array $messages, string $model): AiReply {
+        $this->failOnce($messages);
         foreach (array_reverse($messages) as $message) {
             if ($message['role'] === 'user' && is_string($message['content']) && str_contains($message['content'], 'AI poproś')) return new AiReply('', webRequest: ['kind' => 'search', 'query' => 'Publiczne zapytanie zaproponowane przez AI']);
         }
@@ -73,15 +85,16 @@ $legacy = new class implements ChatModelRegistryInterface {
     public function clientFor(\App\Dto\AI\AiModel $model): AiClientInterface { throw new \RuntimeException('Fixture model unavailable'); }
 };
 $plain = new ChatReplyGenerator($search);
-$service = new \App\Service\ChatService($chats, new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'Qwen3.6-27B'), new \Psr\Log\NullLogger(),
+$service = \Tests\ChatServiceFixture::create($chats, new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'Qwen3.6-27B'), new \Psr\Log\NullLogger(),
     new ProviderRegistry($legacy, ['google' => $provider]), $plain, $research, new ResearchReplyGenerator($research, $plain));
 $data = json_decode(file_get_contents('php://input') ?: '{}', true, 64, JSON_THROW_ON_ERROR);
 $method = $_SERVER['REQUEST_METHOD'];
 try {
     if ($path === '/api/ai-connections') $result = [['id' => 'google', 'name' => $provider->name()]];
-    elseif ($path === '/api/ai-models') $result = $service->getAvailableModels('google');
+    elseif ($path === '/api/ai-models') $result = (new \App\Service\ModelCatalogService(new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'fixture'), new ProviderRegistry($legacy, ['google' => $provider]), new \Psr\Log\NullLogger()))->getAvailableModels('google');
     elseif ($path === '/api/chats' && $method === 'GET') $result = $service->getUserChats(1);
     elseif ($path === '/api/chats' && $method === 'POST') $result = $service->createChat((new \App\Mapper\Chat\CreateChatInputMapper())->map($data, 1));
+    elseif (preg_match('~^/api/chats/(\d+)/messages/(\d+)/retry$~', $path, $matches)) $result = $service->retryMessage((int)$matches[1], 1, (int)$matches[2]);
     elseif (preg_match('~^/api/chats/(\d+)/messages$~', $path, $matches)) $result = $service->addMessage((new \App\Mapper\Chat\AddChatMessageInputMapper())->map($data, (int)$matches[1], 1));
     elseif (preg_match('~^/api/chats/(\d+)$~', $path, $matches)) $result = $service->getChatWithMessages((int)$matches[1], 1);
     elseif (str_starts_with($path, '/api/research')) {
@@ -90,4 +103,4 @@ try {
         $result = $research->{$operation}(1, $scope, ...$args);
     } else { http_response_code(404); $result = ['error' => 'Fixture route unavailable']; }
     echo json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-} catch (\Throwable $error) { http_response_code(422); echo json_encode(['error' => 'Fixture failure', 'type' => $error::class], JSON_THROW_ON_ERROR); }
+} catch (\Throwable $error) { if ($error instanceof \App\Exception\AiConnectionException) header('X-AI-Error: '.$error->reason); http_response_code(422); echo json_encode(['error' => 'Fixture failure', 'type' => $error::class], JSON_THROW_ON_ERROR); }

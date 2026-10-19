@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 2026-10-17 — audyt S3: panel testowy tylko w development
+
+- S2 `de0bf00` scalony lokalnie fast-forward do develop; nowa gałąź `codex/audit-s3-dev-test-api`.
+- `/test-api` rejestrowane wyłącznie dla jawnego `environment=dev`; domyślnie `prod`. APP_ENV przekazywane przez Compose/PHP-FPM, bez odczytu lub zmiany plików środowiska i bez odtworzenia kontenerów.
+- Szablon przeniesiony z public/ui/index.html do resources/views/test-api.html, aby adres pliku statycznego nie obchodził blokady. Dodane testy prod/dev/braku/nieznanego środowiska i dawnych ścieżek.
+- Właściciel doprecyzował cykl: każdy punkt ma pełne testy, commit, lokalne scalenie do develop, push wyłącznie develop i usunięcie zakończonej gałęzi po udanym push. Pełna walidacja S3: PHP 164/164 (717 asercji), UI 57/57; Composer strict/no-check-publish, wymagania platformy i diff poprawne. Testy izolowane, bez sekretów, rzeczywistej bazy i odtworzenia kontenerów.
+- S3 przygotowane do commitu i lokalnego scalenia; następnie push develop obejmujący S1–S3 i usunięcie trzech lokalnych gałęzi audytu. Kolejny punkt: A1 (wspólne AuthMiddleware). Nie modyfikować ani nie odczytywać chronionych plików. Zastosowanie ustawień Compose/FPM należy do operatora.
+
+
+## 2026-10-17 — audyt S2: obowiązkowe potwierdzenie e-maila
+
+- Gałąź `codex/audit-s2-email-confirmation` z lokalnego develop po scaleniu przetestowanego S1 (`d2b7c63`); bez push.
+- AuthService po sprawdzeniu hasła wymaga email_confirmed_at. Niepotwierdzone konto otrzymuje 403 / email_confirmation_required / no-store bez nowej sesji, ciasteczka i identyfikatorów w odpowiedzi. Błędne hasło pozostaje 401, a limity S1 obowiązują również przy odmowie potwierdzenia.
+- Walidacja sesji także sprawdza potwierdzenie, więc wcześniejsze sesje nie obchodzą wymogu; wylogowanie pozostaje dostępne. Nie zmieniano potwierdzeń ani sesji w rzeczywistej bazie.
+- Istniejący link potwierdzający odblokowuje konto; ponowne użycie i niepoprawny link zwracają 422. Formularz wyjaśnia 403 oraz brak możliwości logowania po niedostarczeniu poczty. Nie dodano ponownej wysyłki linku ani automatycznego zatwierdzania starszych kont.
+- Pełne testy: PHP 156/156 (694 asercje), UI 57/57; Composer strict/no-check-publish, wymagania platformy i diff poprawne. Testy na fikcyjnych kontach, poczcie atrapowej i SQLite w pamięci. Rzeczywiste doręczenie poczty niezweryfikowane; bez sekretów, migracji i operacji na rzeczywistych kontach.
+- Kolejny punkt audytu: S3 (ograniczenie /test-api do development). S2 pozostaje lokalnym commitem na osobnej gałęzi; bez scalenia do develop i bez push.
+
+
+## 2026-10-17 — audyt S1: limit logowania
+
+- Gałąź `codex/audit-s1-login-limits`, utworzona z aktualnego `origin/develop`.
+- Limit 5 nieudanych prób / 15 minut osobno na IP i e-mail; szósta próba zwraca 429, Retry-After i no-store. Udane logowanie usuwa tylko własną rezerwację, nie kasuje wcześniejszych niepowodzeń.
+- Wspólna tabela SQLite i atomowa rezerwacja przed weryfikacją hasła chronią przed równoległymi próbami. Przeterminowane wpisy są usuwane przy kolejnym logowaniu. E-mail i IP zapisane wyłącznie jako HMAC z oddzielnymi prefiksami, bez haseł, sesji i jawnych identyfikatorów.
+- IP wyłącznie z REMOTE_ADDR; brak zaufania do X-Forwarded-For. Za reverse proxy limit dotyczy widocznego adresu peer, dopóki operator nie skonfiguruje zaufanego przekazywania IP. Brak IP używa wspólnego zachowawczego limitu.
+- Rejestracja wymaga minimum 10 znaków, także Unicode; formularz pokazuje wymaganie i osobny komunikat blokady logowania. Hasła istniejących kont nie są zmieniane.
+- Walidacja: PHP 153/153 (656 asercji), UI 55/55; Composer strict/no-check-publish, wymagania platformy i diff poprawne. Testy tylko na danych fikcyjnych i SQLite w pamięci, bez rzeczywistej bazy, poczty i sekretów. Nową tabelę utworzy istniejący mechanizm migracji przy uruchomieniu; agent nie wykonał migracji na instalacji.
+- Bez push i scalenia; S2 (obowiązkowe potwierdzanie e-maila) jest kolejnym osobnym zadaniem. Cudze nieśledzone pliki i katalog chroniony pozostawiono nietknięte.
+
+
 ## 2026-10-17 — podsumowanie zakończonego etapu źródeł
 
 - `2e48daf`: wybór stron checkboxami, trwały koszyk i opracowanie wybranych treści z uprawnieniami ASK.
@@ -300,3 +330,90 @@ Endpoint `/api/ai-models` będzie serwował modele z bazy (bez sekretów).
 - Białe tło, tekstowe akcje bez dekoracyjnych przycisków i ikon; pola z cienką dolną linią. Zmiana ograniczona do landing.html, bez zmiany czatu i panelu API.
 - Natywny submit i Enter dla logowania/rejestracji, walidacja przeglądarki oraz powiązane etykiety i autocomplete.
 - PHP 82/82 (250 asercji), UI 30/30; kontrole diff/Composer poprawne. Rzeczywista weryfikacja przeglądarkowa wyglądu i Enter na fikcyjnych danych.
+
+## 2026-10-17 — lokalna skrzynka Mailpit do potwierdzania kont
+
+- Dodano profil dev z oficjalnym obrazem axllent/mailpit:v1.31.6, HTTP 127.0.0.1:8025 i SMTP 127.0.0.1:1025, limit 100 wiadomości, bez trwałego wolumenu i bez konfiguracji relay/forward.
+- docker-compose.dev.yml przełącza app na APP_ENV=dev i smtp://mailpit:1025; wiadomości z linkiem potwierdzającym ogląda się lokalnie i odklikuje w przeglądarce. Bazowy Compose zachowuje dotychczasowy transport; samego profilu dev nie utożsamiać z przełączeniem SMTP.
+- Testy PHP 164/164 (717 asercji), UI 57/57, Composer strict/no-check-publish i wymagania platformy poprawne. Oba modele Compose sprawdzone z wyłączonym wczytywaniem plików środowiska i izolowanym środowiskiem procesu, bez poświadczeń. Poprzedni test MailService na lokalnej atrapie SMTP potwierdził wysyłkę i obsługę odmowy; nie stanowi testu działającego Mailpita.
+- Próba uruchomienia samej usługi mailpit nie powiodła się: brak uprawnień do Docker API. Nie używano sudo, nie pobrano/uruchomiono obrazu ani nie restartowano aplikacji. Właściciel uruchamia komendę z docs/KONFIGURACJA.md; pełny test rejestracja → Mailpit → kliknięcie → logowanie pozostaje do wykonania przez właściciela.
+- Nie odczytywano ani nie zmieniano sekretów, prawdziwej bazy i plików środowiska. Lokalna cudza zmiana GIT-FLOW.md nie należy do tego commitu. Po zielonej walidacji: commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi zgodnie z poleceniem właściciela.
+
+## 2026-10-17 — jeden skrypt startowy dev/prod z sudo
+
+- dev-start.sh [dev|prod] [--dry-run] w głównym katalogu repo; bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie odczytuje plików środowiska; dla wartości zapisanej wyłącznie w takim pliku właściciel podaje jawny argument.
+- Wszystkie wywołania Docker mają sudo. Dev wybiera override z Mailpitem; nowy docker-compose.prod.yml wymusza APP_ENV=prod. W prod po starcie zatrzymywana jest sama skrzynka Mailpit.
+- Najpierw start app, w dev także mailpit; potem Nginx uruchamiany bez odtwarzania i bez dotykania zależności. Reload odświeża upstream po zmianie app. Nieudany start app przerywa dalsze kroki; brak down i kasowania danych.
+- Walidacja: PHP 164/164 (717 asercji), JS/skrypt 62/62, bash -n, oba modele Compose, Composer strict/no-check-publish, platforma i diff poprawne. Compose sprawdzony z wyłączonym wczytywaniem plików środowiska i bez danych dostępowych. Testy uruchamiania używają wyłącznie atrapy sudo; skryptu nie wykonano na działających usługach.
+- Cudza zmiana GIT-FLOW.md pozostaje nietknięta i poza commitem. Sekretów nie czytano ani nie zmieniano. Procedura właściciela: ./dev-start.sh dev albo ./dev-start.sh prod. Po testach commit, lokalne scalenie, push wyłącznie develop i usunięcie gałęzi.
+
+## 2026-10-18 — kontynuacja z domyślnie wybranymi wynikami
+
+- Dodano widoczny przycisk „Kontynuuj z wybranymi stronami”. Na jawne polecenie właściciela kliknięcie pobiera zaznaczoną listę bez dodatkowych pytań fetch i przekazuje treści do AI. Wyszukiwanie nadal wymaga Allow/Deny; sam checkbox nie uruchamia sieci.
+- Wyniki domyślnie wybrane do limitu 20; odznaczone adresy nie są pobierane ani ponownie automatycznie zaznaczane (ostatnich 80 wykluczeń). Własne polecenie pozostaje w użyciu; przy pustym polu aplikacja sama dodaje kontynuację poprzedniego zadania lub opracowanie nowych źródeł.
+- Testy: PHP 166/166 (731 asercji), UI/skrypt 69/69; Composer strict/no-check-publish, platforma i diff poprawne. Pokrycie: wybór po search, wykluczenia/limit, fetch bez dodatkowej zgody po kliknięciu, pominięcie odznaczonych, utrata odpowiedzi, zmiana rozmowy i podwójne kliknięcie. Dane fikcyjne, bez rzeczywistego WWW i płatnego AI.
+- Bez odczytu sekretów i rzeczywistej historii. Cudza zmiana GIT-FLOW.md zachowana poza commitem. Wersje URL modułów JS odświeżone. Po walidacji commit, scalenie do develop, push wyłącznie develop i usunięcie gałęzi.
+
+## 2026-10-18 — widoczna blokada kontynuacji do zakończenia żądania AI
+
+- ResearchPanel utrzymuje blokadę podczas fetch i całego oczekiwania na onContinue. Przycisk ma disabled, aria-busy oraz opisy „Pobieram wybrane strony…” / „AI przygotowuje odpowiedź…”, zachowane również po odrysowaniu panelu.
+- Osobny stan kontynuacji blokuje edycję wiadomości, wysyłkę i zmianę modelu/rozmowy również pomiędzy kolejnymi operacjami źródeł. Nie dodano pytań o fetch ani ponawiania żądań.
+- Pełna walidacja: PHP 166/166 (731 asercji), UI/skrypt 70/70, składnia JS, Composer strict/no-check-publish, platforma i diff poprawne. Test kontroluje opóźniony fetch i odpowiedź AI, odrysowanie i kolejne kliknięcia — tylko jedna wysyłka. Bez rzeczywistego WWW lub dostawcy AI.
+- Wcześniej zgłoszony błąd „Nie udało się odebrać odpowiedzi” po kontynuacji pozostaje niezdiagnozowany: potwierdzono tylko moment wystąpienia, brak nazwy modelu i statusu HTTP. Nie twierdzić, że ta poprawka usuwa jego przyczynę. Cudza zmiana GIT-FLOW.md nietknięta; bez odczytu sekretów.
+
+## 2026-10-18 — źródła w niezależnym modalu
+
+- Wyniki i źródła przeniesiono poza układ czatu do natywnego dialogu. Przewija się jego treść, nagłówek i pojedynczy przycisk „Kontynuuj” pozostają widoczne. Zamknięcie, Escape i kontynuacja nie usuwają źródeł; boczna lista pozwala je przywołać.
+- Kontynuacja zamyka modal i zachowuje blokadę podczas fetch oraz oczekiwania na AI. Pobiera tylko zaznaczone strony, ponownie używa zapisanych tekstów. Backend przekazuje JSON z tytułem, URL, statusem, tekstem, czasem pobrania i informacją o skróceniu; treści stron traktuje jako niezaufane dane.
+- Zachowano istniejący szyfrowany magazyn wyników i pobranych tekstów per użytkownik/rozmowa, bez jawnego localStorage. Po reload należy otworzyć tę samą rozmowę z historii. Kolejne wyszukiwanie zachowuje wcześniejsze wybrane źródła; nie jest archiwum wszystkich niewybranych wyników.
+- Walidacja: PHP 166/166 (731 asercji), UI/skrypt 73/73, Composer strict/platform, składnia JS/PHP i diff poprawne. Ręcznie w przeglądarce na syntetycznym routerze: 4 wyniki → odznaczenie 1 → kontynuacja z 3 → zamknięcie modalu, długa odpowiedź i przewijanie góra/dół, reload i odtworzenie 3 pobranych treści, przywołanie z boku, Escape, drugie wyszukanie z 2 nowymi i 3 zachowanymi źródłami. Dowody: artifacts/research-modal-2026-10-18.png i artifacts/research-chat-layout-2026-10-18.png. Bez rzeczywistego WWW/AI i prywatnej historii. Serwer atrapowy wymagał ponownego uruchomienia podczas testu kolejnego wyszukania; po wznowieniu przepływ poprawny.
+- Wcześniejszy zgłoszony błąd odbioru odpowiedzi z rzeczywistego modelu pozostaje niezdiagnozowany. Nie przypisywać tej zmianie naprawy jego przyczyny. Cudza zmiana GIT-FLOW.md poza zakresem i commitem. Push wyłącznie develop po zielonej walidacji.
+
+
+## 2026-10-18 — audyt A1–A5 i kontrakt MCP, praca w toku
+
+- Gałąź docs/audyt-2026-10-17 uaktualniona zatwierdzonym rebase na develop; S1–S3 już zawarte. A1: wspólny resolver sesji i AuthMiddleware/SessionAuthenticatorInterface, jedna walidacja dla prywatnych tras. A2–A4: ModelCatalogInterface/Service, wymagane zależności ChatService, ModelSelector.
+- A5: bin/migrate.php, DatabaseInitializer i start-app.sh przed FPM; HTTP wyłącznie assertReady. Testy na SQLite w pamięci i atrapach procesu potwierdzają idempotencję, zachowanie istniejących jawnych danych i zatrzymanie startu po błędzie. Nie uruchamiano rzeczywistej migracji ani kontenerów.
+- K1: jawne empty/null/[] akceptowane, błędy dostawcy nadal odrzucane. K3: lista wersji w stałej i testy negocjacji; zgodność z przypiętą biblioteką drugiego repo pozostaje niezweryfikowana.
+- Wynik: PHP 173/173 (786 asercji), UI/skrypty 75/75; Composer strict/no-check-publish i platforma poprawne, składnia 48 PHP i skryptu startowego, diff-check poprawne. Bez WWW/API modeli i sekretów.
+- A6 w toku: konfiguracja php-cs-fixer.php i żądana zasada czytelności w AGENTS.md przygotowane; oczekiwanie na odpowiedź właściciela o dodaniu PHP CS Fixer jako zależności i pobraniu pakietów. Formatter nie został uruchomiony. Brak commitu/scalenia/push. Po A6 ponownie pełne wymagane kontrole; scalenie do develop dopiero na koniec, push wyłącznie develop i osobno zatwierdzony. P1 przez PR na GitHub po zielonych kontrolach, bez lokalnego merge do master.
+
+
+## 2026-10-18 — zamknięcie lokalnych poprawek audytu A1–A6
+
+- A6: za zgodą właściciela dodano friendsofphp/php-cs-fixer ^3.95 (lock 3.95.27), bez aktualizowania dotychczasowych pakietów. Konfiguracja php-cs-fixer.php obejmuje warstwy objęte audytem, bez sekretów, ustawień środowiska, zależności i cache. PSR-12 oraz wymagane klamry; sformatowano 19 plików. Dodano composer lint, format, test-ui i check-all; polecenia opisano w README.
+- Końcowe composer check-all: formatter 0/46 plików do poprawy, PHP 173/173 (786 asercji), UI/skrypty 75/75. Composer strict/no-check-publish, platforma i diff poprawne. Lokalnie PHP 8.5.4; sprawdzenie na PHP 8.4 pozostaje dla CI. Składnia PHP i shell poprawna w poprzedniej kontroli; formatowanie używa nierozszerzających składni reguł PSR-12.
+- A1–A6 i klient K1 gotowe lokalnie. K3 ma testy negocjacji obsługiwanych wersji, ale przypiętej biblioteki i wspólnego JSON drugiego repo nie zweryfikowano. A5 sprawdzono na fikcyjnych bazach i atrapach procesów; rzeczywisty start kontenera i migracja instalacji pozostają po stronie operatora.
+- Etap przeznaczony do commitu i końcowego lokalnego scalenia do develop po zielonych kontrolach. Gałąź audytu zachować. Bez push i operacji na master; P1 wymaga osobnego procesu PR na GitHub. Nie odczytywano plików środowiska ani sekretów.
+
+
+## 2026-10-18 — przekazane potwierdzenie kontraktu searxng
+
+Właściciel przekazał syntetyczne odpowiedzi serwera: poprawny brak wyników ma status empty, source null, results [] i errors []; awaria ma status error, source null, results [] i błędy searxng_timeout/perplexity_no_key. Klient przyjmuje pierwszy wariant i odrzuca drugi; dokładny wariant awarii dodano do testu pełnej sekwencji MCP bez ponawiania. Dokładny wariant empty jest już objęty istniejącym testem.
+
+Według raportu przekazanego przez właściciela serwer przeszedł 3/3 testy kontraktu przez pełne sesje MCP, Ruff, 46 testów backendu, 18 frontendu, build i kontrole Git. Raport po stronie drugiego repo: docs/contract/MCP-COMPATIBILITY.md. Agent tego pliku nie odczytywał i nie wykonywał tam testów. To potwierdzenie kodu na syntetycznych danych, bez rzeczywistych wyszukiwań i bez potwierdzenia działającego wdrożenia. W przekazanym fragmencie brakuje przypiętej wersji biblioteki MCP i protocolVersion zwracanego przy initialize, więc K3 pozostaje częściowo otwarte. Lokalna walidacja po dodaniu przekazanej awarii: composer check-all — formatter czysty, PHP 173/173 (788 asercji), UI/skrypty 75/75; Composer strict/platform i diff-check poprawne.
+
+
+## 2026-10-18 — K3: zgodność wersji MCP potwierdzona
+
+Właściciel przekazał potwierdzenie drugiego repo: `mcp==1.30.0` przypięte w `mcp/requirements.txt`. Testy rzeczywistej lokalnej inicjalizacji w `tests/test_mcp_protocol.py` potwierdzają negocjację: żądane `2024-11-05`, `2025-03-26`, `2025-06-18` i `2025-11-25` są zwracane bez zmiany; żądanie nieobsługiwanej wersji otrzymuje `2025-11-25`. Wszystkie te odpowiedzi akceptuje klient WirralAI. Agent otrzymał wyniki od właściciela, bez odczytu drugiego repo i bez wykonywania tam testów.
+
+K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma zgodne syntetyczne przykłady pustego wyniku i awarii. Nie potwierdzono działającego wdrożenia ani rzeczywistego wyszukania. P1 nadal wymaga procesu PR develop → master na GitHub z zielonymi kontrolami; bez push lub operacji na master przez agenta.
+
+
+## 2026-10-19 — porządek dokumentacji projektu
+
+- `HANDOFF.md` wyzerowany do zasad prowadzenia, szablonu i jednej bieżącej pałeczki (gałąź `codex/chat-retry-timeout` z niezacommitowanym ponawianiem odpowiedzi, timeoutem i E2E). Dotychczasowe wpisy były duplikatem historii zachowanej w tym pliku.
+- `STATUS.md` przepisany jako stan na teraz: gotowe funkcje, otwarte/niepotwierdzone punkty, kolejne priorytety. Historia sesji pozostaje wyłącznie w CHANGELOG.
+- `REPO.md`: wypełnione sekcje 1–6 (przeznaczenie, uruchamianie, architektura, mechanizmy krytyczne, decyzje i pułapki, stałe operacyjne); dotychczasowe sekcje tematyczne bez zmian.
+- `README.md` uaktualniony: pięciu dostawców AI, wyszukiwanie i badanie źródeł, pełna lista endpointów (w tym logout, verify-email, retry, research), aktualna struktura, polecenia jakości i mapa dokumentacji.
+- Zmiana wyłącznie dokumentacji; bez zmian kodu, testów, sekretów i bez commitu.
+
+
+## 2026-10-19 — DT 01: ponawianie odpowiedzi, wspólny timeout i lokalne E2E
+
+- `POST /api/chats/{id}/messages/{messageId}/retry` ponawia odpowiedź na ostatnią wiadomość bez odpowiedzi; stan prób w `chat_reply_attempts` (`running/failed/done`), powtórzone ponowienie z utraconą odpowiedzią zwraca istniejącą parę, zgoda na wyszukanie nie jest używana ponownie. UI: przycisk „Ponów”, rozpoznanie trwającej odpowiedzi po reload, szczegół błędu dostarczenia (HTTP/format/połączenie).
+- Jeden budżet 300 s dla wszystkich dostawców: `config/app.php` (OVH), `OpenAiCompatClient` i `ProviderTransport` (Gemini/OpenAI/Anthropic, wcześniej na sztywno 120 s). cURL 28 oraz HTTP 408/504 dają `provider_timeout`, bez treści transportu. Nginx `fastcgi_read_timeout 360s`.
+- Lokalne E2E Playwright (`tests/e2e`, `docs/E2E.md`, `package.json`): konto z potwierdzeniem przez Mailpit, czat przez natywny transport, badanie źródeł z częściowym błędem fetch, puste wyniki i awaria MCP.
+- Walidacja: `composer check-all` — formatter 0/46, PHP 179/179 (822 asercje), UI 81/81; `npm run test:e2e` 4/4. Migracja `chat_reply_attempts` na rzeczywistej instalacji nie była wykonywana przez agenta.
+- Dokumentacja: odnośniki do usuniętego przez właściciela `TODO-zrodla.md` zastąpione listą DevBrain-Todo „virralAI” (zadania 01–25). Usunięte `MCP-INSTRUKCJA-DLA-AI.md` i `TASKS.md`; dodane instrukcje DT i MCP Search w `docs/`.

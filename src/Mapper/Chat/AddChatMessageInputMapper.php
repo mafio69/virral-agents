@@ -18,7 +18,9 @@ final readonly class AddChatMessageInputMapper
             throw new ValidationException('Message content is required');
         }
 
-        if (!is_bool($data['research'] ?? false)) throw new ValidationException('Nieprawidłowy tryb badania.');
+        if (!is_bool($data['research'] ?? false)) {
+            throw new ValidationException('Nieprawidłowy tryb badania.');
+        }
         return new AddChatMessageInput($chatId, $userId, trim($content), $images, \App\Dto\Chat\SearchOptions::fromInput($data['search'] ?? []), $data['research'] ?? false);
     }
 }

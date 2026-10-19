@@ -1,32 +1,23 @@
-# WirralAI - Backend API with Slim 4, PHP 8.4, and SQLite
+# WirralAI
 
-WirralAI to backend API zbudowany na Slim 4 z użyciem PHP 8.4 i SQLite. Zawiera integrację z OVH AI Endpoints, system logowania, zarządzania zadaniami oraz czaty AI.
+Prywatny czat AI z wieloma dostawcami, zatwierdzanym dostępem do WWW i szyfrowaną historią.
+Backend: Slim 4, PHP 8.4, SQLite; frontend: statyczne moduły ES bez bundlera. Licencja MIT.
 
 ## Funkcjonalności
 
-- **Logowanie i rejestracja** — z obsługą "zapamiętaj mnie" (cookie + localStorage)
-- **Zarządzanie zadaniami (CRUD)** — z batch insertem i transakcjami
-- **Czaty z AI** — pełna obsługa historii rozmów z OVH AI
-- **Integracja z OVH AI Endpoints** — OpenAI-compatible API
-- **Logger strukturalny** — DualLogger (plik + stdout), logowanie błędów, middleware
-- **Wybór modelu AI** — model konfigurowalny przez `.env` (planowana rozbudowa)
-
-## Architektura
-
-Aplikacja stosuje czystą architekturę z oddzieleniem warstw:
-- **Controller** — tylko obsługuje żądania HTTP
-- **Mapper** — mapuje dane wejściowe do DTO z walidacją
-- **Service** — logika aplikacji
-- **Repository** — dostęp do bazy danych (SQLite przez PDO)
-- **DTO** — immutable obiekty przenoszące dane
-- **Infrastructure** — klienci zewnętrzni (AI, DB, mail)
+- **Konto** — rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób, sesja w cookie HttpOnly (lub Bearer), wylogowanie unieważniające sesję.
+- **Czat AI** — OVH AI Endpoints, Z.ai (GLM), OpenAI, Anthropic i Google Gemini; wybór połączenia i modelu przy nowej rozmowie, analiza obrazów wejściowych, generowanie obrazów Gemini, Markdown oczyszczany przez DOMPurify.
+- **Wyszukiwanie WWW (ASK)** — zapytanie do serwera MCP (`web_search`, SearXNG) wyłącznie po jawnej zgodzie dla konkretnego zapytania.
+- **Badanie źródeł** — wybór wyników checkboxami, szyfrowany koszyk źródeł per rozmowa, pobranie zaznaczonych stron i opracowanie ich treści przez model.
+- **Ochrona danych** — szyfrowanie treści wiadomości, tytułów, obrazów, e-maili i zadań (XChaCha20-Poly1305), hashe tokenów sesji.
+- **Zadania** — prosty CRUD.
 
 ## Wymagania
 
-- PHP 8.4
-- Docker i Docker Compose
-- SQLite
-- Composer
+- Docker i Docker Compose (Docker wywoływany przez sudo w `dev-start.sh`)
+- PHP 8.4 z `pdo_sqlite` i `sodium`, Composer — do testów i CLI poza kontenerem
+- Node.js — testy UI; opcjonalnie Playwright dla E2E
+- Zewnętrzna sieć Docker `ai` z kontenerem `mcp-search` (dla wyszukiwania WWW)
 
 ## Konfiguracja
 
@@ -34,139 +25,94 @@ Aplikacja stosuje czystą architekturę z oddzieleniem warstw:
 cp .env.example .env
 ```
 
-Ustaw w `.env`:
-- `OVH_AI_ENDPOINTS_ACCESS_TOKEN` — token z https://kepler.ai.cloud.ovh.net/
-- `OVH_AI_MODEL` — model AI (domyślnie `Qwen3-Coder-30B-A3B-Instruct`)
-- `LOG_LEVEL` — poziom logowania (`debug`, `info`, `warning`, `error`)
+Zwykłe ustawienia są w `config/app.php`. Sekrety (klucze dostawców AI, `USER_DATA_KEY`, `DB_HASH`, `MAIL_DSN`)
+przekazuje się przez środowisko procesu — Compose → PHP-FPM (`docker/php-fpm-env.conf`).
+Pełna lista nazw i procedury: `docs/KONFIGURACJA.md`, `docs/AI_PROVIDERS.md`, `docs/OCHRONA_DANYCH.md`.
 
 ## Uruchamianie
 
 ```bash
-docker compose up --build   # budowanie i uruchomienie
-docker compose up -d        # w tle
+./dev-start.sh dev            # Compose + Mailpit, APP_ENV=dev
+./dev-start.sh prod           # APP_ENV=prod, bez Mailpita
+./dev-start.sh dev --dry-run  # tylko podgląd komend
 ```
 
-Aplikacja dostępna na `http://localhost:8181`.
-
-## Panel Web UI
-
-SPA dostępne pod `/` — landing page z kafelkami do sekcji:
-- **Zadania** — CRUD
-- **Czat AI** — rozmowy z modelem
-- Ustawienia wysyłania: Enter / Shift+Enter
-- Automatyczne scrollowanie, animacja ładowania
-- Token sesji w localStorage + cookie
-
-## Routing
-
-| Ścieżka | Opis |
-|---------|------|
-| `/` | Landing page SPA |
-| `/test-api` | Legacy SPA (test API) |
-| `/api/auth/*` | Autoryzacja |
-| `/api/tasks*` | Zadania |
-| `/api/chats*` | Czaty |
+- Aplikacja: `http://localhost:8181` (start), `http://localhost:8181/chat` (czat).
+- Mailpit (dev): `http://localhost:8025` — tu odklikuje się link potwierdzający konto testowe.
+- Migracje wykonuje `bin/migrate.php` przed startem PHP-FPM (`docker/start-app.sh`); błąd blokuje start.
+- `/test-api` (panel testowy) istnieje wyłącznie przy `APP_ENV=dev`.
 
 ## Endpointy API
 
-### Autoryzacja
-| Metoda | Ścieżka | Opis |
-|--------|---------|------|
-| POST | `/api/auth/register` | Rejestracja |
-| POST | `/api/auth/login` | Logowanie (zwraca token) |
-| GET | `/api/auth/me` | Pobierz zalogowanego użytkownika |
+Wszystkie pod `/api`. Trasy oznaczone 🔒 wymagają sesji.
 
-### Zadania
 | Metoda | Ścieżka | Opis |
-|--------|---------|------|
-| GET | `/api/tasks` | Lista zadań |
-| POST | `/api/tasks` | Tworzenie zadania |
-| PUT | `/api/tasks/{id}` | Aktualizacja zadania |
-| DELETE | `/api/tasks/{id}` | Usunięcie zadania |
+|---|---|---|
+| POST | `/auth/register` | Rejestracja (wysyła link potwierdzający) |
+| GET | `/auth/verify-email` | Potwierdzenie e-maila z linku |
+| POST | `/auth/login` | Logowanie (cookie + token); 403 bez potwierdzenia, 429 po limicie |
+| POST | `/auth/logout` | Wylogowanie (204) |
+| GET 🔒 | `/auth/me` | Zalogowany użytkownik |
+| GET/POST 🔒 | `/tasks` | Lista / tworzenie zadań |
+| PUT/DELETE 🔒 | `/tasks/{id}` | Aktualizacja / usunięcie zadania |
+| GET/POST 🔒 | `/chats` | Lista / tworzenie rozmowy |
+| GET 🔒 | `/chats/{id}` | Rozmowa z wiadomościami |
+| POST 🔒 | `/chats/{id}/messages` | Wiadomość i odpowiedź AI (opcjonalnie wyszukanie lub tryb badania) |
+| POST 🔒 | `/chats/{id}/messages/{messageId}/retry` | Ponowienie odpowiedzi na ostatnią wiadomość bez odpowiedzi |
+| GET 🔒 | `/search/status` | Diagnostyka połączenia MCP (bez wyszukiwania) |
+| GET 🔒 | `/research` | Stan koszyka źródeł rozmowy |
+| POST 🔒 | `/research/actions` | Propozycja operacji WWW (wyszukanie/fetch) |
+| POST 🔒 | `/research/decisions` | Decyzja Allow/Deny dla propozycji |
+| PUT 🔒 | `/research/sources` | Wybór źródeł |
+| POST 🔒 | `/research/prepare` | Zakolejkowanie decyzji fetch dla wybranych, jeszcze niepobranych źródeł |
+| GET | `/ai-connections` | Dostępne połączenia AI |
+| GET | `/ai-models?connection=…` | Modele połączenia |
 
-### Czaty
-| Metoda | Ścieżka | Opis |
-|--------|---------|------|
-| GET | `/api/chats` | Lista czatów |
-| POST | `/api/chats` | Tworzenie czatu |
-| GET | `/api/chats/{id}` | Pobranie czatu z wiadomościami |
-| POST | `/api/chats/{id}/messages` | Dodanie wiadomości (wywołuje AI) |
+Szczegóły kontraktu wyszukiwania i badania: `docs/MCP-USAGE.md`.
 
-## Struktura katalogów
+## Struktura
 
 ```
-├── public/
-│   ├── index.php              # Entry point Slim + migracje + error handling
-│   ├── ui/index.html          # Panel SPA (landing + sekcje)
-│   └── error-pages/503.html   # Strona błędu retro terminal
-├── src/
-│   ├── Controller/            # AuthController, ChatController, TaskController
-│   ├── Mapper/Auth/           # LoginInputMapper
-│   │   Mapper/Chat/           # CreateChatInputMapper, AddChatMessageInputMapper
-│   │   Mapper/Task/           # CreateTaskInputMapper, UpdateTaskInputMapper
-│   ├── Dto/Auth/              # LoginInput, LoginResult
-│   │   Dto/Chat/              # CreateChatInput, AddChatMessageInput, ChatResult
-│   │   Dto/Task/              # CreateTaskInput, UpdateTaskInput, TaskResult
-│   ├── Service/               # AuthService, ChatService, TaskService
-│   ├── Repository/            # UserRepository, ChatRepository, TaskRepository
-│   ├── Infrastructure/
-│   │   ├── AI/OvhAiClient.php # Klient OVH AI (Guzzle, OpenAI-compatible)
-│   │   ├── Database/          # ConnectionFactory, MigrationRunner
-│   │   ├── Http/JsonResponder.php
-│   │   └── Mail/MailService.php
-│   └── Exception/             # ValidationException, NotFoundException, UnauthorizedException
-├── var/
-│   ├── database/app.sqlite    # Baza SQLite
-│   └── logs/                  # Logi aplikacji
-├── docker/nginx/default.conf  # Konfiguracja nginx
-├── docker-compose.yml
-├── .env.example
-└── .local/todo.md             # Lista zadań
+public/            index.php (Slim), ui/landing.html, ui/chat.html, ui/chat/*.js, ui/lib (Marked, DOMPurify)
+resources/views/   test-api.html (tylko dev)
+src/
+  Controller/      AuthController, ChatController, TaskController — cienkie
+  Mapper/, Dto/    walidacja wejścia i niemutowalne obiekty
+  Middleware/      AuthMiddleware
+  Service/         Auth, Chat, ChatReplyGenerator, Research*, ModelCatalog, LoginAttemptLimiter, Task
+  Repository/      dostęp do SQLite przez ProtectedStore (szyfrowanie pól)
+  Infrastructure/  AI (dostawcy), Search (MCP, fetch stron), DataProtection, Database, Mail, Http, Secrets
+bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php
+config/app.php     jawne ustawienia (bez sekretów)
+docker/            Dockerfile, nginx, php-fpm-env.conf, start-app.sh
+tests/             PHPUnit, ui/ (node:test), e2e/ (Playwright), browser/ (routery atrap)
+docs/              dokumentacja szczegółowa
+var/               baza SQLite i logi (poza Git)
 ```
 
-## Baza danych
+Mapa techniczna, mechanizmy krytyczne i pułapki: `REPO.md`.
 
-SQLite z automatycznymi migracjami przy starcie (`public/index.php`).
-
-Tabele:
-- `users` — id, email, password_hash, created_at
-- `sessions` — id, user_id, token, created_at, expires_at
-- `chats` — id, user_id, title, created_at
-- `chat_messages` — id, chat_id, role (user/assistant), content, created_at
-- `tasks` — id, user_id, title, description, status, created_at, updated_at
-
-W przypadku błędu migracji — HTTP 503 (strona retro terminala).
-
-## Integracja z OVH AI
-
-Klasa `OvhAiClient` (Guzzle) wywołuje `POST {base_uri}/chat/completions` z:
-- Bearer tokenem
-- nazwą modelu
-- historią konwersacji
-
-Endpoint: `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/`
-
-Aktualny model: `Qwen3-Coder-30B-A3B-Instruct` (planowany wybór modelu per czat).
-
-## Logger
-
-DualLogger (`mafio69/fast-php-logger`) — zapis do pliku + stdout.
-Poziomy: `debug`, `info`, `warning`, `error`, `critical`.
-Logowane: błędy AI, logowania, CRUD, wyjątki middleware (422/401/404/500).
-
-## Optymalizacje wydajności
-
-- Batch insert dla wiadomości czatu (`ChatRepository::addMessagesBatch`)
-- Batch insert dla zadań (`TaskRepository::createBatch`)
-- Transakcje PDO dla operacji grupowych
-- Redukcja zapisów do bazy w jednym flow czatu
-
-## Testy
+## Testy i jakość
 
 ```bash
-composer test
+composer check-all   # PHP CS Fixer (dry-run) + PHPUnit + testy UI
+composer lint        # tylko formatter, bez zmian
+composer format      # zastosowanie formatowania
+composer validate --strict --no-check-publish
+composer check-platform-reqs
+npm run test:e2e     # E2E Playwright, przygotowanie w docs/E2E.md
 ```
 
-## Track zadań
+Testy PHP używają SQLite w pamięci i atrap HTTP — nie wywołują rzeczywistych dostawców AI ani WWW.
 
-Szczegółowa lista zadań: `.local/todo.md`
+## Dokumentacja projektu
+
+| Plik | Rola |
+|---|---|
+| `AGENTS.md`, `GIT-FLOW.md` | zasady pracy agentów i Git |
+| `REPO.md` | mapa techniczna repozytorium |
+| `STATUS.md` | stan na teraz i priorytety |
+| `HANDOFF.md` | przekazanie na kolejną sesję |
+| `CHANGELOG.md` | historia zmian (append-only) |
+| DevBrain-Todo, lista „virralAI” | kolejka zadań i droga rozwoju (zadania 01–25) |
+| `docs/` | konfiguracja, dostawcy AI, MCP, ochrona danych, audyt, E2E |

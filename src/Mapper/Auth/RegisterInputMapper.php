@@ -23,8 +23,8 @@ final readonly class RegisterInputMapper
             throw new ValidationException('Invalid email format');
         }
 
-        if (!is_string($password) || strlen($password) < 6) {
-            throw new ValidationException('Password must be at least 6 characters');
+        if (!is_string($password) || mb_strlen($password, 'UTF-8') < 10) {
+            throw new ValidationException('Password must be at least 10 characters');
         }
 
         return new RegisterInput(trim($email), $password);

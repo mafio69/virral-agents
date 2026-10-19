@@ -1,4 +1,4 @@
-# WirralAI
+# Virral Agents
 
 Prywatny czat AI z wieloma dostawcami, zatwierdzanym dostępem do WWW i szyfrowaną historią.
 Backend: Slim 4, PHP 8.4, SQLite; frontend: statyczne moduły ES bez bundlera. Licencja MIT.

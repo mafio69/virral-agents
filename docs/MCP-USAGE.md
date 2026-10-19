@@ -1,6 +1,6 @@
 # MCP Search — instrukcja dla AI i integratorów
 
-## Integracja w VirralAI — tryb ASK
+## Integracja w Virral Agents — tryb ASK
 
 W widoku czatu „Szukaj stron…” działa niezależnie od wiadomości i modelu.
 Każde wyszukanie pokazuje dokładne zapytanie i osobne Allow / Deny. Zatwierdzone
@@ -25,7 +25,7 @@ zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wynik�
    sama prośba AI nie daje zgody. Wyniki wyszukania zleconego przez AI również
    są domyślnie zaznaczone. Ręczne prośby AI nadal są pokazywane z Allow / Deny w modalu.
 
-Fetch wykonuje backend VirralAI, nie serwer MCP: wyłącznie publiczny HTML/tekst,
+Fetch wykonuje backend Virral Agents, nie serwer MCP: wyłącznie publiczny HTML/tekst,
 bez cookies, autoryzacji, JS i zasobów podrzędnych. Adresy lokalne/prywatne są
 blokowane; DNS jest sprawdzany, a połączenie przypięte do zweryfikowanego IPv4.
 Przekierowania nie są śledzone: trzeba osobno wskazać i zatwierdzić adres docelowy.

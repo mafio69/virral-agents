@@ -32,7 +32,7 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             $options = [
                 'allow_redirects' => false, 'http_errors' => false, 'cookies' => false, 'proxy' => '', 'verify' => true,
                 'connect_timeout' => 5, 'timeout' => 15, 'read_timeout' => 10, 'stream' => true, 'decode_content' => false,
-                'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAI-Research/1.0'],
+                'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAgents-Research/1.0'],
             ];
             $requestUrl = $url;
             $streams = $this->useStreams || !extension_loaded('curl');

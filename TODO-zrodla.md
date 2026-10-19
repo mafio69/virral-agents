@@ -1,4 +1,4 @@
-# WirralAI — jakość źródeł badania (lista DevBrain-Todo)
+# Virral Agents — jakość źródeł badania (lista DevBrain-Todo)
 
 > Kontekst: GLM 5.3 (Z.ai) w aplikacji zgłaszał strony nieładujące się i obcięte treści
 > w trybie badania źródeł. Diagnoza: `src/Infrastructure/Search/PublicWebPageFetcher.php`
@@ -25,7 +25,7 @@
 Cel całej listy: naprawić jakość źródeł w trybie badania — GLM 5.3 (Z.ai) zgłasza strony
 nieładujące się i obcięte treści. Przyczyny zdiagnozowane w
 `src/Infrastructure/Search/PublicWebPageFetcher.php` (`allow_redirects=false`,
-UA `VirralAI-Research/1.0` blokowany 403, tylko `text/html`/`text/plain`, brak gzip,
+UA `VirralAgents-Research/1.0` blokowany 403, tylko `text/html`/`text/plain`, brak gzip,
 hardcoded 16 000 znaków) oraz `src/Service/ResearchService.php` (budżet 100 000,
 binarna flaga `truncated`, brak kodów przyczyn `failed`).
 
@@ -81,7 +81,7 @@ redirectów, downgrade, redirect na adres prywatny/lokalny.
 
 **Priorytet: wysoki**
 
-Zastąpić UA `VirralAI-Research/1.0` (blokowany 403 przez portale, np. Gazeta.pl) typowym
+Zastąpić UA `VirralAgents-Research/1.0` (blokowany 403 przez portale, np. Gazeta.pl) typowym
 User-Agent przeglądarki oraz dodać `Accept-Language`. Wartości domyślne w
 `config/app.php`, przekazane przez DI, bez zmiany plików środowiska i sekretów. Fetch
 nadal bez cookies, bez JS, bez subresource (zatwierdzone przez właściciela). Testy:

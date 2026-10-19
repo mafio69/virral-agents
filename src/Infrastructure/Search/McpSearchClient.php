@@ -31,7 +31,7 @@ final class McpSearchClient implements SearchClientInterface
         try {
             $result = $this->exchange('initialize', [
                 'protocolVersion' => $this->protocol, 'capabilities' => (object)[],
-                'clientInfo' => ['name' => 'virral-ai', 'version' => '1.0'],
+                'clientInfo' => ['name' => 'virral-agents', 'version' => '1.0'],
             ]);
             $protocol = $result['protocolVersion'] ?? null;
             if (!in_array($protocol, self::SUPPORTED_PROTOCOLS, true)) {

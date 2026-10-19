@@ -1,4 +1,4 @@
-# Audyt: rozwój WirralAI jako agenta + integracja wielu modeli
+# Audyt: rozwój Virral Agents jako agenta + integracja wielu modeli
 
 **Data:** 2026-09-30
 **Zakres:** odczyt kodu na `master` (bez uruchamiania testów, bez odczytu `src/Infrastructure/Secrets/*` — AGENTS.md §2).

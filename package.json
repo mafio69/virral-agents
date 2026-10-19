@@ -1,5 +1,5 @@
 {
-  "name": "wirralai-e2e",
+  "name": "virral-agents-e2e",
   "private": true,
   "scripts": {
     "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=tests/e2e/runtime/browsers playwright test --config=tests/e2e/playwright.config.mjs",

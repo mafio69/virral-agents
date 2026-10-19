@@ -17,7 +17,7 @@ final readonly class MailService
     public function send(string $to, string $subject, string $body): void
     {
         $email = (new Email())
-            ->from('noreply@wirralai.local')
+            ->from('noreply@virral-agents.local')
             ->to($to)
             ->subject($subject)
             ->html($body);

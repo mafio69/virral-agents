@@ -449,3 +449,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `ResearchService` zapisuje kod w `page.reason`; evidence dla modelu ma pole `reason` przy statusie `failed`, a instrukcja systemowa trybu badania każe nie zgadywać treści i zaproponować inne źródło.
 - UI badania pokazuje czytelny opis przyczyny (np. „strona odmówiła dostępu”, „brak tekstu (strona wymaga JavaScript)”).
 - Testy: każdy kod poza `charset_error` (iconv z `//IGNORE` praktycznie nie zwraca błędu) na atrapach HTTP, zapis i evidence w `ResearchServiceTest`, etykiety UI. Formatter 0/46, PHP 182/182 (862 asercje), UI 82/82.
+
+
+## 2026-10-19 — dokumentacja po #62-483
+
+- `STATUS.md`: aktualne wyniki (PHP 182/182, UI 82/82), commity czekające na push, zmiany konta z #62-505/506/508, kody przyczyn fetch, następny priorytet #62-484.
+- `HANDOFF.md`: nowa pałeczka — start od #62-484, pułapka z nazwami zmiennych w pliku środowiska (przyczyna 502).
+- `REPO.md`, `docs/MCP-USAGE.md`: kod przyczyny nieudanego fetch w stanie, evidence i panelu źródeł.

@@ -484,3 +484,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Jeden limit 15 s na cały łańcuch przekierowań; wynik zawiera końcowy adres.
 - Dokumentacja: `REPO.md`, `docs/MCP-USAGE.md`.
 - Walidacja: formatter 0/46, PHP 185/185 (905 asercji), UI 82/82.
+
+## 2026-10-19 — Poprawki z inspekcji Qodana
+
+- Dodany `qodana.yaml` (profil `qodana.starter`, PHP 8.4, linter `jetbrains/qodana-php:2026.2`).
+- `ConnectionFactory`: tworzenie katalogu bazy odporne na wyścig (`!mkdir(...) && !is_dir(...)`), czytelny wyjątek, gdy katalogu nie da się utworzyć.
+- `SearchOptions::fromInput()` i `PublicWebUrl::normalize()`: jawne nawiasy przy mieszaniu `&&` i `||` (bez zmiany logiki).
+- Walidacja: formatter 0/46, PHP 185/185 (905 asercji), UI 82/82.

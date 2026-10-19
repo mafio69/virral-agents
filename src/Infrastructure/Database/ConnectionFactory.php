@@ -15,8 +15,9 @@ final class ConnectionFactory
     public function create(): PDO
     {
         $dir = dirname($this->dbPath);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
+        // Another process may create the directory between the check and mkdir().
+        if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
+            throw new \RuntimeException('Database directory could not be created.');
         }
 
         $pdo = new PDO('sqlite:'.$this->dbPath);

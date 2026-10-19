@@ -23,7 +23,7 @@ final readonly class SearchOptions
 
     public static function fromInput(mixed $input): self
     {
-        if (!is_array($input) || array_is_list($input) && $input !== []
+        if (!is_array($input) || (array_is_list($input) && $input !== [])
             || array_diff(array_keys($input), ['engine', 'max_calls', 'query', 'approved']) !== []
             || !is_string($input['engine'] ?? 'off') || !is_int($input['max_calls'] ?? 1)
             || !is_string($input['query'] ?? '') || !is_bool($input['approved'] ?? false)) {

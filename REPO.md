@@ -60,7 +60,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Wybór modelu | `ModelSelector` rozdziela `provider:model`; rozmowa jest związana z dostawcą — zmiana dostawcy wymaga nowej rozmowy (historia nie jest przekazywana innemu dostawcy) | `src/Dto/Chat/ModelSelector.php`, `ProviderRegistry` |
 | Zapis odpowiedzi | wiadomość użytkownika jest zapisywana **przed** wywołaniem AI; po błędzie UI odczytuje rozmowę zamiast ponownie wysyłać POST (ochrona przed duplikatem) | `ChatService::addMessage`, `chat-controller.js` |
 | Zgoda na WWW (ASK) | każde wyszukanie i fetch wymaga jawnej decyzji; zgoda jest jednorazowa i nie przechodzi na kolejną wiadomość; model nie może sam uruchomić sieci (prośby AI tworzą tylko oczekującą decyzję) | `ResearchService`, `ChatReplyGenerator`, `chat-search.js` |
-| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, bez redirectów, cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
+| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, maks. 3 przekierowania (każdy hop: walidacja adresu, świeże DNS, publiczny IPv4, zakaz https→http), bez cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
 | Migracje | `bin/migrate.php` przed startem FPM; HTTP tylko `assertReady`. Inicjalizacja szyfrowania automatyczna wyłącznie dla pustej bazy | `docker/start-app.sh`, `DatabaseInitializer`, `MigrationRunner` |
 | Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków | `AiConnectionException`, `chat-api.js` |
 
@@ -120,7 +120,7 @@ Aktualizuj `REPO.md` w tym samym commicie, gdy zmienia się architektura, urucha
 
 - `ResearchService` zarządza wyborem i jednorazowymi decyzjami, a `ResearchReplyGenerator` przekazuje wyłącznie treść pobranych, zaznaczonych źródeł. Kontroler tylko mapuje wejście.
 - `ResearchRepositoryInterface` i szyfrowana tabela `research_workspaces` przechowują wyniki, koszyk oraz decyzje per użytkownik/rozmowa; scope 0 jest szkicem przenoszonym przy utworzeniu czatu.
-- `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez przekierowań, cookies i JS. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
+- `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez cookies i JS. Śledzi maks. 3 przekierowania (także na inny host): każdy hop przechodzi `PublicWebUrl::normalize`, świeże DNS i kontrolę publicznego IPv4; https→http (`insecure_redirect`), pętla (`redirect_loop`), czwarty hop (`too_many_redirects`) i brak/zły `Location` (`redirect`) kończą fetch. Jeden limit 15 s na cały łańcuch. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
 - `WebToolClientInterface` daje natywne prośby AI o search/fetch; wywołanie tworzy oczekującą decyzję, nigdy zgodę. Modele generujące obrazy Gemini nie otrzymują tools.
 - `chat-research.js` zbiera źródła między wyszukiwaniami; checkbox nie oznacza zgody na fetch. Szczegóły API i testów w `docs/MCP-USAGE.md`.
 

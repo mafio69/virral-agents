@@ -28,7 +28,7 @@ zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wynik�
 Fetch wykonuje backend Virral Agents, nie serwer MCP: wyłącznie publiczny HTML/tekst,
 bez cookies, autoryzacji, JS i zasobów podrzędnych. Adresy lokalne/prywatne są
 blokowane; DNS jest sprawdzany, a połączenie przypięte do zweryfikowanego IPv4.
-Przekierowania nie są śledzone: trzeba osobno wskazać i zatwierdzić adres docelowy.
+Przekierowania: maks. 3, także na inny host; każdy hop jest walidowany od nowa (adres, DNS, publiczny IPv4), https→http jest odrzucane.
 PDF, strony wymagające JS/logowania i IPv6 nie są obecnie obsługiwane.
 Limit: odpowiedź 1 MiB, tekst 16 000 znaków na stronę, 100 000 znaków kontekstu.
 Skrócenie oraz odmowa/błąd są jawne. Nieudany fetch ma kod przyczyny z zamkniętej

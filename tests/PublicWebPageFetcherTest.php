@@ -58,11 +58,68 @@ final class PublicWebPageFetcherTest extends TestCase
         }
     }
 
+    public function testRedirectsAreFollowedAcrossHostsWithFreshValidationForEveryHop(): void
+    {
+        $history = [];
+        $resolved = [];
+        $handler = HandlerStack::create(new MockHandler([
+            new Response(301, ['Location' => 'https://example.org/a', 'Set-Cookie' => 'session=fixture']),
+            new Response(302, ['Location' => 'https://www.example.net/c']),
+            new Response(307, ['Location' => '/d?x=1']),
+            new Response(200, ['Content-Type' => 'text/plain'], 'Final fixture text'),
+        ]));
+        $handler->push(Middleware::history($history));
+        $resolve = static function (string $host) use (&$resolved): array {
+            $resolved[] = $host;
+            return [$host === 'www.example.net' ? '93.184.216.35' : '93.184.216.34'];
+        };
+        $result = (new PublicWebPageFetcher(new Client(['handler' => $handler]), $resolve, true))->fetch('http://example.org/a');
+        self::assertSame('https://www.example.net/d?x=1', $result['url']);
+        self::assertSame('Final fixture text', $result['text']);
+        self::assertSame(['example.org', 'example.org', 'www.example.net', 'www.example.net'], $resolved);
+        self::assertCount(4, $history);
+        self::assertSame('http', $history[0]['request']->getUri()->getScheme());
+        self::assertSame('https', $history[1]['request']->getUri()->getScheme());
+        self::assertSame('93.184.216.35', $history[3]['request']->getUri()->getHost());
+        self::assertSame('/d', $history[3]['request']->getUri()->getPath());
+        self::assertSame('x=1', $history[3]['request']->getUri()->getQuery());
+        self::assertSame('www.example.net', $history[3]['request']->getHeaderLine('Host'));
+        self::assertSame('www.example.net', $history[3]['options']['stream_context']['ssl']['peer_name']);
+        foreach ($history as $entry) {
+            self::assertFalse($entry['options']['allow_redirects']);
+            self::assertFalse($entry['request']->hasHeader('Cookie'));
+            self::assertFalse($entry['request']->hasHeader('Authorization'));
+        }
+    }
+    public function testUnsafeRedirectsStopBeforeRequestingTheTarget(): void
+    {
+        $chain = static fn(string ...$locations): array => array_map(static fn(string $location): Response => new Response(302, ['Location' => $location]), $locations);
+        $cases = [
+            'too_many_redirects' => [$chain('/1', '/2', '/3', '/4'), 4],
+            'redirect_loop' => [$chain('/b', '/a'), 2],
+            'insecure_redirect' => [$chain('http://example.org/a'), 1],
+            'private_address' => [$chain('https://intranet.example.com/'), 1],
+            'redirect' => [$chain('http://127.0.0.1/'), 1],
+        ];
+        foreach ($cases as $expected => [$responses, $requests]) {
+            $history = [];
+            $handler = HandlerStack::create(new MockHandler($responses));
+            $handler->push(Middleware::history($history));
+            $resolve = static fn(string $host): array => [$host === 'intranet.example.com' ? '10.0.0.5' : '93.184.216.34'];
+            try {
+                (new PublicWebPageFetcher(new Client(['handler' => $handler]), $resolve))->fetch('https://example.org/a');
+                self::fail('Expected failure: '.$expected);
+            } catch (SearchException $error) {
+                self::assertSame($expected, $error->reason, $expected);
+                self::assertCount($requests, $history, $expected);
+            }
+        }
+    }
     public function testEveryFetchFailureHasClosedReasonWithoutResponseContent(): void
     {
         $request = new \GuzzleHttp\Psr7\Request('GET', 'https://example.org/');
         $cases = [
-            'redirect' => new Response(301, ['Location' => 'https://www.example.org/']),
+            'redirect' => new Response(301),
             'http_blocked' => new Response(403, ['Content-Type' => 'text/html'], 'Private denial body'),
             'http_not_found' => new Response(404, ['Content-Type' => 'text/html'], 'Missing'),
             'timeout' => new \GuzzleHttp\Exception\ConnectException('Private transport detail', $request, handlerContext: ['errno' => 28]),

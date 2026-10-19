@@ -476,3 +476,11 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Prompt badania: `title`/`snippet` pochodzą z wyszukiwarki i nie są przeczytaną treścią strony.
 - Dokumentacja: `REPO.md`, `docs/MCP-USAGE.md`.
 - Walidacja: formatter 0/46, PHP 183/183 (872 asercje), UI 82/82.
+
+## 2026-10-19 — #62-485: bezpieczne przekierowania w fetcherze
+
+- `PublicWebPageFetcher` śledzi maks. 3 przekierowania (301/302/303/307/308), także na inny host. Każdy hop: `PublicWebUrl::normalize`, świeże DNS, kontrola publicznego IPv4, połączenie przypięte do IP, nagłówki budowane od zera (bez cookies i `Authorization`). Guzzle nadal z `allow_redirects=false`.
+- Nowe kody w `FETCH_REASONS`: `too_many_redirects`, `redirect_loop`, `insecure_redirect` (https→http); `redirect` oznacza teraz brak lub nieprawidłowy `Location`. Etykiety w panelu źródeł.
+- Jeden limit 15 s na cały łańcuch przekierowań; wynik zawiera końcowy adres.
+- Dokumentacja: `REPO.md`, `docs/MCP-USAGE.md`.
+- Walidacja: formatter 0/46, PHP 185/185 (905 asercji), UI 82/82.

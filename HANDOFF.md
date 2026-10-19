@@ -19,13 +19,14 @@ Szablon:
 
 ---
 
-## 2026-10-19 — DT 01 domknięte, kolejka w DevBrain-Todo
+## 2026-10-19 — #62-480, #62-481, #62-482 zamknięte
 
-- **Gałąź:** `develop` lokalnie, z commitami DT 01 (retry/timeout/E2E) i dokumentacji. **Bez push** — wymaga zgody właściciela; `codex/chat-retry-timeout` usunąć dopiero po udanym push.
-- **Kolejka:** DevBrain-Todo, lista „virralAI” (id 62), zadania 01–25 (id 480–504). Rezerwacja komentarzem `[CLAIMED]`, `done` dopiero po weryfikacji.
-- **Od czego zacząć:** DT 02 (CI: `develop` w triggerach, `composer lint`, `composer test-ui`), potem PR develop → master na GitHub.
+- **Gałąź:** `develop` (lokalnie przed push sprzątania). `master` zaktualizowany przez właściciela na GitHub.
+- **Kolejka:** DevBrain-Todo, lista „virralAI” (62). Zadania podawaj jako `#62-<id>` (480–504), nie numerem z tytułu. Rezerwacja `[CLAIMED]`, `done` po spełnieniu DoD.
+- **Od czego zacząć:** #62-483 (kody przyczyn nieudanego fetch), potem kolejno do #62-493.
 - **Pułapki:**
-  - W katalogu leżą poza Git: `http/*` (w tym `http-client.env.json` — może zawierać tokeny, nie czytać, nie commitować), `artifacts/chat-retry-*.png`.
-  - E2E wymaga Mailpita uruchamianego przez właściciela (`sudo` z kluczem FIDO — agent nie ma terminala do autoryzacji).
-  - `ChatRepository` sprawdza istnienie `chat_reply_attempts` przy odczytach do czasu migracji na instalacji.
-  - 6 starych zadań Multi-AI w DT (id 386–391, 2026-08-30) wygląda na wykonane — czeka na decyzję właściciela.
+  - Poza Git: `http/*` (`http-client.env.json` może zawierać tokeny — nie czytać, nie commitować), `artifacts/chat-retry-*.png`, `.junie/plans/`.
+  - 3 stare stashe `research-source-selection: paused …` do usunięcia przez właściciela (`git stash drop` zablokowany dla agenta).
+  - Na GitHub wisi zdalna gałąź `origin/codex/chat-retry-timeout` — usunięcie po stronie właściciela.
+  - E2E wymaga Mailpita uruchamianego przez właściciela (`sudo` z kluczem FIDO).
+  - 6 starych zadań Multi-AI w DT (id 386–391) — decyzja właściciela.

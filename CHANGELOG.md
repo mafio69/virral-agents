@@ -424,3 +424,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `.github/workflows/test.yml` uruchamia się dla push i PR na `develop`, `main`, `master` (wcześniej tylko `main/master`).
 - Kroki jak lokalne `composer check-all`: `composer validate --strict --no-check-publish`, `check-platform-reqs`, `composer lint`, PHPUnit oraz testy UI na Node 22. PHP 8.4 z `pdo_sqlite` i `sodium`. E2E pozostaje lokalne (wymaga Mailpita).
 - Lokalnie: formatter 0/46, PHP 179/179 (822 asercje), UI 81/81. Wynik na GitHub Actions będzie znany po push `develop`.
+
+
+## 2026-10-19 — #62-482: sprzątanie repozytorium
+
+- Usunięte nieużywane pliki: katalogi notatek agentów `.devin/` i `.junie/przykazaniaAi.md`, skrypt `przyklad_szyfrowania_deszyfrowania_używania.php`, szkic `src/Infrastructure/AI/GroundedClientInterface.php` (brak odwołań w `src/` i `tests/`).
+- `STATUS.md` i `HANDOFF.md`: P1 zamknięte (master zaktualizowany przez PR właściciela), numeracja zadań jako `#62-<id>` z DevBrain-Todo.
+- Walidacja: formatter 0/46, PHP 179/179 (822 asercje), UI 81/81. Trzy stare stashe pozostają do usunięcia przez właściciela.

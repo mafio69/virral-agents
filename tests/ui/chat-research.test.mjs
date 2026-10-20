@@ -321,3 +321,17 @@ test('fetch failure codes map to readable labels and unknown codes stay visible'
     assert.equal(fetchReasonText('future_code'), 'future_code');
     assert.equal(fetchReasonText(undefined), '');
 });
+test('a web operation requested by AI in a reply opens the consent view once', async () => {
+    const action = { id: 'ai-1', request: { kind: 'search', query: 'Public query' }, origin: 'ai', status: 'pending' };
+    let pending = false;
+    const notices = [];
+    const panel = fixture({ research: async () => state([], pending ? [action] : []) }, { onNotice: (text, error = false) => notices.push([text, error]) });
+    await panel.setScope(0);
+    assert.equal(await panel.refreshAfterReply(), true);
+    assert.deepEqual(notices, []);
+    pending = true;
+    assert.equal(await panel.refreshAfterReply(), true);
+    assert.equal(notices.length, 1);
+    assert.match(notices[0][0], /Allow lub Deny/);
+    assert.equal(notices[0][1], false);
+});

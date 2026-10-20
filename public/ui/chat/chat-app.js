@@ -128,7 +128,7 @@ function render(state) {
     if (state.retryMessageId && !state.busy && !state.deliveryUncertain) {
         const retry = element('button', 'btn btn-sm', 'Ponów');
         retry.type = 'button';
-        retry.addEventListener('click', async () => { await controller.retryReply(); await researchPanel.refresh(); });
+        retry.addEventListener('click', async () => { await controller.retryReply(); await researchPanel.refreshAfterReply(); });
         status.append(retry);
     }
     if (state.deliveryUncertain && !state.busy) {
@@ -255,7 +255,7 @@ async function sendDraft() {
     const useResearch = byId('research-mode').checked;
     if (useResearch && !await researchPanel.beforeSend()) { researchModal.open(); return; }
     await controller.send(null, useResearch);
-    if (useResearch) await researchPanel.refresh();
+    if (useResearch) await researchPanel.refreshAfterReply();
     if (!input.disabled) input.focus();
 }
 input.addEventListener('keydown', event => handleComposerKey(event, sendDraft));

@@ -133,6 +133,15 @@ export class ResearchPanel {
         return this.ready;
     }
 
+    /** After an AI reply: a web operation requested by the model opens the consent view like a manual search. */
+    async refreshAfterReply() {
+        const ready = await this.refresh();
+        if (ready && this.state.actions.some(action => action.status === 'pending')) {
+            this.onNotice('AI prosi o zgodę na operację WWW. Sprawdź dokładne zapytanie i wybierz Allow lub Deny.');
+        }
+        return ready;
+    }
+
     async run(operation, payload) {
         if (this.busy || this.scope === null) return false;
         const scope = this.scope, version = this.version;

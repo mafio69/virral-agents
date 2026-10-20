@@ -578,3 +578,9 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Pulpit: „Czat AI” jest pierwszym kafelkiem; kafelki panelu programisty mają dopisek „(dev)” i prowadzą do `/test-api#auth` i `/test-api#tasks`.
 - Panel `/test-api`: zakładka „Czaty (test API)” zamiast „Czaty”; nowe linki „Pulpit” (`/`) i „Czat AI” (`/chat`).
 - Sprawdzone w przeglądarce (kolejność kafelków, linki panelu, przejście do `/chat`). Walidacja: formatter 0/51, PHP 215/215, UI 85/85.
+
+## 2026-10-20 — Okno zgody otwiera się, gdy o WWW prosi AI
+
+- `ResearchPanel::refreshAfterReply()`: po odpowiedzi w trybie badania (także po „Ponów”), gdy model poprosił o operację WWW, otwiera się okno źródeł z Allow/Deny — tak jak przy ręcznym wyszukaniu. Wcześniej panel tylko się odświeżał, a w czacie zostawał komunikat bez okna.
+- Test UI w `tests/ui/chat-research.test.mjs`; sprawdzone w przeglądarce na atrapie `tests/browser/research-router.php`. Walidacja: formatter 0/51, PHP 215/215, UI 86/86.
+- Uwaga: samo wyszukiwanie wymaga działającego serwera MCP `mcp-search` (osobny projekt); 2026-10-20 nie odpowiadał (`bin/check-mcp-search.php`).

@@ -16,8 +16,8 @@
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
-| Development | `./dev-start.sh dev` | Compose + Mailpit (`127.0.0.1:8025`), `APP_ENV=dev`, aplikacja `http://localhost:8181`; Docker przez sudo |
-| Produkcja (lokalnie) | `./dev-start.sh prod` | wymusza `APP_ENV=prod`, zatrzymuje Mailpit; `--dry-run` tylko wypisuje komendy |
+| Development | `./dev-start.sh dev` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
+| Produkcja (lokalnie) | `./dev-start.sh prod` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
@@ -79,16 +79,16 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 
 ## 6. Stałe operacyjne
 
-- **Porty:** aplikacja `8181` (Nginx), Mailpit dev `127.0.0.1:8025` (HTTP) / `127.0.0.1:1025` (SMTP), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
+- **Porty:** aplikacja `8181` (Nginx), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
 - **Limity / timeouty:**
   - logowanie: 5 nieudanych prób / 900 s osobno dla IP i e-maila (`LoginAttemptLimiter`); hasło min. 10 znaków;
   - obraz wejściowy: max 512 KiB po stronie serwera (`ChatImageValidator::MAX_BYTES`), przeglądarka skaluje do 1600 px; obraz generowany Gemini: max 8 MiB;
   - MCP: odpowiedź max 1 MiB, timeout 45 s; wspierane wersje protokołu w `McpSearchClient::SUPPORTED_PROTOCOLS`;
   - fetch: 1 MiB / 16 000 znaków na stronę; badanie: 20 źródeł, 100 000 znaków kontekstu, 80 zapamiętanych wykluczeń;
   - AI: OVH `ovh_ai.timeout` 120 s (`config/app.php`), katalog modeli 30 s.
-- **Dane runtime:** `var/database/app.sqlite`, `var/logs/` — poza Git, przetrwają restart kontenera (bind mount katalogu repo). Mailpit bez wolumenu (poczta znika po restarcie).
+- **Dane runtime:** `var/database/app.sqlite`, `var/logs/` — poza Git, przetrwają restart kontenera (bind mount katalogu repo).
 - **Języki:** rozmowa/dokumentacja projektowa po polsku; nazwy w kodzie po angielsku; komunikaty UI obecnie po polsku bezpośrednio w JS/HTML (brak warstwy i18n).
-- **Zależności infrastrukturalne:** Docker + Compose, zewnętrzna sieć Docker `ai` z kontenerem `mcp-search`, SMTP (prod) lub Mailpit (dev), dostęp HTTPS do API dostawców AI.
+- **Zależności infrastrukturalne:** Docker + Compose, zewnętrzna sieć Docker `ai` z kontenerem `mcp-search`, SMTP z `MAIL_DSN` (w dev zewnętrzny `mail-trap.dom`), dostęp HTTPS do API dostawców AI.
 
 ## Aktualizacja
 
@@ -151,14 +151,13 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 
 ### Lokalna poczta developerska
 
-- Opcjonalny profil `dev` udostępnia Mailpit `v1.31.6`; panel HTTP na `127.0.0.1:8025`, SMTP hosta na `127.0.0.1:1025`. Bez wolumenu danych i bez skonfigurowanego przekazywania na zewnątrz; limit 100 wiadomości.
-- `docker-compose.dev.yml` łączyć z bazowym Compose i `--profile dev`. Nadpisuje w app tylko `APP_ENV=dev` i `MAIL_DSN=smtp://mailpit:1025`; zależność od mailpit zapewnia start skrzynki przed app. Sam profil bez pliku developerskiego nie przełącza poczty aplikacji.
-- Potwierdzanie kont testowych odbywa się przez link z wiadomości w panelu Mailpita do `app_url` (lokalnie localhost:8181). Nie ma obejścia potwierdzania ani zmian rzeczywistych kont. Po przełączeniu transportu odtworzyć app; szczegóły w `docs/KONFIGURACJA.md`.
+- Projekt nie uruchamia własnej skrzynki (Mailpit i `docker-compose.dev.yml` usunięte 2026-10-20). Dev i prod wysyłają przez `MAIL_DSN` ze środowiska, bez nadpisań w Compose; pocztę testową odbiera zewnętrzny `mail-trap.dom` poza repo.
+- Potwierdzanie kont testowych: link z wiadomości w `mail-trap.dom` do `app_url` (lokalnie localhost:8181). Nie ma obejścia potwierdzania ani zmian rzeczywistych kont; szczegóły w `docs/KONFIGURACJA.md`.
 
 ### Start dev/prod
 
-- `dev-start.sh [dev|prod] [--dry-run]` wybiera bazowy Compose i jawny plik dev albo prod; wszystkie wywołania Docker przez sudo. Bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie analizuje plików środowiska.
-- `docker-compose.prod.yml` wymusza APP_ENV=prod w app. Dev używa lokalnego Mailpita, prod bazowego transportu i zatrzymuje mailpit po udanym starcie.
+- `dev-start.sh [dev|prod] [--dry-run]` eksportuje wybrany tryb jako `APP_ENV` i wywołuje `sudo --preserve-env=APP_ENV docker compose` (prod dodaje `docker-compose.prod.yml`). Bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie analizuje plików środowiska.
+- `docker-compose.prod.yml` wymusza APP_ENV=prod w app. Poczta w obu trybach z `MAIL_DSN`.
 - Start app poprzedza start Nginxa bez odtwarzania; reload Nginxa odświeża upstream po zmianie adresu app. Błąd startu app przerywa skrypt przed operacjami na Nginxie. Dry-run tylko pokazuje komendy.
 
 ### Jawna kontynuacja badania

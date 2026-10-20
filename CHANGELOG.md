@@ -515,3 +515,11 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `ProviderTransport`: 402 (brak środków) → `provider_limit`. Błąd w body przy statusie 200 → `invalid_response`; 503 (brak dostawcy spełniającego `data_collection`) → `connection_failed`.
 - Konfiguracja: `OPENROUTER_API_KEY`, `OPENROUTER_MODELS` w `src/settings.php`, `docker-compose.yml`, `docker/php-fpm-env.conf`; dokumentacja `docs/AI_PROVIDERS.md`, `docs/KONFIGURACJA.md`, `REPO.md`.
 - Walidacja: formatter 0/46, PHP 199/199 (986 asercji). UI 77/82 — 5 testów `dev-start.sh` pada przez lokalne, niezacommitowane usunięcie `docker-compose.dev.yml` po stronie właściciela (poza tym commitem).
+
+## 2026-10-20 — Usunięcie Mailpita z projektu
+
+- Usunięte: usługa `mailpit` z `docker-compose.yml` i `docker-compose.dev.yml` (decyzja właściciela). Poczta w dev i prod idzie przez `MAIL_DSN` bez nadpisań w Compose; testową pocztę odbiera zewnętrzny `mail-trap.dom` poza repozytorium.
+- `dev-start.sh`: eksportuje wybrany tryb jako `APP_ENV` i wywołuje `sudo --preserve-env=APP_ENV docker compose` (tryb ma pierwszeństwo przed powłoką i plikiem środowiska); prod nadal dodaje `docker-compose.prod.yml`. Bez startu/zatrzymywania Mailpita; komunikat nazywa brakujący plik Compose.
+- Testy `tests/ui/dev-start.test.mjs` przepisane (w tym przekazanie trybu do Compose przez sudo).
+- Dokumentacja: `README.md`, `REPO.md`, `docs/KONFIGURACJA.md`. E2E bez zmian — nadal używa osobnego, ręcznie uruchamianego kontenera Mailpit (`docs/E2E.md`).
+- Walidacja: formatter 0/46, PHP 199/199 (986 asercji), UI 83/83.

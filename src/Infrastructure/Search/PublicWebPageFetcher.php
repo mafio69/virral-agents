@@ -43,6 +43,7 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
                 $response = $this->request($url, $deadline);
             }
             $stream = $response->getBody();
+            $raw = '';
             try {
                 $type = strtolower(trim(explode(';', $response->getHeaderLine('Content-Type'))[0]));
                 $status = $response->getStatusCode();
@@ -58,7 +59,6 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
                 if ((int)$response->getHeaderLine('Content-Length') > 1048576) {
                     throw self::failure('too_large');
                 }
-                $raw = '';
                 while (!$stream->eof()) {
                     $raw .= $stream->read(8192);
                     if (strlen($raw) > 1048576) {

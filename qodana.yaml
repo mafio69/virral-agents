@@ -18,6 +18,12 @@ profile:
 #  - name: <SomeEnabledInspectionId>
 
 #Disable inspections
+# Vendored minified third-party library (marked); not maintained in this repository.
+exclude:
+  - name: All
+    paths:
+      - public/ui/lib
+
 #exclude:
 #  - name: <SomeDisabledInspectionId>
 #    paths:

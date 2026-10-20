@@ -146,9 +146,10 @@ final readonly class ChatService
             $messageHistory[] = [
                 'role' => $msg['role'],
                 // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
-                'content' => $msg['role'] === 'assistant' && !empty($msg['images'])
-                    ? ($msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.')
-                    : $this->modelContent($msg['content'], $msg['images'] ?? []),
+                'content' => match (true) {
+                    $msg['role'] === 'assistant' && !empty($msg['images']) => $msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.',
+                    default => $this->modelContent($msg['content'], $msg['images'] ?? []),
+                },
             ];
         }
 

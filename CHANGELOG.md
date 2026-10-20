@@ -498,3 +498,11 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `ChatSearchTest`: `SearchOptions::fromInput()` odrzuca tekst, `null`, liczbę i listy, akceptuje pusty obiekt z wartościami domyślnymi.
 - `PublicWebPageFetcherTest`: `PublicWebUrl::normalize()` przyjmuje tylko porty 80/443, odrzuca dane logowania, inne schematy, hosty lokalne i adresy IP.
 - Walidacja: formatter 0/46, PHP 190/190 (931 asercji), UI 82/82.
+
+## 2026-10-20 — Qodana: odpowiedzi JSON i czytelność
+
+- `JsonResponder` koduje z `JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE`: niepoprawny UTF-8 (np. z odpowiedzi dostawcy AI) nie zamienia już odpowiedzi w 500, a niekodowalne dane rzucają wyjątek zamiast pustego body. Middleware błędów korzysta z `JsonResponder` (dochodzi `Cache-Control: no-store`).
+- Zagnieżdżone ternary → `match (true)` (`bin/reset-password.php`, `ChatService`, `SearchDiagnostics`); zbędna zmienna w `dependencies.php`; `$raw` w fetcherze inicjalizowane przed `try`.
+- `qodana.yaml`: wykluczony `public/ui/lib` (zminifikowana biblioteka marked, 151 z 317 zgłoszeń).
+- Świadomie bez zmian: `chat-controller.js:192` (fałszywy alarm — flaga chroni przed podwójnym wysłaniem), lokalne `throw` w obsłudze błędów UI, „Non-optimal if conditions” (kolejność warunków to strażnicy typów).
+- Walidacja: formatter 0/46, PHP 192/192 (936 asercji), UI 82/82.

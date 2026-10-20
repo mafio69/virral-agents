@@ -46,9 +46,8 @@ return function (ContainerBuilder $containerBuilder) {
         LoggerInterface::class => fn(ContainerInterface $c) => $c->get(DualLogger::class),
         PDO::class => function (ContainerInterface $c) {
             $settings = $c->get('settings')['db'];
-            $factory = new ConnectionFactory($settings['path']);
 
-            return $factory->create();
+            return (new ConnectionFactory($settings['path']))->create();
         },
         MigrationRunner::class => function (ContainerInterface $c) {
             return new MigrationRunner($c->get(PDO::class));

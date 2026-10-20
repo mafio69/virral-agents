@@ -90,8 +90,11 @@ try {
 } catch (Throwable $error) {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     // Komunikaty PDO mogą zawierać dane operacji — nie wypisujemy ich ani trace.
-    $message = $error instanceof PDOException ? 'Nie udało się zapisać zmiany w bazie.'
-        : ($error::class === RuntimeException::class ? $error->getMessage() : 'Nie udało się wykonać resetu. Sprawdź konfigurację i przygotowanie bazy.');
+    $message = match (true) {
+        $error instanceof PDOException => 'Nie udało się zapisać zmiany w bazie.',
+        $error::class === RuntimeException::class => $error->getMessage(),
+        default => 'Nie udało się wykonać resetu. Sprawdź konfigurację i przygotowanie bazy.',
+    };
     fwrite(STDERR, $message."\n");
     exit(1);
 }

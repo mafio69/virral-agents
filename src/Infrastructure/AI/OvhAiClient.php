@@ -20,6 +20,11 @@ final readonly class OvhAiClient implements WebToolClientInterface
         $this->client = new OpenAiCompatClient($this->getBaseUrl(), $token, $this->getDefaultModel(), $timeout, $httpClient);
     }
 
+    public function isConfigured(): bool
+    {
+        return $this->client->isConfigured();
+    }
+
     public function getDefaultModel(): string
     {
         return OvhModelDefaults::resolve($this->model);

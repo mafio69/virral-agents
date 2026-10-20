@@ -547,3 +547,12 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 
 - `README.md`: sekcje „Po co to repozytorium”, tabela integracji (dostawca → zmienna środowiska → dokumentacja), ogólna procedura podłączenia dostawcy, krok po kroku dla OpenRouter, sekcja dla agentów AI pracujących nad kodem; OpenRouter dopisany do listy funkcji czatu.
 - Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.
+
+## 2026-10-20 — Ukrycie połączeń AI bez klucza i poprawki obsługi błędów
+
+- `GET /api/ai-connections` pokazuje tylko połączenia z kluczem: `isConfigured()` w `ProviderTransport`, `OpenAiCompatClient`, `OvhAiClient` i dostawcach; filtr w `ProviderRegistry::connections()` i `ModelCatalogService::getConnections()`. Pusty klucz, `encrypted:…` i `no-token-set` (OVH) oznaczają brak konfiguracji. Z.ai zostaje zawsze (może używać rejestru w bazie).
+- Istniejące rozmowy otwierają się bez zmian; odpowiedź przez połączenie bez klucza daje 503 `missing_configuration`.
+- Zła metoda HTTP zwraca 405 z nagłówkiem `Allow` zamiast 500 i wpisu błędu w logu.
+- `/auth/me`: strażnik na brak użytkownika (401 zamiast pustego profilu); dziś nieosiągalne, bo sesję usuniętego użytkownika odrzuca już middleware.
+- Testy: `ProviderIntegrationTest` (ukrywanie połączeń, OVH tylko z tokenem), `AuthHttpTest` (405, sesja usuniętego użytkownika), `ProviderRoutingTest` zaktualizowany. README opisuje nowe zachowanie.
+- Walidacja: formatter 0/46, PHP 211/211 (1034 asercje), UI 85/85.

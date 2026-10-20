@@ -205,6 +205,25 @@ final class AuthHttpTest extends TestCase
         self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $this->data($login)['token']])->getStatusCode());
     }
 
+    public function testSessionOfDeletedUserIsRejected(): void
+    {
+        $this->registerConfirmed();
+        $token = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
+        $this->pdo->exec('PRAGMA foreign_keys = OFF');
+        $this->pdo->exec('DELETE FROM users');
+        $response = $this->request('GET', '/api/auth/me', cookies: ['token' => $token]);
+        self::assertSame(401, $response->getStatusCode());
+        self::assertArrayNotHasKey('email', $this->data($response));
+    }
+
+    public function testWrongHttpMethodReturns405WithAllowHeader(): void
+    {
+        $response = $this->request('DELETE', '/api/auth/login');
+        self::assertSame(405, $response->getStatusCode());
+        self::assertSame('POST', $response->getHeaderLine('Allow'));
+        self::assertSame(['error' => 'Metoda HTTP jest niedozwolona.'], $this->data($response));
+    }
+
     public function testRememberMeCreatesThirtyDaySession(): void
     {
         $this->registerConfirmed();

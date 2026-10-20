@@ -80,9 +80,14 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
         return $body['data'];
     }
 
+    public function isConfigured(): bool
+    {
+        return trim($this->apiKey) !== '' && $this->apiKey !== 'no-token-set' && !str_starts_with($this->apiKey, 'encrypted:');
+    }
+
     private function request(string $method, string $path, ?array $payload = null): ResponseInterface
     {
-        if (trim($this->apiKey) === '' || $this->apiKey === 'no-token-set' || str_starts_with($this->apiKey, 'encrypted:')) {
+        if (!$this->isConfigured()) {
             throw new AiConnectionException('missing_configuration');
         }
         try {

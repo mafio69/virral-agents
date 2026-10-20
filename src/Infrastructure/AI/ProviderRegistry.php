@@ -14,7 +14,9 @@ final readonly class ProviderRegistry implements MultiProviderRegistryInterface
 
     public function connections(): array
     {
-        return array_map(static fn(ChatProviderInterface $provider): array => ['id' => $provider->id(), 'name' => $provider->name()], array_values($this->providers));
+        // Connections without a usable key are hidden; existing chats still resolve them by selector.
+        $configured = array_filter($this->providers, static fn(ChatProviderInterface $provider): bool => $provider->isConfigured());
+        return array_map(static fn(ChatProviderInterface $provider): array => ['id' => $provider->id(), 'name' => $provider->name()], array_values($configured));
     }
 
     public function listModels(): array { return $this->legacy->listModels(); }

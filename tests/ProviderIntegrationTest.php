@@ -65,6 +65,34 @@ final class ProviderIntegrationTest extends TestCase
         ]], JSON_THROW_ON_ERROR));
     }
 
+    public function testConnectionsWithoutUsableKeyAreHiddenButExistingSelectorsStillResolve(): void
+    {
+        foreach (['', '   ', 'encrypted:fixture'] as $key) {
+            $registry = new ProviderRegistry($this->legacy(), [
+                'openai' => new OpenAiProvider($this->transport([$this->catalogue()], $key)),
+            ]);
+            self::assertSame([], $registry->connections());
+            try {
+                $registry->resolve('openai:gpt-6-astra');
+                self::fail('A provider without a key must not list models.');
+            } catch (AiConnectionException $error) {
+                self::assertSame('missing_configuration', $error->reason);
+            }
+        }
+        self::assertSame([], $this->history);
+        $configured = new ProviderRegistry($this->legacy(), ['openai' => new OpenAiProvider($this->transport([$this->catalogue()]))]);
+        self::assertSame('gpt-6-astra', $configured->resolve('openai:gpt-6-astra')->idModel);
+    }
+
+    public function testOvhConnectionIsListedOnlyWithToken(): void
+    {
+        foreach (['' => false, 'no-token-set' => false, 'encrypted:fixture' => false, 'fixture-token' => true] as $token => $listed) {
+            $catalog = new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', (string)$token, 'fixture'), $this->legacy(), new \Psr\Log\NullLogger());
+            self::assertSame($listed, in_array('ovh', array_column($catalog->getConnections(), 'id'), true));
+            self::assertContains('zai', array_column($catalog->getConnections(), 'id'));
+        }
+    }
+
     public function testOpenAiCatalogueAndMultimodalStatelessResponse(): void
     {
         $provider = new OpenAiProvider($this->transport([$this->catalogue(), $this->answer()]));

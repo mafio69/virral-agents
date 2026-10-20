@@ -34,6 +34,11 @@ final class OpenRouterProvider implements ChatProviderInterface, WebToolClientIn
         return 'OpenRouter';
     }
 
+    public function isConfigured(): bool
+    {
+        return $this->transport->isConfigured();
+    }
+
     public function listModels(): array
     {
         if ($this->models !== null) {

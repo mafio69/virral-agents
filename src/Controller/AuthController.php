@@ -96,6 +96,9 @@ final class AuthController
         $userId = (int)$request->getAttribute('userId');
 
         $user = $this->userRepository->findById($userId);
+        if ($user === null) {
+            throw new UnauthorizedException('Invalid or expired token');
+        }
 
         return JsonResponder::respond($response, [
             'id' => $user['id'],

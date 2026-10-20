@@ -75,7 +75,8 @@ final class ProviderRoutingTest extends TestCase
                 self::assertStringNotContainsString('fixture-'.$other, $request->getHeaderLine('Authorization'));
             }
         }
-        self::assertSame(['ovh', 'zai', 'openai', 'anthropic', 'google'], array_column((new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $registry, new NullLogger()))->getConnections(), 'id'));
+        self::assertSame(['ovh', 'zai', 'openai', 'anthropic', 'google'], array_column((new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', 'fixture-ovh', 'fixture'), $registry, new NullLogger()))->getConnections(), 'id'));
+        self::assertSame(['zai', 'openai', 'anthropic', 'google'], array_column((new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $registry, new NullLogger()))->getConnections(), 'id'));
     }
 
     public function testEveryUnconfiguredProviderFailsBeforeUsingNetwork(): void

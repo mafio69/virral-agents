@@ -11,6 +11,7 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
     private ?array $models = null;
 
     public function __construct(private readonly ProviderTransport $transport) {}
+    public function isConfigured(): bool { return $this->transport->isConfigured(); }
     public function id(): string { return 'google'; }
     public function name(): string { return 'Google / Gemini'; }
 

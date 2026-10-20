@@ -14,8 +14,10 @@ zespołu, uruchamiana przez Docker Compose.
 
 ## Integracje
 
-Każda integracja włącza się kluczem w środowisku (plik `.env` właściciela). Bez klucza
-połączenie nadal jest na liście w czacie, ale lista modeli i odpowiedzi kończą się błędem.
+Każda integracja włącza się kluczem w środowisku (plik `.env` właściciela). Połączenie bez
+klucza nie pojawia się na liście w czacie (wyjątek: Z.ai, który może korzystać też z rejestru
+dostawców w bazie). Rozmowy założone wcześniej nadal się otwierają; nowa odpowiedź w takiej
+rozmowie kończy się czytelnym błędem braku konfiguracji.
 
 | Integracja | Zmienna środowiska | Do czego | Szczegóły |
 |---|---|---|---|

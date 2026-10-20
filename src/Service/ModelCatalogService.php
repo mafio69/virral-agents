@@ -21,8 +21,10 @@ final readonly class ModelCatalogService implements ModelCatalogInterface
 
     public function getConnections(): array
     {
+        $ovh = $this->ovhAiClient->isConfigured() ? [['id' => 'ovh', 'name' => 'OVH']] : [];
+        // Z.ai stays listed: besides ZAI_API_KEY it may use providers stored in the encrypted registry.
         return [
-            ['id' => 'ovh', 'name' => 'OVH'],
+            ...$ovh,
             ['id' => 'zai', 'name' => 'Z.ai / GLM'],
             ...($this->modelRegistry instanceof \App\Infrastructure\AI\MultiProviderRegistryInterface ? $this->modelRegistry->connections() : []),
         ];

@@ -69,6 +69,7 @@ $provider = new class($pdo) implements ChatProviderInterface, WebToolClientInter
     }
     public function id(): string { return 'google'; }
     public function name(): string { return 'MODEL TESTOWY — bez sieci'; }
+    public function isConfigured(): bool { return true; }
     public function listModels(): array { return [['id' => 'gemini-fixture', 'name' => 'Model testowy — fikcyjne odpowiedzi']]; }
     public function generate(array $messages, ?string $model = null): string { return 'Opracowanie testowe na podstawie wybranych stron.'.str_repeat("\n\n## Fragment odpowiedzi testowej\n\nTo fikcyjny tekst do ręcznego sprawdzenia przewijania czatu. Źródła są zapisane poza układem rozmowy.", 24); }
     public function generateWebReply(array $messages, string $model): AiReply {

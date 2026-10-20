@@ -11,6 +11,7 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
     private ?array $models = null;
 
     public function __construct(private readonly ProviderTransport $transport) {}
+    public function isConfigured(): bool { return $this->transport->isConfigured(); }
     public function id(): string { return 'anthropic'; }
     public function name(): string { return 'Anthropic / Claude'; }
 

@@ -53,6 +53,9 @@ return function (App $app) {
             $response = new Response();
             return \App\Infrastructure\Http\JsonResponder::respond($response,
                 ['error' => 'Ochrona danych jest niedostępna. Skontaktuj się z administratorem.'], 503);
+        } catch (\Slim\Exception\HttpMethodNotAllowedException $e) {
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Metoda HTTP jest niedozwolona.'], 405)
+                ->withHeader('Allow', implode(', ', $e->getAllowedMethods()));
         } catch (Throwable $e) {
             $logger->error('Application operation failed', ['type' => get_class($e)]);
 

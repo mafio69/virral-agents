@@ -26,9 +26,14 @@ final readonly class ProviderTransport
         $this->http = $http ?? new Client(['base_uri' => $baseUri, 'connect_timeout' => 10]);
     }
 
+    public function isConfigured(): bool
+    {
+        return trim($this->apiKey) !== '' && !str_starts_with($this->apiKey, 'encrypted:');
+    }
+
     public function request(string $method, string $path, ?array $payload = null, array $query = [], int $maxResponseBytes = 4194304): array
     {
-        if (trim($this->apiKey) === '' || str_starts_with($this->apiKey, 'encrypted:')) {
+        if (!$this->isConfigured()) {
             throw new AiConnectionException('missing_configuration');
         }
         try {

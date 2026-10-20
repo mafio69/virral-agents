@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Dto\Auth\LoginInput;
 use App\Dto\Auth\LoginResult;
 use App\Dto\Auth\RegisterInput;
+use App\Dto\Auth\VerifyEmailInput;
 use App\Exception\EmailConfirmationRequiredException;
 use App\Exception\UnauthorizedException;
 use App\Exception\ValidationException;
@@ -98,9 +99,20 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         $this->userRepository->deleteSession($token);
     }
 
-    public function verifyEmail(string $token): void
+    /** @return array{id: int, email: string} */
+    public function currentUser(int $userId): array
     {
-        $user = $this->userRepository->findByVerificationToken($token);
+        $user = $this->userRepository->findById($userId);
+        if ($user === null) {
+            throw new UnauthorizedException('Invalid or expired token');
+        }
+
+        return ['id' => (int)$user['id'], 'email' => (string)$user['email']];
+    }
+
+    public function verifyEmail(VerifyEmailInput $input): void
+    {
+        $user = $this->userRepository->findByVerificationToken($input->token);
         if (!$user) {
             throw new ValidationException('Invalid verification token');
         }

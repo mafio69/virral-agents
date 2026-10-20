@@ -97,7 +97,7 @@ class AuthServiceTest extends TestCase
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
 
-        $this->authService->verifyEmail($this->verificationToken);
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput($this->verificationToken));
 
         // Now login
         $loginInput = new LoginInput('test@example.com', 'password123', false);
@@ -140,7 +140,7 @@ class AuthServiceTest extends TestCase
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
 
-        $this->authService->verifyEmail($this->verificationToken);
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput($this->verificationToken));
 
         $loginInput = new LoginInput('test@example.com', 'password123', false);
         $result = $this->authService->login($loginInput);
@@ -169,7 +169,7 @@ class AuthServiceTest extends TestCase
         $token = $this->verificationToken;
 
         // Verify email
-        $this->authService->verifyEmail($token);
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput($token));
 
         // Check that email_confirmed_at is set
         $user = $this->users->findByEmail('test@example.com');
@@ -182,6 +182,6 @@ class AuthServiceTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('Invalid verification token');
         
-        $this->authService->verifyEmail('invalid_token');
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput('invalid_token'));
     }
 }

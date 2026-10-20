@@ -48,7 +48,7 @@ final class AuthHttpTest extends TestCase
         $container = new Container([
             LoggerInterface::class => $logger,
             'settings' => ['displayErrorDetails' => false],
-            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, $repository, new \App\Http\SessionTokenResolver(), $this->environment),
+            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, new \App\Http\SessionTokenResolver(), $this->environment),
             \App\Service\SessionAuthenticatorInterface::class => $service,
         ]);
         $this->app = AppFactory::create(container: $container);
@@ -214,6 +214,15 @@ final class AuthHttpTest extends TestCase
         $response = $this->request('GET', '/api/auth/me', cookies: ['token' => $token]);
         self::assertSame(401, $response->getStatusCode());
         self::assertArrayNotHasKey('email', $this->data($response));
+    }
+
+    public function testVerifyEmailRejectsMissingOrNonStringTokenAsValidationError(): void
+    {
+        foreach (['/api/auth/verify-email', '/api/auth/verify-email?token=', '/api/auth/verify-email?token[]=fixture'] as $path) {
+            $response = $this->request('GET', $path);
+            self::assertSame(422, $response->getStatusCode());
+            self::assertSame(['error' => 'Token is required'], $this->data($response));
+        }
     }
 
     public function testWrongHttpMethodReturns405WithAllowHeader(): void

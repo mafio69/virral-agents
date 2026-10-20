@@ -61,7 +61,11 @@ final readonly class ChatController
 
     public function retryMessage(ServerRequestInterface $request, ResponseInterface $response, int $id, int $messageId): ResponseInterface
     {
-        return JsonResponder::respond($response, $this->chatService->retryMessage($id, (int)$request->getAttribute('userId'), $messageId), 201);
+        $userId = (int)$request->getAttribute('userId');
+        $input = (new \App\Mapper\Chat\RetryMessageInputMapper())->map($id, $messageId, $userId);
+        $result = $this->chatService->retryMessage($input);
+
+        return JsonResponder::respond($response, $result, 201);
     }
 
     public function listConnections(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -100,30 +104,15 @@ final readonly class ChatController
     {
         $userId = (int)$request->getAttribute('userId');
         [$scope, $args] = (new \App\Mapper\Chat\ResearchInputMapper())->map($operation, $request->getQueryParams(), (array)$request->getParsedBody());
-        $service = $this->research ?? throw new \App\Exception\ValidationException('Badanie źródeł jest niedostępne.');
+        $service = $this->research ?? throw new \App\Exception\ServiceUnavailableException('Badanie źródeł jest niedostępne.');
         return JsonResponder::respond($response, $service->{$operation}($userId, $scope, ...$args));
     }
 
     public function listModels(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        // Pobranie modeli wybranego połączenia.
-        try {
-            $connection = $request->getQueryParams()['connection'] ?? null;
-            if ($connection !== null && !is_string($connection)) {
-                return JsonResponder::respond($response, ['error' => 'Nieznane połączenie AI.'], 400);
-            }
-            $models = $this->modelCatalog->getAvailableModels($connection);
-            return JsonResponder::respond($response, $models);
-        } catch (\App\Exception\ValidationException) {
-            return JsonResponder::respond($response, ['error' => 'Nieznane połączenie AI.'], 400);
-        } catch (\App\Exception\AiConnectionException $e) {
-            return JsonResponder::respond($response, [
-                'error' => 'Lista modeli AI jest niedostępna.',
-            ], 503)->withHeader('X-AI-Error', $e->reason);
-        } catch (\Throwable) {
-            return JsonResponder::respond($response, [
-                'error' => 'Lista modeli AI jest chwilowo niedostępna.',
-            ], 503);
-        }
+        $input = (new \App\Mapper\Chat\ListModelsInputMapper())->map($request->getQueryParams());
+        $models = $this->modelCatalog->getAvailableModels($input->connection);
+
+        return JsonResponder::respond($response, $models);
     }
 }

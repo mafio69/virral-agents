@@ -95,7 +95,7 @@ try {
     elseif ($path === '/api/ai-models') $result = (new \App\Service\ModelCatalogService(new \App\Infrastructure\AI\OvhAiClient('https://example.invalid/', '', 'fixture'), new ProviderRegistry($legacy, ['google' => $provider]), new \Psr\Log\NullLogger()))->getAvailableModels('google');
     elseif ($path === '/api/chats' && $method === 'GET') $result = $service->getUserChats(1);
     elseif ($path === '/api/chats' && $method === 'POST') $result = $service->createChat((new \App\Mapper\Chat\CreateChatInputMapper())->map($data, 1));
-    elseif (preg_match('~^/api/chats/(\d+)/messages/(\d+)/retry$~', $path, $matches)) $result = $service->retryMessage((int)$matches[1], 1, (int)$matches[2]);
+    elseif (preg_match('~^/api/chats/(\d+)/messages/(\d+)/retry$~', $path, $matches)) $result = $service->retryMessage(new \App\Dto\Chat\RetryMessageInput((int)$matches[1], 1, (int)$matches[2]));
     elseif (preg_match('~^/api/chats/(\d+)/messages$~', $path, $matches)) $result = $service->addMessage((new \App\Mapper\Chat\AddChatMessageInputMapper())->map($data, (int)$matches[1], 1));
     elseif (preg_match('~^/api/chats/(\d+)$~', $path, $matches)) $result = $service->getChatWithMessages((int)$matches[1], 1);
     elseif (str_starts_with($path, '/api/research')) {

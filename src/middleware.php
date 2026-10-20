@@ -48,6 +48,9 @@ return function (App $app) {
             $logger->error('AI provider unavailable', ['reason' => $e->reason]);
             return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Połączenie z AI jest niedostępne.'], 503)
                 ->withHeader('X-AI-Error', $e->reason);
+        } catch (\App\Exception\ServiceUnavailableException $e) {
+            $logger->warning($e->getMessage());
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => $e->getMessage()], 503);
         } catch (\App\Exception\DataProtectionException) {
             $logger->error('Data protection unavailable');
             $response = new Response();

@@ -212,9 +212,9 @@ final readonly class ChatService
         return [$userMessage, $assistantMessage];
     }
 
-    public function retryMessage(int $chatId, int $userId, int $messageId): array
+    public function retryMessage(\App\Dto\Chat\RetryMessageInput $input): array
     {
-        return $this->addMessage(new AddChatMessageInput($chatId, $userId, ''), $messageId);
+        return $this->addMessage(new AddChatMessageInput($input->chatId, $input->userId, ''), $input->messageId);
     }
 
     private function resolveModel(?string $model): string

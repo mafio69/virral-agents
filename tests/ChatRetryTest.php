@@ -32,10 +32,10 @@ final class ChatRetryTest extends ChatServiceTestCase
         self::assertCount(1, $messages);
         self::assertSame('failed', $messages[0]['reply_status']);
         $id = (int)$messages[0]['id'];
-        $pair = $service->retryMessage($chat->id, $this->userId, $id);
+        $pair = $service->retryMessage(new \App\Dto\Chat\RetryMessageInput($chat->id, $this->userId, $id));
         self::assertSame($id, $pair[0]['id']);
         self::assertSame('Synthetic answer', $pair[1]['content']);
-        self::assertSame($pair[1]['id'], $service->retryMessage($chat->id, $this->userId, $id)[1]['id']);
+        self::assertSame($pair[1]['id'], $service->retryMessage(new \App\Dto\Chat\RetryMessageInput($chat->id, $this->userId, $id))[1]['id']);
         self::assertCount(2, $service->getChatWithMessages($chat->id, $this->userId)->messages);
     }
 
@@ -48,7 +48,7 @@ final class ChatRetryTest extends ChatServiceTestCase
         $id = $this->chatRepository->addMessage($chat->id, 'user', 'Synthetic');
         $this->chatRepository->startReply($id, false);
         foreach ([$this->userId, $this->userId + 1] as $owner) {
-            try { $service->retryMessage($chat->id, $owner, $id); self::fail('Must refuse'); }
+            try { $service->retryMessage(new \App\Dto\Chat\RetryMessageInput($chat->id, $owner, $id)); self::fail('Must refuse'); }
             catch (ValidationException|\App\Exception\NotFoundException) { self::assertTrue(true); }
         }
         $this->chatRepository->finishReply($id, false);
@@ -74,7 +74,7 @@ final class ChatRetryTest extends ChatServiceTestCase
         try { $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, 'Synthetic', research: true)); }
         catch (AiConnectionException) {}
         $id = (int)$service->getChatWithMessages($chat->id, $this->userId)->messages[0]['id'];
-        $service->retryMessage($chat->id, $this->userId, $id);
+        $service->retryMessage(new \App\Dto\Chat\RetryMessageInput($chat->id, $this->userId, $id));
         self::assertCount(2, $service->getChatWithMessages($chat->id, $this->userId)->messages);
     }
     public function testExistingChatStillWorksBeforeOperatorRunsNewMigration(): void

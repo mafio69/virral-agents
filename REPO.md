@@ -44,6 +44,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 |---|---|---|
 | Wejście aplikacji | `public/index.php`, `src/settings.php`, `src/dependencies.php`, `src/middleware.php` | konfiguracja, DI, sprawdzenie gotowości bazy (bez migracji), obsługa błędów |
 | Interfejs / API | `src/routes.php`, `src/Controller/*`, `src/Mapper/*`, `src/Middleware/AuthMiddleware.php` | cienkie kontrolery; walidacja wejścia w mapperach |
+| Obsługa błędów | `src/middleware.php`, `src/Exception/*` | kontroler: dane → mapper → DTO → serwis → odpowiedź, bez try/catch; serwisy i mappery rzucają wyjątki, jeden wspólny catch mapuje je na kody: walidacja 422, 401, 404, 405 (+`Allow`), 429, 403 (e-mail), AI 503 + `X-AI-Error`, `ServiceUnavailableException` 503, reszta 500 bez szczegółów |
 | Logika domenowa | `src/Service/*` | rozmowy, wybór modelu, generowanie odpowiedzi, badanie źródeł, konto |
 | Dane | `src/Repository/*`, `src/Infrastructure/Database/*`, `src/Infrastructure/DataProtection/*` | SQLite przez PDO, migracje idempotentne, szyfrowanie pól |
 | Integracje | `src/Infrastructure/AI/*`, `src/Infrastructure/Search/*`, `src/Infrastructure/Mail/*` | dostawcy AI, MCP, fetch stron, poczta |

@@ -556,3 +556,14 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `/auth/me`: strażnik na brak użytkownika (401 zamiast pustego profilu); dziś nieosiągalne, bo sesję usuniętego użytkownika odrzuca już middleware.
 - Testy: `ProviderIntegrationTest` (ukrywanie połączeń, OVH tylko z tokenem), `AuthHttpTest` (405, sesja usuniętego użytkownika), `ProviderRoutingTest` zaktualizowany. README opisuje nowe zachowanie.
 - Walidacja: formatter 0/46, PHP 211/211 (1034 asercje), UI 85/85.
+
+## 2026-10-20 — Jednolity przepływ kontrolerów i obsługi błędów
+
+- Kontrolery bez własnych try/catch: dane → mapper → DTO → serwis → odpowiedź; wyjątki mapuje wspólny catch w `src/middleware.php`.
+- `GET /api/ai-models`: `ListModelsInputMapper` + `ListModelsInput`; usunięty lokalny try/catch, który zamieniał każdy błąd (także błąd kodu) na 503. Nieznane połączenie → 422 (było 400). Znane połączenie bez klucza → 503 `missing_configuration` zamiast „Nieznane połączenie AI.” (stare rozmowy dostają właściwy komunikat); `MultiProviderRegistryInterface::hasConnection()`.
+- `POST …/retry`: `RetryMessageInputMapper` + `RetryMessageInput`; `ChatService::retryMessage(RetryMessageInput)`.
+- `GET /api/auth/verify-email`: `VerifyEmailInputMapper` + `VerifyEmailInput`; `?token[]=…` dawało 500 (TypeError), teraz 422.
+- `GET /api/auth/me`: profil z `AuthService::currentUser()`; `AuthController` nie korzysta już z repozytorium.
+- `/api/research/*` bez skonfigurowanej usługi: nowy `ServiceUnavailableException` → 503 (było 422).
+- Testy: nowy `ChatControllerErrorTest`, `AuthHttpTest` (token weryfikacyjny), aktualizacja wywołań w `AuthServiceTest`, `ChatRetryTest`, `tests/browser/research-router.php`. `REPO.md` opisuje mapowanie wyjątków.
+- Walidacja: formatter 0/51, PHP 215/215 (1051 asercji), UI 85/85.

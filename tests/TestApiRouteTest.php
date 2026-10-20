@@ -39,7 +39,7 @@ final class TestApiRouteTest extends TestCase
     public function testDashboardShowsPanelLinksInDevelopment(): void
     {
         $body = (string)$this->request('/', 'dev')->getBody();
-        self::assertStringContainsString('href="/test-api"', $body);
+        self::assertStringContainsString('href="/test-api#auth"', $body);
         self::assertStringContainsString('href="/test-api#tasks"', $body);
         self::assertStringContainsString('href="/chat"', $body);
     }

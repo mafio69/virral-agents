@@ -572,3 +572,9 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 
 - `resources/views/test-api.html`: zakładki Auth / Zadania / Czaty ustawiają `#auth`, `#tasks`, `#chats` w pasku adresu (wcześniej usuwały hash). Odświeżenie i link otwierają tę samą zakładkę, przycisk Wstecz wraca do poprzedniej.
 - Sprawdzone w przeglądarce: kliknięcia, Wstecz, wejście z `#tasks`. Walidacja: formatter 0/51, PHP 215/215, UI 85/85.
+
+## 2026-10-20 — Przewidywalna nawigacja: „Czat” prowadzi do czatu
+
+- Pulpit: „Czat AI” jest pierwszym kafelkiem; kafelki panelu programisty mają dopisek „(dev)” i prowadzą do `/test-api#auth` i `/test-api#tasks`.
+- Panel `/test-api`: zakładka „Czaty (test API)” zamiast „Czaty”; nowe linki „Pulpit” (`/`) i „Czat AI” (`/chat`).
+- Sprawdzone w przeglądarce (kolejność kafelków, linki panelu, przejście do `/chat`). Walidacja: formatter 0/51, PHP 215/215, UI 85/85.

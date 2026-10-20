@@ -78,20 +78,20 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
   <h2 style="font-size:24px; margin-bottom:4px;">Witaj, <span id="user-email">—</span></h2>
   <p style="color:var(--muted); font-size:14px;">Wybierz sekcję</p>
   <div class="dashboard-grid">
-    <!-- dev-only -->
-    <a class="dashboard-card" href="/test-api">
-      <h3>Test API</h3>
-      <p>Ręczne testowanie endpointów</p>
-    </a>
-    <a class="dashboard-card" href="/test-api#tasks">
-      <h3>Zadania</h3>
-      <p>Zarządzanie listą zadań</p>
-    </a>
-    <!-- /dev-only -->
     <a class="dashboard-card" href="/chat">
       <h3>Czat AI</h3>
-      <p>Rozmowa z modelem AI</p>
+      <p>Rozmowa z modelem AI, wybór dostawcy i wyszukiwarka WWW</p>
     </a>
+    <!-- dev-only -->
+    <a class="dashboard-card" href="/test-api#auth">
+      <h3>Test API (dev)</h3>
+      <p>Panel programisty: ręczne testowanie endpointów</p>
+    </a>
+    <a class="dashboard-card" href="/test-api#tasks">
+      <h3>Zadania (dev)</h3>
+      <p>Panel programisty: lista zadań</p>
+    </a>
+    <!-- /dev-only -->
   </div>
   <p style="margin-top:24px;"><a class="link" href="#" onclick="logout(); return false;">Wyloguj się</a></p>
 </div>

@@ -137,7 +137,8 @@ return function (ContainerBuilder $containerBuilder) {
             );
         },
         \App\Infrastructure\Search\SearchClientInterface::class => function (ContainerInterface $c) {
-            return new \App\Infrastructure\Search\McpSearchClient($c->get('settings')['search']['mcp_url']);
+            $search = $c->get('settings')['search'];
+            return new \App\Infrastructure\Search\McpSearchClient($search['mcp_url'], token: $search['mcp_token'] ?? '');
         },
         \App\Service\ChatReplyGeneratorInterface::class => function (ContainerInterface $c) {
             return new \App\Service\ChatReplyGenerator($c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get(LoggerInterface::class));

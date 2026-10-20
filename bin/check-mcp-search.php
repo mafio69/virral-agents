@@ -17,7 +17,9 @@ if (!is_string($url) || !filter_var($url, FILTER_VALIDATE_URL)
     fwrite(STDERR, "Użycie: php bin/check-mcp-search.php [--url=URL] [--query='publiczne zapytanie' --approve-search]\nBez --query skrypt tylko sprawdza protokół i narzędzie, nie wyszukuje WWW.\n");
     exit(2);
 }
-$client = new McpSearchClient($url);
+// The token comes only from the process environment (export MCP_SEARCH_TOKEN), never from .env.
+$token = getenv('MCP_SEARCH_TOKEN');
+$client = new McpSearchClient($url, token: is_string($token) ? $token : '');
 $exitCode = 0;
 try {
     $definition = $client->definition();
@@ -27,6 +29,9 @@ try {
         echo json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL;
         if ($result['results'] === []) $exitCode = 1;
     }
+} catch (\App\Infrastructure\Search\SearchException $error) {
+    fwrite(STDERR, "MCP niedostępne (kod: {$error->reason}, etap: {$error->stage}).\n");
+    $exitCode = 1;
 } catch (Throwable) {
     fwrite(STDERR, "MCP niedostępne lub niepoprawna odpowiedź protokołu.\n");
     $exitCode = 1;

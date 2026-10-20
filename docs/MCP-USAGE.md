@@ -63,7 +63,7 @@ Backend aplikacji domyślnie używa `http://mcp-search:8000/mcp`, ponieważ jest
 uruchamiany w Dockerze. Przy uruchomieniu PHP bez Dockera operator ustawia
 `MCP_SEARCH_URL=http://127.0.0.1:8890/mcp`. Samodzielny skrypt diagnostyczny
 poniżej zachowuje domyślny adres hosta.
-Compose ustawia `MCP_SEARCH_URL=http://mcp-search:8000/mcp`, przekazuje tę zmienną
+Compose przekazuje `MCP_SEARCH_URL` z pliku środowiska (domyślnie `http://mcp-search:8000/mcp`) oraz `MCP_SEARCH_TOKEN`. Serwer `http://szukaj.dom/mcp` wymaga tokenu Bearer (bez niego 401 → kod `unauthorized`). Diagnostyka z tokenem: `export MCP_SEARCH_TOKEN=…; php bin/check-mcp-search.php --url=http://szukaj.dom/mcp`. Wcześniej: Compose ustawiał `MCP_SEARCH_URL=http://mcp-search:8000/mcp`, przekazuje tę zmienną
 do FPM i dołącza `app` do istniejącej zewnętrznej sieci `ai`.
 Sieć oraz serwis `mcp-search` muszą być uruchomione przez operatora.
 Po zmianie Compose należy odtworzyć usługę aplikacji, aby zastosować sieć i zmienną;

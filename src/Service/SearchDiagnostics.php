@@ -31,7 +31,7 @@ final readonly class SearchDiagnostics implements SearchDiagnosticsInterface
             $definition = $this->client->definition();
             return ['available' => true, 'target' => $target, 'tool' => $definition['function']['name'] ?? null, 'searched' => false];
         } catch (SearchException $error) {
-            $reason = in_array($error->reason, ['dns_failed', 'connection_refused', 'timeout', 'connection_failed', 'http_error', 'protocol_error'], true) ? $error->reason : 'protocol_error';
+            $reason = in_array($error->reason, ['dns_failed', 'connection_refused', 'timeout', 'connection_failed', 'http_error', 'unauthorized', 'protocol_error'], true) ? $error->reason : 'protocol_error';
             return ['available' => false, 'target' => $target, 'reason' => $reason, 'stage' => $error->stage, 'searched' => false];
         } finally {
             $this->client->close();

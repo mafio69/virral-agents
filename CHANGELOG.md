@@ -584,3 +584,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `ResearchPanel::refreshAfterReply()`: po odpowiedzi w trybie badania (także po „Ponów”), gdy model poprosił o operację WWW, otwiera się okno źródeł z Allow/Deny — tak jak przy ręcznym wyszukaniu. Wcześniej panel tylko się odświeżał, a w czacie zostawał komunikat bez okna.
 - Test UI w `tests/ui/chat-research.test.mjs`; sprawdzone w przeglądarce na atrapie `tests/browser/research-router.php`. Walidacja: formatter 0/51, PHP 215/215, UI 86/86.
 - Uwaga: samo wyszukiwanie wymaga działającego serwera MCP `mcp-search` (osobny projekt); 2026-10-20 nie odpowiadał (`bin/check-mcp-search.php`).
+
+## 2026-10-20 — Wyszukiwarka MCP: adres z konfiguracji i token Bearer
+
+- Diagnoza: `http://szukaj.dom/mcp` działa, ale wymaga tokenu (401, `WWW-Authenticate: Bearer`); `mcp-search:8000` / `127.0.0.1:8890` nie odpowiadają. Aplikacja nie umiała wysłać tokenu, a Compose wymuszał adres `mcp-search`.
+- `MCP_SEARCH_URL` przekazywany z pliku środowiska (domyślnie jak dotąd), nowy `MCP_SEARCH_TOKEN` (Compose, `docker/php-fpm-env.conf`, `src/settings.php`); `McpSearchClient` wysyła `Authorization: Bearer` we wszystkich żądaniach.
+- 401/403 → nowy kod `unauthorized` z komunikatem „Sprawdź MCP_SEARCH_TOKEN” (czat, `/api/search/status`). `bin/check-mcp-search.php` wypisuje kod i etap błędu; token tylko z `export MCP_SEARCH_TOKEN`, nie z `.env`.
+- Testy w `McpSearchClientTest` (Bearer w każdym żądaniu, 401/403 bez wycieku tokenu). Dokumentacja: README, `docs/KONFIGURACJA.md`, `docs/MCP-USAGE.md`. Walidacja: formatter 0/51, PHP 217/217, UI 86/86.

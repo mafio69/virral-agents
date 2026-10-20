@@ -30,7 +30,10 @@ return function (ContainerBuilder $containerBuilder) {
     $settings['openrouter'] = ['key' => $sensitiveValue('OPENROUTER_API_KEY'), 'models' => $sensitiveValue('OPENROUTER_MODELS')];
     // The application runs in Docker; loopback here would point back to PHP-FPM.
     // Host-only installations can explicitly set MCP_SEARCH_URL to the host endpoint.
-    $settings['search'] = ['mcp_url' => $sensitiveValue('MCP_SEARCH_URL', 'http://mcp-search:8000/mcp')];
+    $settings['search'] = [
+        'mcp_url' => $sensitiveValue('MCP_SEARCH_URL', 'http://mcp-search:8000/mcp'),
+        'mcp_token' => $sensitiveValue('MCP_SEARCH_TOKEN', ''),
+    ];
     $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
     $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);
 

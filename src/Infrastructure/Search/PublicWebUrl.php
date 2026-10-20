@@ -13,7 +13,7 @@ final class PublicWebUrl
         $parts = parse_url($url);
         if (strlen($url) > 4096 || !filter_var($url, FILTER_VALIDATE_URL) || !is_array($parts)
             || !in_array($parts['scheme'] ?? '', ['http', 'https'], true) || isset($parts['user']) || isset($parts['pass'])
-            || preg_match('/[\x00-\x20<>\\\\]/', $url) || isset($parts['port']) && !in_array($parts['port'], [80, 443], true)) {
+            || preg_match('/[\x00-\x20<>\\\\]/', $url) || (isset($parts['port']) && !in_array($parts['port'], [80, 443], true))) {
             throw new ValidationException('Dozwolony jest wyłącznie publiczny adres HTTP/HTTPS bez danych logowania.');
         }
         $host = strtolower($parts['host']);

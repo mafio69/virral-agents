@@ -68,7 +68,7 @@ final readonly class ProviderTransport
         return match ($status) {
             401, 403 => 'provider_auth',
             404 => 'model_unavailable',
-            429 => 'provider_limit',
+            402, 429 => 'provider_limit',
             408, 504 => 'provider_timeout',
             default => 'connection_failed',
         };

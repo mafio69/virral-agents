@@ -9,7 +9,7 @@ final class SearchException extends \RuntimeException
     /** Page fetch failures; closed list shown to the user and passed to the model as evidence. */
     public const FETCH_REASONS = [
         'dns_failed', 'private_address', 'timeout', 'connection_failed', 'http_blocked', 'http_not_found', 'http_error',
-        'redirect', 'unsupported_type', 'unsupported_encoding', 'too_large', 'charset_error', 'empty_content',
+        'redirect', 'too_many_redirects', 'redirect_loop', 'insecure_redirect', 'unsupported_type', 'unsupported_encoding', 'too_large', 'charset_error', 'empty_content',
     ];
 
     public readonly string $reason;

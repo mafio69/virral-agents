@@ -27,6 +27,23 @@ final class TestApiRouteTest extends TestCase
         self::assertStringNotContainsString('Panel API', (string)$response->getBody());
     }
 
+    #[DataProvider('nonDevelopmentEnvironments')]
+    public function testDashboardHidesPanelLinksOutsideDevelopment(?string $environment): void
+    {
+        $body = (string)$this->request('/', $environment)->getBody();
+        self::assertStringNotContainsString('href="/test-api', $body);
+        self::assertStringContainsString('href="/chat"', $body);
+        self::assertStringContainsString('id="dashboard-view"', $body);
+    }
+
+    public function testDashboardShowsPanelLinksInDevelopment(): void
+    {
+        $body = (string)$this->request('/', 'dev')->getBody();
+        self::assertStringContainsString('href="/test-api"', $body);
+        self::assertStringContainsString('href="/test-api#tasks"', $body);
+        self::assertStringContainsString('href="/chat"', $body);
+    }
+
     public function testDevelopmentServesPanelWithoutPublishingItsTemplate(): void
     {
         $response = $this->request('/test-api', 'dev');

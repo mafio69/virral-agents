@@ -469,3 +469,76 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Nazwa produktu „Virral Agents” w UI (landing, czat, panel API), dokumentacji i projektach w `Design/`; `package.json` `virral-agents-e2e`, `clientInfo` MCP `virral-agents`, User-Agent fetchera `VirralAgents-Research/1.0`, nadawca poczty `noreply@virral-agents.local`, kontener Mailpit w `docs/E2E.md`.
 - Bez zmian celowo: stałe kontekstu szyfrowania `virralAI/user-data/v1` i `virralAI/email-index/v1` (zmiana uniemożliwiłaby odczyt danych), historia w CHANGELOG, nazwa listy DT „virralAI”.
 - Walidacja: formatter 0/46, PHP 182/182 (862 asercje), UI 82/82.
+
+## 2026-10-19 — #62-484: snippet i tytuł wyniku zawsze w evidence
+
+- `ResearchService::evidence()` dodaje do każdego źródła `snippet` z wyszukiwarki (≤ 400 znaków) i przycina `title` do 300 znaków, także przy statusach `failed`/`denied`; fetch bez wyszukania ma pusty snippet.
+- Prompt badania: `title`/`snippet` pochodzą z wyszukiwarki i nie są przeczytaną treścią strony.
+- Dokumentacja: `REPO.md`, `docs/MCP-USAGE.md`.
+- Walidacja: formatter 0/46, PHP 183/183 (872 asercje), UI 82/82.
+
+## 2026-10-19 — #62-485: bezpieczne przekierowania w fetcherze
+
+- `PublicWebPageFetcher` śledzi maks. 3 przekierowania (301/302/303/307/308), także na inny host. Każdy hop: `PublicWebUrl::normalize`, świeże DNS, kontrola publicznego IPv4, połączenie przypięte do IP, nagłówki budowane od zera (bez cookies i `Authorization`). Guzzle nadal z `allow_redirects=false`.
+- Nowe kody w `FETCH_REASONS`: `too_many_redirects`, `redirect_loop`, `insecure_redirect` (https→http); `redirect` oznacza teraz brak lub nieprawidłowy `Location`. Etykiety w panelu źródeł.
+- Jeden limit 15 s na cały łańcuch przekierowań; wynik zawiera końcowy adres.
+- Dokumentacja: `REPO.md`, `docs/MCP-USAGE.md`.
+- Walidacja: formatter 0/46, PHP 185/185 (905 asercji), UI 82/82.
+
+## 2026-10-19 — Poprawki z inspekcji Qodana
+
+- Dodany `qodana.yaml` (profil `qodana.starter`, PHP 8.4, linter `jetbrains/qodana-php:2026.2`).
+- `ConnectionFactory`: tworzenie katalogu bazy odporne na wyścig (`!mkdir(...) && !is_dir(...)`), czytelny wyjątek, gdy katalogu nie da się utworzyć.
+- `SearchOptions::fromInput()` i `PublicWebUrl::normalize()`: jawne nawiasy przy mieszaniu `&&` i `||` (bez zmiany logiki).
+- Walidacja: formatter 0/46, PHP 185/185 (905 asercji), UI 82/82.
+
+## 2026-10-19 — Testy obsługi błędów dla poprawek Qodana
+
+- `ConnectionFactoryTest`: tworzenie zagnieżdżonego katalogu bazy, ponowne użycie istniejącego, błąd utworzenia (plik w miejscu katalogu) z ogólnym komunikatem bez ścieżki.
+- `ChatSearchTest`: `SearchOptions::fromInput()` odrzuca tekst, `null`, liczbę i listy, akceptuje pusty obiekt z wartościami domyślnymi.
+- `PublicWebPageFetcherTest`: `PublicWebUrl::normalize()` przyjmuje tylko porty 80/443, odrzuca dane logowania, inne schematy, hosty lokalne i adresy IP.
+- Walidacja: formatter 0/46, PHP 190/190 (931 asercji), UI 82/82.
+
+## 2026-10-20 — Qodana: odpowiedzi JSON i czytelność
+
+- `JsonResponder` koduje z `JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE`: niepoprawny UTF-8 (np. z odpowiedzi dostawcy AI) nie zamienia już odpowiedzi w 500, a niekodowalne dane rzucają wyjątek zamiast pustego body. Middleware błędów korzysta z `JsonResponder` (dochodzi `Cache-Control: no-store`).
+- Zagnieżdżone ternary → `match (true)` (`bin/reset-password.php`, `ChatService`, `SearchDiagnostics`); zbędna zmienna w `dependencies.php`; `$raw` w fetcherze inicjalizowane przed `try`.
+- `qodana.yaml`: wykluczony `public/ui/lib` (zminifikowana biblioteka marked, 151 z 317 zgłoszeń).
+- Świadomie bez zmian: `chat-controller.js:192` (fałszywy alarm — flaga chroni przed podwójnym wysłaniem), lokalne `throw` w obsłudze błędów UI, „Non-optimal if conditions” (kolejność warunków to strażnicy typów).
+- Walidacja: formatter 0/46, PHP 192/192 (936 asercji), UI 82/82.
+
+## 2026-10-20 — #62-510: integracja OpenRouter
+
+- `OpenRouterProvider` (selektor `openrouter:<vendor>/<model>`): katalog `GET /api/v1/models` (tylko wyjście tekstowe, poprawny identyfikator), opcjonalna lista `OPENROUTER_MODELS`; rozmowa przez `chat/completions` z limitem 4096 tokenów.
+- Prywatność: każde żądanie ma `provider.data_collection: "deny"`; bez nagłówków atrybucji (`HTTP-Referer`, tytuł aplikacji).
+- Obrazy wejściowe wg `architecture.input_modalities`; narzędzia WWW (ASK) tylko dla modeli z `tools` w `supported_parameters`.
+- `ProviderTransport`: 402 (brak środków) → `provider_limit`. Błąd w body przy statusie 200 → `invalid_response`; 503 (brak dostawcy spełniającego `data_collection`) → `connection_failed`.
+- Konfiguracja: `OPENROUTER_API_KEY`, `OPENROUTER_MODELS` w `src/settings.php`, `docker-compose.yml`, `docker/php-fpm-env.conf`; dokumentacja `docs/AI_PROVIDERS.md`, `docs/KONFIGURACJA.md`, `REPO.md`.
+- Walidacja: formatter 0/46, PHP 199/199 (986 asercji). UI 77/82 — 5 testów `dev-start.sh` pada przez lokalne, niezacommitowane usunięcie `docker-compose.dev.yml` po stronie właściciela (poza tym commitem).
+
+## 2026-10-20 — Usunięcie Mailpita z projektu
+
+- Usunięte: usługa `mailpit` z `docker-compose.yml` i `docker-compose.dev.yml` (decyzja właściciela). Poczta w dev i prod idzie przez `MAIL_DSN` bez nadpisań w Compose; testową pocztę odbiera zewnętrzny `mail-trap.dom` poza repozytorium.
+- `dev-start.sh`: eksportuje wybrany tryb jako `APP_ENV` i wywołuje `sudo --preserve-env=APP_ENV docker compose` (tryb ma pierwszeństwo przed powłoką i plikiem środowiska); prod nadal dodaje `docker-compose.prod.yml`. Bez startu/zatrzymywania Mailpita; komunikat nazywa brakujący plik Compose.
+- Testy `tests/ui/dev-start.test.mjs` przepisane (w tym przekazanie trybu do Compose przez sudo).
+- Dokumentacja: `README.md`, `REPO.md`, `docs/KONFIGURACJA.md`. E2E bez zmian — nadal używa osobnego, ręcznie uruchamianego kontenera Mailpit (`docs/E2E.md`).
+- Walidacja: formatter 0/46, PHP 199/199 (986 asercji), UI 83/83.
+
+## 2026-10-20 — dev-start: kontrola działania app przed Nginxem
+
+- Przyczyna „host not found in upstream app”: błąd składni pliku środowiska (Dotenv `InvalidFileException`) zatrzymywał migrator, kontener app kończył pracę zaraz po starcie, a skrypt 10 razy próbował przeładować Nginxa (każda próba z sudo/FIDO). Plik środowiska poprawił właściciel.
+- `dev-start.sh` po `up -d app` sprawdza `ps --status running --services`; gdy app nie działa, kończy się od razu z podpowiedzią (`docker compose logs app`), bez operacji na Nginxie. Czas oczekiwania `DEV_START_APP_WAIT` (domyślnie 2 s, testy 0).
+- Walidacja: formatter 0/46, PHP 199/199 (986 asercji), UI 84/84.
+
+## 2026-10-20 — Pulpit bez martwych linków poza dev
+
+- Karty „Test API” i „Zadania” prowadzą do `/test-api`, który istnieje tylko przy `APP_ENV=dev` (S3); w prod dawały 404. Trasa `/` usuwa blok `<!-- dev-only -->…<!-- /dev-only -->` z `landing.html` poza dev; w dev pulpit bez zmian.
+- Testy: `TestApiRouteTest` (pulpit w każdym środowisku innym niż dokładne `dev` i w `dev`).
+- Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 84/84.
+
+## 2026-10-20 — Osobne skrypty dev-start.sh i prod-start.sh
+
+- `./dev-start.sh` bez argumentu zawsze uruchamia dev (APP_ENV powłoki nie wpływa na wybór).
+- Nowy `./prod-start.sh` uruchamia prod; wywołuje `dev-start.sh prod`, więc logika startu jest jedna. Nie da się go przełączyć na dev.
+- Testy `tests/ui/dev-start.test.mjs` i dokumentacja (`README.md`, `REPO.md`, `docs/KONFIGURACJA.md`) zaktualizowane.
+- Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.

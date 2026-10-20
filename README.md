@@ -32,13 +32,13 @@ Pełna lista nazw i procedury: `docs/KONFIGURACJA.md`, `docs/AI_PROVIDERS.md`, `
 ## Uruchamianie
 
 ```bash
-./dev-start.sh dev            # Compose + Mailpit, APP_ENV=dev
-./dev-start.sh prod           # APP_ENV=prod, bez Mailpita
-./dev-start.sh dev --dry-run  # tylko podgląd komend
+./dev-start.sh                # development (APP_ENV=dev)
+./prod-start.sh               # produkcja (APP_ENV=prod)
+./dev-start.sh --dry-run      # tylko podgląd komend
 ```
 
 - Aplikacja: `http://localhost:8181` (start), `http://localhost:8181/chat` (czat).
-- Mailpit (dev): `http://localhost:8025` — tu odklikuje się link potwierdzający konto testowe.
+- Poczta: zawsze przez `MAIL_DSN`; w dev testowe wiadomości (link potwierdzający konto) odbiera zewnętrzny `mail-trap.dom`.
 - Migracje wykonuje `bin/migrate.php` przed startem PHP-FPM (`docker/start-app.sh`); błąd blokuje start.
 - `/test-api` (panel testowy) istnieje wyłącznie przy `APP_ENV=dev`.
 

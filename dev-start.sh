@@ -2,8 +2,8 @@
 set -euo pipefail
 
 usage() {
-    printf '%s\n' 'Użycie: ./dev-start.sh [dev|prod] [--dry-run]' \
-        'Bez argumentu: APP_ENV=dev wybiera dev; pozostałe wartości wybierają prod.' \
+    printf '%s\n' 'Użycie: ./dev-start.sh [--dry-run]   (development)' \
+        '        ./prod-start.sh [--dry-run]  (produkcja)' \
         'Uruchamiaj z głównego katalogu repozytorium. Skrypt nie odczytuje .env.'
 }
 
@@ -20,16 +20,22 @@ for argument in "$@"; do
         *) usage >&2; exit 2 ;;
     esac
 done
+# Development by default, regardless of APP_ENV in the calling shell; prod-start.sh passes prod.
 if [[ -z "$mode" ]]; then
-    if [[ "${APP_ENV:-}" == dev ]]; then mode=dev; else mode=prod; fi
+    mode=dev
 fi
-if [[ ! -f docker-compose.yml || ! -f docker-compose.dev.yml || ! -f docker-compose.prod.yml ]]; then
-    printf '%s\n' 'Uruchom skrypt z głównego katalogu repozytorium.' >&2
-    exit 1
-fi
+for file in docker-compose.yml docker-compose.prod.yml; do
+    if [[ ! -f "$file" ]]; then
+        printf 'Brak pliku %s. Uruchom skrypt z głównego katalogu repozytorium.\n' "$file" >&2
+        exit 1
+    fi
+done
 
-compose=(sudo docker compose -f docker-compose.yml -f "docker-compose.$mode.yml")
-if [[ "$mode" == dev ]]; then compose+=(--profile dev); fi
+# The selected mode wins over the calling shell and the environment file read by Compose.
+# Mail always uses MAIL_DSN from the environment (an external SMTP, also in dev).
+export APP_ENV="$mode"
+compose=(sudo --preserve-env=APP_ENV docker compose -f docker-compose.yml)
+if [[ "$mode" == prod ]]; then compose+=(-f docker-compose.prod.yml); fi
 run() {
     if "$dry_run"; then
         printf '%q ' "$@"
@@ -40,10 +46,15 @@ run() {
 }
 
 printf 'Tryb: %s\n' "$mode"
-if [[ "$mode" == dev ]]; then
-    run "${compose[@]}" up -d mailpit app
-else
-    run "${compose[@]}" up -d app
+run "${compose[@]}" up -d app
+if ! "$dry_run"; then
+    # The app exits early when configuration or migrations fail; nginx would then retry a missing host.
+    sleep "${DEV_START_APP_WAIT:-2}"
+    if ! "${compose[@]}" ps --status running --services | grep -qx app; then
+        printf '%s\n' 'Kontener app nie działa (najczęściej błąd składni pliku środowiska lub migracji).' \
+            'Kod przyczyny: sudo docker compose logs --tail=20 app' >&2
+        exit 1
+    fi
 fi
 # Do not recreate nginx or change its ports/volumes. Refresh the upstream after app starts.
 run "${compose[@]}" up -d --no-deps --no-recreate nginx
@@ -63,8 +74,4 @@ else
         exit 1
     fi
 fi
-if [[ "$mode" == prod ]]; then
-    run sudo docker compose -f docker-compose.yml --profile dev stop mailpit
-fi
 printf '%s\n' 'Aplikacja: http://localhost:8181'
-if [[ "$mode" == dev ]]; then printf '%s\n' 'Skrzynka Mailpit: http://localhost:8025'; fi

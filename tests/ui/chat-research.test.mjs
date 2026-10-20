@@ -316,7 +316,8 @@ test('modal footer owns the single Continue control and survives panel redraws',
 test('fetch failure codes map to readable labels and unknown codes stay visible', () => {
     assert.equal(fetchReasonText('http_blocked'), 'strona odmówiła dostępu');
     assert.equal(fetchReasonText('empty_content'), 'brak tekstu (strona wymaga JavaScript)');
-    assert.equal(fetchReasonText('redirect'), 'przekierowanie (nieobsługiwane)');
+    assert.equal(fetchReasonText('redirect'), 'nieprawidłowe przekierowanie');
+    assert.equal(fetchReasonText('insecure_redirect'), 'przekierowanie z HTTPS na HTTP');
     assert.equal(fetchReasonText('future_code'), 'future_code');
     assert.equal(fetchReasonText(undefined), '');
 });

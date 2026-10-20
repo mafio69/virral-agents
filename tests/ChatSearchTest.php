@@ -31,6 +31,21 @@ final class ChatSearchTest extends ChatServiceTestCase
         self::assertSame('off', SearchOptions::fromInput([])->engine);
     }
 
+    public function testSearchOptionsRejectNonObjectInputButAcceptEmptyObject(): void
+    {
+        foreach (['mcp', null, 1, ['mcp'], [true], [['engine' => 'mcp']]] as $input) {
+            try {
+                SearchOptions::fromInput($input);
+                self::fail('Non-object search options must be rejected: '.json_encode($input));
+            } catch (ValidationException $error) {
+                self::assertSame('Nieprawidłowe ustawienia wyszukiwania.', $error->getMessage());
+            }
+        }
+        $options = SearchOptions::fromInput([]);
+        self::assertSame(['off', 1, '', false], [$options->engine, $options->maxCalls, $options->query, $options->approved]);
+        self::assertSame('Public', SearchOptions::fromInput(['engine' => 'mcp', 'query' => '  Public ', 'approved' => true])->query);
+    }
+
     public function testNormalChatDoesNotConnectToMcp(): void
     {
         $search = $this->createMock(SearchClientInterface::class);

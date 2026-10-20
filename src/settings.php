@@ -27,6 +27,7 @@ return function (ContainerBuilder $containerBuilder) {
     $settings['openai'] = ['key' => $sensitiveValue('OPEN_AI_KEY')];
     $settings['anthropic'] = ['key' => $sensitiveValue('ANTHROPIC_API_KEY')];
     $settings['google'] = ['key' => $sensitiveValue('GEMINI_KEY')];
+    $settings['openrouter'] = ['key' => $sensitiveValue('OPENROUTER_API_KEY'), 'models' => $sensitiveValue('OPENROUTER_MODELS')];
     // The application runs in Docker; loopback here would point back to PHP-FPM.
     // Host-only installations can explicitly set MCP_SEARCH_URL to the host endpoint.
     $settings['search'] = ['mcp_url' => $sensitiveValue('MCP_SEARCH_URL', 'http://mcp-search:8000/mcp')];

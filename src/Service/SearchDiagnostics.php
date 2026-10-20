@@ -16,8 +16,11 @@ final readonly class SearchDiagnostics implements SearchDiagnosticsInterface
     public function status(): array
     {
         $host = parse_url($this->url, PHP_URL_HOST);
-        $target = in_array($host, ['127.0.0.1', 'localhost', '::1'], true) ? 'loopback'
-            : ($host === 'mcp-search' ? 'docker-service' : 'custom');
+        $target = match (true) {
+            in_array($host, ['127.0.0.1', 'localhost', '::1'], true) => 'loopback',
+            $host === 'mcp-search' => 'docker-service',
+            default => 'custom',
+        };
         if ($target === 'docker-service') {
             $addresses = $this->resolve !== null ? ($this->resolve)($host) : gethostbynamel($host);
             if (!$addresses) {

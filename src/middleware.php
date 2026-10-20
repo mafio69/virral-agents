@@ -26,10 +26,7 @@ return function (App $app) {
         } catch (ValidationException $e) {
             $logger->info($e->getMessage());
 
-            $response = new Response();
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-
-            return $response->withStatus(422)->withHeader('Content-Type', 'application/json');
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => $e->getMessage()], 422);
         } catch (\App\Exception\LoginRateLimitException $e) {
             $response = \App\Infrastructure\Http\JsonResponder::respond(
                 new Response(), ['error' => $e->getMessage()], 429
@@ -42,22 +39,14 @@ return function (App $app) {
         } catch (UnauthorizedException $e) {
             $logger->warning($e->getMessage());
 
-            $response = new Response();
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-
-            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => $e->getMessage()], 401);
         } catch (NotFoundException|HttpNotFoundException $e) {
             $logger->warning($e->getMessage());
 
-            $response = new Response();
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
-
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => $e->getMessage()], 404);
         } catch (\App\Exception\AiConnectionException $e) {
             $logger->error('AI provider unavailable', ['reason' => $e->reason]);
-            $response = new Response();
-            $response->getBody()->write(json_encode(['error' => 'Połączenie z AI jest niedostępne.']));
-            return $response->withStatus(503)->withHeader('Content-Type', 'application/json')
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Połączenie z AI jest niedostępne.'], 503)
                 ->withHeader('X-AI-Error', $e->reason);
         } catch (\App\Exception\DataProtectionException) {
             $logger->error('Data protection unavailable');
@@ -67,11 +56,7 @@ return function (App $app) {
         } catch (Throwable $e) {
             $logger->error('Application operation failed', ['type' => get_class($e)]);
 
-            $response = new Response();
-            $error = ['error' => 'Internal Server Error'];
-            $response->getBody()->write(json_encode($error));
-
-            return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+            return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Internal Server Error'], 500);
         }
     });
 

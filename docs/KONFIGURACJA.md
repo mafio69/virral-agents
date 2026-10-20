@@ -19,6 +19,7 @@ src/settings.php pobiera tylko:
 - OPEN_AI_KEY — bezpośrednie OpenAI Responses API.
 - ANTHROPIC_API_KEY — bezpośrednie Anthropic Messages API.
 - GEMINI_KEY — bezpośrednie Google Gemini API.
+- OPENROUTER_API_KEY — OpenRouter (Chat Completions); opcjonalnie OPENROUTER_MODELS — identyfikatory modeli po przecinku, np. `anthropic/claude-sonnet-4.5,google/gemini-2.5-flash`. Bez tej listy widoczny jest cały katalog tekstowy.
 - MAIL_DSN — transport poczty, jeśli zawiera poświadczenia lub prywatny adres. Gdy go nie ma, używana jest lokalna wartość z konfiguracji PHP.
 
 HTTP i migrator CLI wczytują lokalny plik środowiska przez wspólne src/settings.php.
@@ -46,7 +47,7 @@ Poniższy wariant dotyczy tylko instalacji używających dotenvx, dxrun i sudo;
 zachowaj wtedy tylko wymagane wartości wrażliwe:
 
 ```bash
-dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,OPEN_AI_KEY,ANTHROPIC_API_KEY,GEMINI_KEY,MAIL_DSN docker compose up -d --force-recreate
+dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,OPEN_AI_KEY,ANTHROPIC_API_KEY,GEMINI_KEY,OPENROUTER_API_KEY,OPENROUTER_MODELS,MAIL_DSN docker compose up -d --force-recreate
 ```
 
 Polecenie wykonuje właściciel. Zmiana ustawień tablicy PHP nie wymaga ponownego budowania obrazu. Zmiana Compose lub listy PHP-FPM wymaga odtworzenia kontenerów.
@@ -75,81 +76,49 @@ stylu pozostają pod `/ui/theme.css`.
 Zmiana konfiguracji Compose/PHP-FPM wymaga odtworzenia kontenera przez operatora.
 Nie zmieniano plików środowiska ani działających kontenerów.
 
-## Lokalna skrzynka Mailpit (dev)
+## Poczta testowa (dev)
 
-Mailpit przechwytuje pocztę testową zamiast wysyłać ją na prawdziwe skrzynki.
-Nie potrzebuje konta w zewnętrznym Mailtrapie, hasła ani klucza API.
-Obraz jest przypięty do `axllent/mailpit:v1.31.6`.
+Projekt nie uruchamia własnej skrzynki (Mailpit usunięty 2026-10-20). Poczta w dev
+i prod idzie przez `MAIL_DSN` ze środowiska, bez nadpisywania w Compose. Testową pocztę
+odbiera zewnętrzny serwer `mail-trap.dom`, utrzymywany poza tym repozytorium; jego
+adres i poświadczenia są wyłącznie w `MAIL_DSN` po stronie właściciela.
 
-Właściciel uruchamia z katalogu repo:
-
-```bash
-./dev-start.sh dev
-```
-
-Jawny plik developerski ustawia `APP_ENV=dev` i `MAIL_DSN=smtp://mailpit:1025`
-wewnątrz aplikacji, niezależnie od wcześniej skonfigurowanego transportu.
-Dlatego trzeba uruchomić ponownie także usługę `app`, nie samą skrzynkę.
-Plików środowiska nie trzeba zmieniać. Bazowy Compose bez tego pliku nie zmienia
-transportu poczty i domyślnie nie uruchamia profilu `dev`.
-
-1. Otwórz aplikację pod `http://localhost:8181` i zarejestruj konto testowe,
-   używając np. adresu w domenie `example.invalid`.
-2. Otwórz `http://localhost:8025`, wybierz wiadomość „Potwierdź rejestrację”.
-3. Kliknij link w treści wiadomości (lub otwórz go w nowej karcie na tym samym komputerze).
-   Prowadzi do aplikacji na `localhost:8181`, nie do kontenera SMTP.
-4. Po komunikacie potwierdzenia wróć do aplikacji i zaloguj się.
+1. Uruchom `./dev-start.sh` i otwórz `http://localhost:8181`.
+2. Zarejestruj konto testowe i otwórz wiadomość „Potwierdź rejestrację” w `mail-trap.dom`.
+3. Kliknij link z wiadomości — prowadzi do aplikacji (`app_url`, lokalnie `localhost:8181`).
+4. Po komunikacie potwierdzenia zaloguj się.
 
 Potwierdzenie nadal wymaga jednorazowego linku; nie ma automatycznej aktywacji ani
 obejścia zabezpieczenia S2. Nie wklejaj linków i kodów potwierdzających do czatu.
-W tym trybie także panel `/test-api` jest dostępny, zgodnie z S3.
-
-Panel HTTP (8025) i SMTP dla narzędzi hosta (1025) są przypisane wyłącznie do
-`127.0.0.1`. PHP w Dockerze korzysta z nazwy `mailpit`, a PHP na hoście z
-`smtp://127.0.0.1:1025`. Mailpit nie ma wolumenu danych; wiadomości są tymczasowe,
-a liczba przechowywanych wiadomości jest ograniczona do 100. Nie skonfigurowano
-przekazywania ani wysyłania wiadomości na zewnątrz.
-
-Powrót do zwykłego transportu (wykonuje właściciel):
-
-```bash
-./dev-start.sh prod
-```
-
-Bazowy plik ponownie stosuje swój transport poczty i ustawienie środowiska.
-Samo zatrzymanie Mailpita nie przywraca transportu w działającym procesie PHP.
-
-Źródła: [Docker Mailpit](https://mailpit.axllent.org/docs/install/docker/),
-[wydanie v1.31.6](https://github.com/axllent/mailpit/releases/tag/v1.31.6).
+W trybie dev także panel `/test-api` jest dostępny, zgodnie z S3.
 
 ### Jeden skrypt startowy
 
-`dev-start.sh` uruchamiaj z głównego katalogu repo. Wszystkie operacje Docker
-wykonuje jako `sudo docker compose`; nie czyta bezpośrednio plików środowiska,
-nie wyświetla konfiguracji ani sekretów. Sam Docker Compose przy rzeczywistym
-starcie nadal korzysta z lokalnej konfiguracji jak wcześniej; uruchomienie
+`dev-start.sh` uruchamiaj z głównego katalogu repo (wymaga `docker-compose.yml`
+i `docker-compose.prod.yml`; brakujący plik jest nazwany w komunikacie). Wszystkie
+operacje Docker wykonuje jako `sudo --preserve-env=APP_ENV docker compose`; nie czyta
+bezpośrednio plików środowiska, nie wyświetla konfiguracji ani sekretów. Uruchomienie
 wykonuje właściciel w swoim terminalu.
 
 ```bash
-./dev-start.sh dev
-./dev-start.sh prod
-APP_ENV=dev ./dev-start.sh
-./dev-start.sh dev --dry-run
+./dev-start.sh            # development
+./prod-start.sh           # produkcja
+./dev-start.sh --dry-run  # tylko podgląd komend
 ```
 
-Argument ma pierwszeństwo przed APP_ENV procesu. Bez argumentu tylko dokładne
-`APP_ENV=dev` wybiera dev; brak lub inna wartość wybiera prod. Wpisu APP_ENV
-w samym pliku środowiska skrypt nie odczytuje — w takim przypadku podaj jawnie
-argument. `docker-compose.prod.yml` wymusza APP_ENV=prod w kontenerze nawet wtedy,
-gdy inna lokalna konfiguracja wskazuje dev. Nie trzeba przekazywać APP_ENV przez sudo.
+`dev-start.sh` zawsze uruchamia dev, a `prod-start.sh` zawsze prod (wywołuje
+`dev-start.sh prod`); APP_ENV powłoki nie wpływa na wybór. Wybrany tryb jest
+eksportowany jako `APP_ENV` i przekazywany przez sudo do Compose, więc ma pierwszeństwo
+przed wpisem w pliku środowiska. W prod `docker-compose.prod.yml` dodatkowo wymusza
+APP_ENV=prod w kontenerze.
 
-Skrypt najpierw uruchamia app (w dev również Mailpita). Potem uruchamia Nginxa
-bez odtwarzania istniejącego kontenera i bez ponownego ruszania zależności,
-a następnie przeładowuje Nginxa, żeby odświeżył adres upstream po zmianie app.
-Jeśli app nie wystartuje, nie przechodzi do Nginxa. Nie używa down, usuwania danych
-ani force-recreate. W prod po poprawnym starcie zatrzymuje samą skrzynkę Mailpit.
-Nie oznacza to wycofania ustawień innych niż jawnie nadpisane przez Compose.
+Skrypt najpierw uruchamia app. Potem uruchamia Nginxa bez odtwarzania istniejącego
+kontenera i bez ponownego ruszania zależności, a następnie przeładowuje Nginxa, żeby
+odświeżył adres upstream po zmianie app. Jeśli app nie wystartuje, nie przechodzi do
+Nginxa. Nie używa down, usuwania danych ani force-recreate.
 
+Pozostały po wcześniejszych startach kontener Mailpita Compose zgłosi jako osierocony
+(orphan); usuwa go właściciel jednorazowo.
 
 ## Migracje przy starcie aplikacji
 

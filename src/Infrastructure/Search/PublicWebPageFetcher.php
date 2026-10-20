@@ -6,10 +6,18 @@ namespace App\Infrastructure\Search;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
 
-/** Never follows redirects, forwards credentials, loads subresources or executes scripts. */
+/**
+ * Follows at most MAX_REDIRECTS redirects, each one revalidated as a new public URL with fresh DNS.
+ * Never forwards credentials or cookies, loads subresources or executes scripts.
+ */
 final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
 {
+    private const MAX_REDIRECTS = 3;
+    private const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
+
     public function __construct(private ?ClientInterface $http = null, private ?\Closure $resolve = null, private bool $useStreams = false)
     {
     }
@@ -17,36 +25,25 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
     public function fetch(string $url): array
     {
         $url = PublicWebUrl::normalize($url);
-        $host = parse_url($url, PHP_URL_HOST);
-        $addresses = $this->resolve !== null ? ($this->resolve)($host) : gethostbynamel($host);
-        if (!is_array($addresses) || $addresses === []) {
-            throw self::failure('dns_failed');
-        }
-        foreach ($addresses as $ip) {
-            if (!PublicWebUrl::publicIp($ip)) {
-                throw self::failure('private_address');
-            }
-        }
-        $port = parse_url($url, PHP_URL_PORT) ?? (parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80);
+        $deadline = microtime(true) + 15;
+        $visited = [$url => true];
         try {
-            $options = [
-                'allow_redirects' => false, 'http_errors' => false, 'cookies' => false, 'proxy' => '', 'verify' => true,
-                'connect_timeout' => 5, 'timeout' => 15, 'read_timeout' => 10, 'stream' => true, 'decode_content' => false,
-                'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAgents-Research/1.0'],
-            ];
-            $requestUrl = $url;
-            $streams = $this->useStreams || !extension_loaded('curl');
-            if ($streams) {
-                // PHP-FPM need not have ext-curl. Connect to the vetted IP, with original TLS identity.
-                $parts = parse_url($url);
-                $requestUrl = $parts['scheme'].'://'.$addresses[0].':'.$port.($parts['path'] ?? '/').(isset($parts['query']) ? '?'.$parts['query'] : '');
-                $options['headers']['Host'] = $host.(isset($parts['port']) ? ':'.$port : '');
-                $options['stream_context'] = ['ssl' => ['peer_name' => $host, 'SNI_enabled' => true, 'verify_peer' => true, 'verify_peer_name' => true]];
-            } else {
-                $options['curl'] = [CURLOPT_RESOLVE => [$host.':'.$port.':'.$addresses[0]], CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, CURLOPT_FRESH_CONNECT => true, CURLOPT_FORBID_REUSE => true];
+            $response = $this->request($url, $deadline);
+            for ($hop = 0; in_array($response->getStatusCode(), self::REDIRECT_STATUSES, true); $hop++) {
+                $location = $response->getHeaderLine('Location');
+                $response->getBody()->close();
+                if ($hop >= self::MAX_REDIRECTS) {
+                    throw self::failure('too_many_redirects');
+                }
+                $url = self::redirectTarget($url, $location);
+                if (isset($visited[$url])) {
+                    throw self::failure('redirect_loop');
+                }
+                $visited[$url] = true;
+                $response = $this->request($url, $deadline);
             }
-            $response = ($this->http ?? new Client($streams ? ['handler' => new \GuzzleHttp\Handler\StreamHandler()] : []))->request('GET', $requestUrl, $options);
             $stream = $response->getBody();
+            $raw = '';
             try {
                 $type = strtolower(trim(explode(';', $response->getHeaderLine('Content-Type'))[0]));
                 $status = $response->getStatusCode();
@@ -62,8 +59,6 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
                 if ((int)$response->getHeaderLine('Content-Length') > 1048576) {
                     throw self::failure('too_large');
                 }
-                $raw = '';
-                $deadline = microtime(true) + 15;
                 while (!$stream->eof()) {
                     $raw .= $stream->read(8192);
                     if (strlen($raw) > 1048576) {
@@ -119,6 +114,59 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
         } catch (\Throwable) {
             throw self::failure('connection_failed');
         }
+    }
+
+    /** Resolves and vets the host again for every hop, then connects only to the vetted IPv4. */
+    private function request(string $url, float $deadline): \Psr\Http\Message\ResponseInterface
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        $addresses = $this->resolve !== null ? ($this->resolve)($host) : gethostbynamel($host);
+        if (!is_array($addresses) || $addresses === []) {
+            throw self::failure('dns_failed');
+        }
+        foreach ($addresses as $ip) {
+            if (!PublicWebUrl::publicIp($ip)) {
+                throw self::failure('private_address');
+            }
+        }
+        $remaining = $deadline - microtime(true);
+        if ($remaining <= 0) {
+            throw self::failure('timeout');
+        }
+        $port = parse_url($url, PHP_URL_PORT) ?? (parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80);
+        $options = [
+            'allow_redirects' => false, 'http_errors' => false, 'cookies' => false, 'proxy' => '', 'verify' => true,
+            'connect_timeout' => min(5, $remaining), 'timeout' => $remaining, 'read_timeout' => 10, 'stream' => true, 'decode_content' => false,
+            'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAgents-Research/1.0'],
+        ];
+        $requestUrl = $url;
+        $streams = $this->useStreams || !extension_loaded('curl');
+        if ($streams) {
+            // PHP-FPM need not have ext-curl. Connect to the vetted IP, with original TLS identity.
+            $parts = parse_url($url);
+            $requestUrl = $parts['scheme'].'://'.$addresses[0].':'.$port.($parts['path'] ?? '/').(isset($parts['query']) ? '?'.$parts['query'] : '');
+            $options['headers']['Host'] = $host.(isset($parts['port']) ? ':'.$port : '');
+            $options['stream_context'] = ['ssl' => ['peer_name' => $host, 'SNI_enabled' => true, 'verify_peer' => true, 'verify_peer_name' => true]];
+        } else {
+            $options['curl'] = [CURLOPT_RESOLVE => [$host.':'.$port.':'.$addresses[0]], CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, CURLOPT_FRESH_CONNECT => true, CURLOPT_FORBID_REUSE => true];
+        }
+        return ($this->http ?? new Client($streams ? ['handler' => new \GuzzleHttp\Handler\StreamHandler()] : []))->request('GET', $requestUrl, $options);
+    }
+
+    private static function redirectTarget(string $current, string $location): string
+    {
+        if ($location === '') {
+            throw self::failure('redirect');
+        }
+        try {
+            $target = PublicWebUrl::normalize((string)UriResolver::resolve(new Uri($current), new Uri($location)));
+        } catch (\Throwable) {
+            throw self::failure('redirect');
+        }
+        if (parse_url($current, PHP_URL_SCHEME) === 'https' && parse_url($target, PHP_URL_SCHEME) !== 'https') {
+            throw self::failure('insecure_redirect');
+        }
+        return $target;
     }
 
     private static function failure(string $reason): SearchException

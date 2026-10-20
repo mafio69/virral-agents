@@ -46,9 +46,8 @@ return function (ContainerBuilder $containerBuilder) {
         LoggerInterface::class => fn(ContainerInterface $c) => $c->get(DualLogger::class),
         PDO::class => function (ContainerInterface $c) {
             $settings = $c->get('settings')['db'];
-            $factory = new ConnectionFactory($settings['path']);
 
-            return $factory->create();
+            return (new ConnectionFactory($settings['path']))->create();
         },
         MigrationRunner::class => function (ContainerInterface $c) {
             return new MigrationRunner($c->get(PDO::class));
@@ -84,6 +83,9 @@ return function (ContainerBuilder $containerBuilder) {
                 'openai' => new \App\Infrastructure\AI\OpenAiProvider(new \App\Infrastructure\AI\ProviderTransport(
                     'https://api.openai.com/v1/', $c->get('settings')['openai']['key'] ?? '',
                 )),
+                'openrouter' => new \App\Infrastructure\AI\OpenRouterProvider(new \App\Infrastructure\AI\ProviderTransport(
+                    \App\Infrastructure\AI\OpenRouterProvider::BASE_URI, $c->get('settings')['openrouter']['key'] ?? '',
+                ),\App\Infrastructure\AI\OpenRouterProvider::allowedModels($c->get('settings')['openrouter']['models'] ?? '')),
             ]);
         },
         \App\Infrastructure\AI\AiClientFactoryInterface::class => function (ContainerInterface $c) {

@@ -195,7 +195,9 @@ final readonly class ResearchService implements ResearchServiceInterface
             }
             $text = $page['status'] === 'loaded' ? mb_substr($page['text'], 0, max(0, $budget)) : '';
             $budget -= mb_strlen($text);
-            $evidence[] = ['url' => $source['url'], 'title' => $source['title'], 'status' => $page['status'], 'text' => $text,
+            // Search title and snippet give minimal context even when the page was not fetched.
+            $evidence[] = ['url' => $source['url'], 'title' => mb_substr($source['title'], 0, 300), 'snippet' => mb_substr($source['snippet'] ?? '', 0, 400),
+                'status' => $page['status'], 'text' => $text,
                 'truncated' => ($page['truncated'] ?? false) || mb_strlen($text) < mb_strlen($page['text'] ?? ''), 'fetched_at' => $page['fetched_at'] ?? null,
                 // Closed fetch failure code so the model can prefer another source instead of guessing.
                 'reason' => $page['status'] === 'failed' ? ($page['reason'] ?? 'unavailable') : null];

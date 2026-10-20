@@ -16,8 +16,8 @@
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
-| Development | `./dev-start.sh dev` | Compose + Mailpit (`127.0.0.1:8025`), `APP_ENV=dev`, aplikacja `http://localhost:8181`; Docker przez sudo |
-| Produkcja (lokalnie) | `./dev-start.sh prod` | wymusza `APP_ENV=prod`, zatrzymuje Mailpit; `--dry-run` tylko wypisuje komendy |
+| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
+| Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
@@ -60,7 +60,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Wybór modelu | `ModelSelector` rozdziela `provider:model`; rozmowa jest związana z dostawcą — zmiana dostawcy wymaga nowej rozmowy (historia nie jest przekazywana innemu dostawcy) | `src/Dto/Chat/ModelSelector.php`, `ProviderRegistry` |
 | Zapis odpowiedzi | wiadomość użytkownika jest zapisywana **przed** wywołaniem AI; po błędzie UI odczytuje rozmowę zamiast ponownie wysyłać POST (ochrona przed duplikatem) | `ChatService::addMessage`, `chat-controller.js` |
 | Zgoda na WWW (ASK) | każde wyszukanie i fetch wymaga jawnej decyzji; zgoda jest jednorazowa i nie przechodzi na kolejną wiadomość; model nie może sam uruchomić sieci (prośby AI tworzą tylko oczekującą decyzję) | `ResearchService`, `ChatReplyGenerator`, `chat-search.js` |
-| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, bez redirectów, cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
+| Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, maks. 3 przekierowania (każdy hop: walidacja adresu, świeże DNS, publiczny IPv4, zakaz https→http), bez cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
 | Migracje | `bin/migrate.php` przed startem FPM; HTTP tylko `assertReady`. Inicjalizacja szyfrowania automatyczna wyłącznie dla pustej bazy | `docker/start-app.sh`, `DatabaseInitializer`, `MigrationRunner` |
 | Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków | `AiConnectionException`, `chat-api.js` |
 
@@ -69,7 +69,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Temat | Przyjęte rozwiązanie | Dlaczego / czego nie robić |
 |---|---|---|
 | Konfiguracja | jawne ustawienia w `config/app.php`, sekrety tylko ze środowiska procesu (`src/settings.php`) | nie przenosić kluczy do `config/app.php`; zmiana Compose/FPM wymaga odtworzenia kontenerów przez operatora |
-| Nazwy kluczy | `OPEN_AI_KEY`, `GEMINI_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `OVH_AI_ENDPOINTS_ACCESS_TOKEN` | nazwy wybrane przez właściciela; nie „poprawiać” na `OPENAI_API_KEY` itp. |
+| Nazwy kluczy | `OPEN_AI_KEY`, `GEMINI_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `OVH_AI_ENDPOINTS_ACCESS_TOKEN`, `OPENROUTER_API_KEY` | nazwy wybrane przez właściciela; nie „poprawiać” na `OPENAI_API_KEY` itp. |
 | Sieć MCP | aplikacja w sieciach `default` i zewnętrznej `ai`; `MCP_SEARCH_URL=http://mcp-search:8000/mcp` | brak sieci `ai` = `search.status: unavailable` (DNS); PHP na hoście potrzebuje `http://127.0.0.1:8890/mcp` |
 | Podgląd UI | otwierać `http://localhost:8181/chat` | `file:///…/chat.html` nie działa (brak API); po zmianie JS podbić `?v=` w importach, bo przeglądarka trzyma cache modułów |
 | Reverse proxy | limit logowań liczy `REMOTE_ADDR` | `X-Forwarded-For` celowo ignorowany; za proxy trzeba skonfigurować zaufany peer po stronie serwera WWW |
@@ -79,16 +79,16 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 
 ## 6. Stałe operacyjne
 
-- **Porty:** aplikacja `8181` (Nginx), Mailpit dev `127.0.0.1:8025` (HTTP) / `127.0.0.1:1025` (SMTP), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
+- **Porty:** aplikacja `8181` (Nginx), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
 - **Limity / timeouty:**
   - logowanie: 5 nieudanych prób / 900 s osobno dla IP i e-maila (`LoginAttemptLimiter`); hasło min. 10 znaków;
   - obraz wejściowy: max 512 KiB po stronie serwera (`ChatImageValidator::MAX_BYTES`), przeglądarka skaluje do 1600 px; obraz generowany Gemini: max 8 MiB;
   - MCP: odpowiedź max 1 MiB, timeout 45 s; wspierane wersje protokołu w `McpSearchClient::SUPPORTED_PROTOCOLS`;
   - fetch: 1 MiB / 16 000 znaków na stronę; badanie: 20 źródeł, 100 000 znaków kontekstu, 80 zapamiętanych wykluczeń;
   - AI: OVH `ovh_ai.timeout` 120 s (`config/app.php`), katalog modeli 30 s.
-- **Dane runtime:** `var/database/app.sqlite`, `var/logs/` — poza Git, przetrwają restart kontenera (bind mount katalogu repo). Mailpit bez wolumenu (poczta znika po restarcie).
+- **Dane runtime:** `var/database/app.sqlite`, `var/logs/` — poza Git, przetrwają restart kontenera (bind mount katalogu repo).
 - **Języki:** rozmowa/dokumentacja projektowa po polsku; nazwy w kodzie po angielsku; komunikaty UI obecnie po polsku bezpośrednio w JS/HTML (brak warstwy i18n).
-- **Zależności infrastrukturalne:** Docker + Compose, zewnętrzna sieć Docker `ai` z kontenerem `mcp-search`, SMTP (prod) lub Mailpit (dev), dostęp HTTPS do API dostawców AI.
+- **Zależności infrastrukturalne:** Docker + Compose, zewnętrzna sieć Docker `ai` z kontenerem `mcp-search`, SMTP z `MAIL_DSN` (w dev zewnętrzny `mail-trap.dom`), dostęp HTTPS do API dostawców AI.
 
 ## Aktualizacja
 
@@ -120,7 +120,7 @@ Aktualizuj `REPO.md` w tym samym commicie, gdy zmienia się architektura, urucha
 
 - `ResearchService` zarządza wyborem i jednorazowymi decyzjami, a `ResearchReplyGenerator` przekazuje wyłącznie treść pobranych, zaznaczonych źródeł. Kontroler tylko mapuje wejście.
 - `ResearchRepositoryInterface` i szyfrowana tabela `research_workspaces` przechowują wyniki, koszyk oraz decyzje per użytkownik/rozmowa; scope 0 jest szkicem przenoszonym przy utworzeniu czatu.
-- `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez przekierowań, cookies i JS. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
+- `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez cookies i JS. Śledzi maks. 3 przekierowania (także na inny host): każdy hop przechodzi `PublicWebUrl::normalize`, świeże DNS i kontrolę publicznego IPv4; https→http (`insecure_redirect`), pętla (`redirect_loop`), czwarty hop (`too_many_redirects`) i brak/zły `Location` (`redirect`) kończą fetch. Jeden limit 15 s na cały łańcuch. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
 - `WebToolClientInterface` daje natywne prośby AI o search/fetch; wywołanie tworzy oczekującą decyzję, nigdy zgodę. Modele generujące obrazy Gemini nie otrzymują tools.
 - `chat-research.js` zbiera źródła między wyszukiwaniami; checkbox nie oznacza zgody na fetch. Szczegóły API i testów w `docs/MCP-USAGE.md`.
 
@@ -151,14 +151,13 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 
 ### Lokalna poczta developerska
 
-- Opcjonalny profil `dev` udostępnia Mailpit `v1.31.6`; panel HTTP na `127.0.0.1:8025`, SMTP hosta na `127.0.0.1:1025`. Bez wolumenu danych i bez skonfigurowanego przekazywania na zewnątrz; limit 100 wiadomości.
-- `docker-compose.dev.yml` łączyć z bazowym Compose i `--profile dev`. Nadpisuje w app tylko `APP_ENV=dev` i `MAIL_DSN=smtp://mailpit:1025`; zależność od mailpit zapewnia start skrzynki przed app. Sam profil bez pliku developerskiego nie przełącza poczty aplikacji.
-- Potwierdzanie kont testowych odbywa się przez link z wiadomości w panelu Mailpita do `app_url` (lokalnie localhost:8181). Nie ma obejścia potwierdzania ani zmian rzeczywistych kont. Po przełączeniu transportu odtworzyć app; szczegóły w `docs/KONFIGURACJA.md`.
+- Projekt nie uruchamia własnej skrzynki (Mailpit i `docker-compose.dev.yml` usunięte 2026-10-20). Dev i prod wysyłają przez `MAIL_DSN` ze środowiska, bez nadpisań w Compose; pocztę testową odbiera zewnętrzny `mail-trap.dom` poza repo.
+- Potwierdzanie kont testowych: link z wiadomości w `mail-trap.dom` do `app_url` (lokalnie localhost:8181). Nie ma obejścia potwierdzania ani zmian rzeczywistych kont; szczegóły w `docs/KONFIGURACJA.md`.
 
 ### Start dev/prod
 
-- `dev-start.sh [dev|prod] [--dry-run]` wybiera bazowy Compose i jawny plik dev albo prod; wszystkie wywołania Docker przez sudo. Bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie analizuje plików środowiska.
-- `docker-compose.prod.yml` wymusza APP_ENV=prod w app. Dev używa lokalnego Mailpita, prod bazowego transportu i zatrzymuje mailpit po udanym starcie.
+- `dev-start.sh [--dry-run]` (zawsze dev) i `prod-start.sh [--dry-run]` (zawsze prod, wywołuje `dev-start.sh prod`) eksportują tryb jako `APP_ENV` i wywołuje `sudo --preserve-env=APP_ENV docker compose` (prod dodaje `docker-compose.prod.yml`). APP_ENV powłoki nie wpływa na wybór trybu. Skrypt nie analizuje plików środowiska.
+- `docker-compose.prod.yml` wymusza APP_ENV=prod w app. Poczta w obu trybach z `MAIL_DSN`.
 - Start app poprzedza start Nginxa bez odtwarzania; reload Nginxa odświeża upstream po zmianie adresu app. Błąd startu app przerywa skrypt przed operacjami na Nginxie. Dry-run tylko pokazuje komendy.
 
 ### Jawna kontynuacja badania
@@ -173,7 +172,7 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 
 - `chat-research-modal.js` zarządza natywnym dialogiem umieszczonym poza `#app`, przywołaniem z bocznej listy i przywracaniem fokusu. `chat-research.js` renderuje wyniki i aktualizuje pojedynczy przycisk w stopce dialogu; źródła nie zajmują wysokości formularza czatu.
 - Zamknięcie modalu nie czyści magazynu. Wyniki ostatniego wyszukania, wybrane źródła i pobrane teksty są w szyfrowanym `research_workspaces`, nie w jawnym localStorage. Powrót do rozmowy po reload odtwarza jej magazyn; niewybrane wyniki kolejnych wyszukiwań nie stanowią historii wszystkich wyszukań.
-- Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, kod przyczyny przy `failed`, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.
+- Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, snippet z wyszukiwarki (≤ 400 znaków, także przy `failed`/`denied`), kod przyczyny przy `failed`, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.
 
 
 ### Audyt: autoryzacja, katalog i start bazy

@@ -17,7 +17,6 @@ use App\Infrastructure\AI\ProviderRegistry;
 use App\Infrastructure\AI\ProviderTransport;
 use App\Infrastructure\Database\MigrationRunner;
 use App\Repository\ChatRepository;
-use App\Service\ChatService;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
@@ -37,16 +36,28 @@ final class ProviderIntegrationTest extends TestCase
     {
         $handler = HandlerStack::create(new MockHandler($responses));
         $handler->push(Middleware::history($this->history));
-        return new ProviderTransport('https://api.openai.com/v1/', $key,
-            http: new Client(['base_uri' => 'https://api.openai.com/v1/', 'handler' => $handler]));
+        return new ProviderTransport(
+            'https://api.openai.com/v1/',
+            $key,
+            http: new Client(['base_uri' => 'https://api.openai.com/v1/', 'handler' => $handler])
+        );
     }
 
     private function legacy(): ChatModelRegistryInterface
     {
-        return new class implements ChatModelRegistryInterface {
-            public function listModels(): array { return []; }
-            public function resolve(string $selector): AiModel { throw new AiConnectionException('model_unavailable'); }
-            public function clientFor(AiModel $model): AiClientInterface { throw new AiConnectionException('missing_configuration'); }
+        return new class () implements ChatModelRegistryInterface {
+            public function listModels(): array
+            {
+                return [];
+            }
+            public function resolve(string $selector): AiModel
+            {
+                throw new AiConnectionException('model_unavailable');
+            }
+            public function clientFor(AiModel $model): AiClientInterface
+            {
+                throw new AiConnectionException('missing_configuration');
+            }
         };
     }
 

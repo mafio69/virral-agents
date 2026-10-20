@@ -34,7 +34,7 @@ final readonly class AiModelRepository
                      m.name_display'
         )->fetchAll();
 
-        return array_map(static fn(array $row) => AiModel::fromRow($row), $rows);
+        return array_map(static fn (array $row) => AiModel::fromRow($row), $rows);
     }
 
     /** @return list<AiModel> */
@@ -46,7 +46,7 @@ final readonly class AiModelRepository
         $stmt->execute(['provider_id' => $providerId]);
         $rows = $stmt->fetchAll();
 
-        return array_map(static fn(array $row) => AiModel::fromRow($row), $rows);
+        return array_map(static fn (array $row) => AiModel::fromRow($row), $rows);
     }
 
     /**
@@ -160,7 +160,7 @@ final readonly class AiModelRepository
               AND rtrim(u.url, \'/\') = :endpoint
             ORDER BY m.name_display, m.id');
         $stmt->execute(['endpoint' => rtrim($endpoint, '/')]);
-        return array_map(static fn(array $row) => AiModel::fromRow($row), $stmt->fetchAll());
+        return array_map(static fn (array $row) => AiModel::fromRow($row), $stmt->fetchAll());
     }
 
     public function findOrCreateDiscovered(AiModel $connection, string $apiId): AiModel
@@ -179,7 +179,9 @@ final readonly class AiModelRepository
             'endpoint' => $connection->endpointUrlId, 'created' => $now, 'updated' => $now,
         ]);
         foreach ($this->findByProviderId($connection->providerId) as $model) {
-            if ($model->endpointUrlId === $connection->endpointUrlId && $model->idModel === $apiId) return $model;
+            if ($model->endpointUrlId === $connection->endpointUrlId && $model->idModel === $apiId) {
+                return $model;
+            }
         }
         throw new RuntimeException('Discovered model registration failed');
     }

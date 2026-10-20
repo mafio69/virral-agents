@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Infrastructure\AI;
 
 use App\Exception\AiConnectionException;
@@ -18,18 +20,25 @@ final class WebTools
 
     public static function compat(): array
     {
-        return array_map(static fn(array $tool): array => ['type' => 'function', 'function' => $tool], self::definitions());
+        return array_map(static fn (array $tool): array => ['type' => 'function', 'function' => $tool], self::definitions());
     }
 
     public static function request(string $name, mixed $arguments): array
     {
         if (is_string($arguments)) {
-            try { $arguments = json_decode($arguments, true, 8, JSON_THROW_ON_ERROR); }
-            catch (\JsonException) { throw new AiConnectionException('invalid_response'); }
+            try {
+                $arguments = json_decode($arguments, true, 8, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                throw new AiConnectionException('invalid_response');
+            }
         }
-        $field = match ($name) { 'web_search' => 'query', 'web_fetch' => 'url', default => throw new AiConnectionException('invalid_response') };
+        $field = match ($name) {
+            'web_search' => 'query', 'web_fetch' => 'url', default => throw new AiConnectionException('invalid_response')
+        };
         if (!is_array($arguments) || array_keys($arguments) !== [$field] || !is_string($arguments[$field]) || trim($arguments[$field]) === ''
-            || strlen($arguments[$field]) > ($field === 'query' ? 1000 : 4096)) throw new AiConnectionException('invalid_response');
+            || strlen($arguments[$field]) > ($field === 'query' ? 1000 : 4096)) {
+            throw new AiConnectionException('invalid_response');
+        }
         return ['kind' => $field === 'query' ? 'search' : 'fetch', $field => trim($arguments[$field])];
     }
 }

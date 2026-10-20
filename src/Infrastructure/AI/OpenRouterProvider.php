@@ -21,7 +21,7 @@ final class OpenRouterProvider implements ChatProviderInterface, WebToolClientIn
 
     public static function allowedModels(string $list): array
     {
-        return array_values(array_unique(array_filter(array_map('trim', explode(',', $list)), static fn(string $id): bool => $id !== '')));
+        return array_values(array_unique(array_filter(array_map('trim', explode(',', $list)), static fn (string $id): bool => $id !== '')));
     }
 
     public function id(): string

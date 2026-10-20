@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 namespace Tests;
 
 use App\Exception\AiConnectionException;
@@ -28,8 +29,10 @@ final class AiTimeoutTest extends TestCase
         $client = new OpenAiCompatClient('https://example.invalid/', 'dummy-fixture', 'fixture', httpClient: new Client(['handler' => $stack]));
         self::assertSame('Synthetic answer', $client->generate([]));
         self::assertSame(300, $history[0]['options']['timeout']);
-        try { $client->generate([]); self::fail('Timeout expected'); }
-        catch (AiConnectionException $error) {
+        try {
+            $client->generate([]);
+            self::fail('Timeout expected');
+        } catch (AiConnectionException $error) {
             self::assertSame('provider_timeout', $error->reason);
             self::assertStringNotContainsString('Private', $error->getMessage());
             self::assertNull($error->getPrevious());

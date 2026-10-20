@@ -10,29 +10,50 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
 {
     private ?array $models = null;
 
-    public function __construct(private readonly ProviderTransport $transport) {}
-    public function isConfigured(): bool { return $this->transport->isConfigured(); }
-    public function id(): string { return 'anthropic'; }
-    public function name(): string { return 'Anthropic / Claude'; }
+    public function __construct(private readonly ProviderTransport $transport)
+    {
+    }
+    public function isConfigured(): bool
+    {
+        return $this->transport->isConfigured();
+    }
+    public function id(): string
+    {
+        return 'anthropic';
+    }
+    public function name(): string
+    {
+        return 'Anthropic / Claude';
+    }
 
     public function listModels(): array
     {
-        if ($this->models !== null) return $this->models;
+        if ($this->models !== null) {
+            return $this->models;
+        }
         $models = [];
         $cursor = null;
         $seen = [];
         for ($page = 0; $page < 20; $page++) {
             $body = $this->transport->request('GET', 'models', query: ['limit' => 100, ...($cursor !== null ? ['after_id' => $cursor] : [])]);
             $data = $body['data'] ?? null;
-            if (!is_array($data) || !array_is_list($data)) throw new AiConnectionException('invalid_response');
+            if (!is_array($data) || !array_is_list($data)) {
+                throw new AiConnectionException('invalid_response');
+            }
             foreach ($data as $entry) {
                 $id = is_array($entry) ? ($entry['id'] ?? null) : null;
-                if (!is_string($id) || !preg_match('/^claude-[a-zA-Z0-9._-]{1,150}$/D', $id)) throw new AiConnectionException('invalid_response');
-                if (($entry['lifecycle'] ?? '') === 'retired') continue;
+                if (!is_string($id) || !preg_match('/^claude-[a-zA-Z0-9._-]{1,150}$/D', $id)) {
+                    throw new AiConnectionException('invalid_response');
+                }
+                if (($entry['lifecycle'] ?? '') === 'retired') {
+                    continue;
+                }
                 $models[$id] = ['id' => $id, 'name' => is_string($entry['display_name'] ?? null) ? $entry['display_name'] : $id,
                     'supports_images' => ($entry['capabilities']['image_input']['supported'] ?? (bool)preg_match('/^claude-(?:3|[4-9]|opus|sonnet|haiku|fable)/', $id)) === true];
             }
-            if (($body['has_more'] ?? false) === false) return $this->models = array_values($models);
+            if (($body['has_more'] ?? false) === false) {
+                return $this->models = array_values($models);
+            }
             $cursor = $body['last_id'] ?? null;
             if (!is_string($cursor) || !preg_match('/^[a-zA-Z0-9._-]{1,200}$/D', $cursor) || isset($seen[$cursor])) {
                 throw new AiConnectionException('invalid_response');
@@ -59,14 +80,20 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
         foreach ($messages as $message) {
             $content = is_string($message['content']) ? [['type' => 'text', 'text' => $message['content']]]
                 : array_map(static function (array $part): array {
-                    if ($part['type'] === 'text') return ['type' => 'text', 'text' => $part['text']];
-                    if ($part['type'] !== 'image_url') throw new AiConnectionException('invalid_response');
+                    if ($part['type'] === 'text') {
+                        return ['type' => 'text', 'text' => $part['text']];
+                    }
+                    if ($part['type'] !== 'image_url') {
+                        throw new AiConnectionException('invalid_response');
+                    }
                     $image = InlineImage::parse($part['image_url']['url']);
                     return ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $image['mime_type'], 'data' => $image['data']]];
                 }, $message['content']);
             if (in_array($message['role'], ['system', 'developer'], true)) {
                 foreach ($content as $block) {
-                    if ($block['type'] !== 'text') throw new AiConnectionException('invalid_response');
+                    if ($block['type'] !== 'text') {
+                        throw new AiConnectionException('invalid_response');
+                    }
                     $system[] = $block;
                 }
             } elseif (in_array($message['role'], ['user', 'assistant'], true)) {
@@ -79,16 +106,24 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
             'max_tokens' => 4096, 'messages' => $conversation,
             ...($system !== [] ? ['system' => $system] : []),
-            ...($web ? ['tools' => array_map(static fn(array $tool): array => ['name' => $tool['name'], 'description' => $tool['description'], 'input_schema' => $tool['parameters']], WebTools::definitions()), 'tool_choice' => ['type' => 'auto', 'disable_parallel_tool_use' => true]] : []),
+            ...($web ? ['tools' => array_map(static fn (array $tool): array => ['name' => $tool['name'], 'description' => $tool['description'], 'input_schema' => $tool['parameters']], WebTools::definitions()), 'tool_choice' => ['type' => 'auto', 'disable_parallel_tool_use' => true]] : []),
         ]);
-        if (isset($body['error'])) throw new AiConnectionException('invalid_response');
+        if (isset($body['error'])) {
+            throw new AiConnectionException('invalid_response');
+        }
         $text = [];
         foreach ($body['content'] ?? [] as $part) {
-            if ($web && ($part['type'] ?? '') === 'tool_use') return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($part['name'] ?? '', $part['input'] ?? null));
-            if (($part['type'] ?? '') === 'text' && is_string($part['text'] ?? null)) $text[] = $part['text'];
+            if ($web && ($part['type'] ?? '') === 'tool_use') {
+                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($part['name'] ?? '', $part['input'] ?? null));
+            }
+            if (($part['type'] ?? '') === 'text' && is_string($part['text'] ?? null)) {
+                $text[] = $part['text'];
+            }
         }
         $result = implode("\n", $text);
-        if (trim($result) === '' || isset($body['error'])) throw new AiConnectionException('invalid_response');
+        if (trim($result) === '' || isset($body['error'])) {
+            throw new AiConnectionException('invalid_response');
+        }
         return new \App\Dto\AI\AiReply($result);
     }
 }

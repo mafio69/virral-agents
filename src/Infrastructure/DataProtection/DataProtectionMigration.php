@@ -53,7 +53,7 @@ final readonly class DataProtectionMigration
                         }
                     }
                     $changes = $fields->encrypt($table, $changes, $id, $row);
-                    $assignments = array_map(static fn(string $field): string => $field.' = :'.$field, array_keys($changes));
+                    $assignments = array_map(static fn (string $field): string => $field.' = :'.$field, array_keys($changes));
                     $statement = $this->pdo->prepare('UPDATE '.$table.' SET '.implode(',', $assignments).' WHERE '.$identity.' = :row_id');
                     $statement->execute($changes + ['row_id' => $id]);
                 }
@@ -63,7 +63,9 @@ final readonly class DataProtectionMigration
             $this->writeState();
             $this->pdo->commit();
         } catch (\Throwable $error) {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $error;
         }
     }
@@ -92,7 +94,9 @@ final readonly class DataProtectionMigration
             }
             $this->pdo->commit();
         } catch (\Throwable $error) {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $error;
         }
     }

@@ -16,7 +16,6 @@ use App\Infrastructure\AI\ProviderRegistry;
 use App\Infrastructure\AI\ProviderTransport;
 use App\Infrastructure\Database\MigrationRunner;
 use App\Repository\ChatRepository;
-use App\Service\ChatService;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -44,17 +43,24 @@ final class ProviderRoutingTest extends TestCase
         $classes = ['openai' => OpenAiProvider::class, 'anthropic' => AnthropicProvider::class, 'google' => GeminiProvider::class];
         $providers = [];
         foreach ($classes as $id => $class) {
-            $response = static fn(array $body): Response => new Response(200, [], json_encode($body, JSON_THROW_ON_ERROR));
+            $response = static fn (array $body): Response => new Response(200, [], json_encode($body, JSON_THROW_ON_ERROR));
             $handler = HandlerStack::create(new MockHandler([$response($catalogues[$id]), $response($answers[$id]), $response($answers[$id])]));
             $handler->push(Middleware::history($histories[$id]));
-            $providers[$id] = new $class(new ProviderTransport($bases[$id], 'fixture-'.$id,
-                http: new Client(['base_uri' => $bases[$id], 'handler' => $handler])));
+            $providers[$id] = new $class(new ProviderTransport(
+                $bases[$id],
+                'fixture-'.$id,
+                http: new Client(['base_uri' => $bases[$id], 'handler' => $handler])
+            ));
         }
         $registry = new ProviderRegistry($this->createMock(ChatModelRegistryInterface::class), $providers);
         $pdo = new \PDO('sqlite::memory:', options: [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC]);
         (new MigrationRunner($pdo))->run();
-        $service = ChatServiceFixture::create(new ChatRepository($pdo, ProtectedDataFixture::cipher($pdo)),
-            new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $registry);
+        $service = ChatServiceFixture::create(
+            new ChatRepository($pdo, ProtectedDataFixture::cipher($pdo)),
+            new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'),
+            new NullLogger(),
+            $registry
+        );
         $chats = [];
         foreach (array_keys($providers) as $id) {
             $selector = (new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $registry, new NullLogger()))->getAvailableModels($id)[0]['id'];
@@ -109,8 +115,12 @@ final class ProviderRoutingTest extends TestCase
                 ['title' => 'Fixture', 'url' => 'https://example.org/source', 'snippet' => 'Public fixture'],
             ]]);
             $search->expects(self::once())->method('close');
-            $reply = (new \App\Service\ChatReplyGenerator($search))->generate($provider, [['role' => 'user', 'content' => 'Private fixture question']], $model,
-                new \App\Dto\Chat\SearchOptions('mcp', 1, 'Public query', true));
+            $reply = (new \App\Service\ChatReplyGenerator($search))->generate(
+                $provider,
+                [['role' => 'user', 'content' => 'Private fixture question']],
+                $model,
+                new \App\Dto\Chat\SearchOptions('mcp', 1, 'Public query', true)
+            );
             self::assertStringContainsString('https://example.org/source', $reply->text);
             $payload = json_decode((string)$requests[0]['request']->getBody(), true);
             self::assertStringContainsString('https://example.org/source', json_encode($payload[$historyKey], JSON_UNESCAPED_SLASHES));

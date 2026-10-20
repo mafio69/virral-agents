@@ -33,7 +33,7 @@ final readonly class TaskRepository
         );
         $stmt->execute(['user_id' => $userId]);
 
-        return array_map(fn(array $row): array => $this->store->decrypt('tasks', $row), $stmt->fetchAll(PDO::FETCH_ASSOC));
+        return array_map(fn (array $row): array => $this->store->decrypt('tasks', $row), $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function findById(int $id): ?array

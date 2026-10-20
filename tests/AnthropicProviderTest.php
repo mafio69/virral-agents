@@ -24,12 +24,20 @@ final class AnthropicProviderTest extends TestCase
     {
         $handler = HandlerStack::create(new MockHandler($responses));
         $handler->push(Middleware::history($this->history));
-        return new AnthropicProvider(new ProviderTransport('https://api.anthropic.com/v1/', 'fixture-key',
-            authHeader: 'x-api-key', authPrefix: '', headers: ['anthropic-version' => '2023-06-01'],
-            http: new Client(['base_uri' => 'https://api.anthropic.com/v1/', 'handler' => $handler])));
+        return new AnthropicProvider(new ProviderTransport(
+            'https://api.anthropic.com/v1/',
+            'fixture-key',
+            authHeader: 'x-api-key',
+            authPrefix: '',
+            headers: ['anthropic-version' => '2023-06-01'],
+            http: new Client(['base_uri' => 'https://api.anthropic.com/v1/', 'handler' => $handler])
+        ));
     }
 
-    private function response(array $body): Response { return new Response(200, [], json_encode($body, JSON_THROW_ON_ERROR)); }
+    private function response(array $body): Response
+    {
+        return new Response(200, [], json_encode($body, JSON_THROW_ON_ERROR));
+    }
 
     public function testPaginatedAccountCatalogueAndCapabilityMetadata(): void
     {

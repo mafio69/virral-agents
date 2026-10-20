@@ -56,7 +56,7 @@ final class ApplicationFailureLogTest extends TestCase
 
     private function logger(): AbstractLogger
     {
-        return new class extends AbstractLogger {
+        return new class () extends AbstractLogger {
             public array $records = [];
 
             public function log($level, \Stringable|string $message, array $context = []): void

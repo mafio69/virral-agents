@@ -19,7 +19,9 @@ final readonly class ProtectedStore
     public function insert(string $table, array $row): int
     {
         $ownedTransaction = !$this->pdo->inTransaction();
-        if ($ownedTransaction) $this->pdo->beginTransaction();
+        if ($ownedTransaction) {
+            $this->pdo->beginTransaction();
+        }
         try {
             // Reserve an ID using encrypted placeholders; plaintext is never written.
             $placeholder = $this->fields->encrypt($table, $row, 0);
@@ -29,10 +31,14 @@ final readonly class ProtectedStore
             $id = (int)$this->pdo->lastInsertId();
             $identity = $table === 'chat_message_images' ? (int)$row['message_id'] : $id;
             $this->update($table, $identity, $row);
-            if ($ownedTransaction) $this->pdo->commit();
+            if ($ownedTransaction) {
+                $this->pdo->commit();
+            }
             return $identity;
         } catch (\Throwable $error) {
-            if ($ownedTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($ownedTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $error;
         }
     }
@@ -43,9 +49,11 @@ final readonly class ProtectedStore
         $lookup = $this->pdo->prepare('SELECT * FROM '.$table.' WHERE '.$identity.' = :row_id');
         $lookup->execute(['row_id' => $id]);
         $existing = $lookup->fetch(PDO::FETCH_ASSOC);
-        if (!$existing) throw new \App\Exception\DataProtectionException();
+        if (!$existing) {
+            throw new \App\Exception\DataProtectionException();
+        }
         $row = $this->fields->encrypt($table, $row, $id, $existing);
-        $assignments = array_map(static fn(string $field): string => $field.' = :'.$field, array_keys($row));
+        $assignments = array_map(static fn (string $field): string => $field.' = :'.$field, array_keys($row));
         $statement = $this->pdo->prepare('UPDATE '.$table.' SET '.implode(',', $assignments).' WHERE '.$identity.' = :row_id');
         $statement->execute($row + ['row_id' => $id]);
     }

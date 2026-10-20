@@ -52,16 +52,31 @@ final class ZaiChatIntegrationTest extends TestCase
             new Response(200, [], '{"choices":[{"message":{"content":"Dalsza odpowiedź"}}]}'),
         ]));
         $handler->push(Middleware::history($this->history));
-        $this->client = new OpenAiCompatClient(ZaiEndpointPolicy::BASE_URI, 'dummy-value', 'glm-5.3-flash',
-            httpClient: new Client(['base_uri' => ZaiEndpointPolicy::BASE_URI, 'handler' => $handler]));
-        $factory = new class($this->client) implements AiClientFactoryInterface {
-            public function __construct(private AiClientInterface $client) {}
-            public function fromModel(AiModel $model): AiClientInterface { return $this->client; }
+        $this->client = new OpenAiCompatClient(
+            ZaiEndpointPolicy::BASE_URI,
+            'dummy-value',
+            'glm-5.3-flash',
+            httpClient: new Client(['base_uri' => ZaiEndpointPolicy::BASE_URI, 'handler' => $handler])
+        );
+        $factory = new class ($this->client) implements AiClientFactoryInterface {
+            public function __construct(private AiClientInterface $client)
+            {
+            }
+            public function fromModel(AiModel $model): AiClientInterface
+            {
+                return $this->client;
+            }
         };
-        $this->registry = new ZaiChatModelRegistry(new AiModelRepository($this->pdo), static fn() => $factory,
-            new class implements \App\Infrastructure\AI\ModelCatalogueInterface {
-                public function listModels(): array { return [['id' => 'glm-5.3-flash', 'supports_images' => true]]; }
-            });
+        $this->registry = new ZaiChatModelRegistry(
+            new AiModelRepository($this->pdo),
+            static fn () => $factory,
+            new class () implements \App\Infrastructure\AI\ModelCatalogueInterface {
+                public function listModels(): array
+                {
+                    return [['id' => 'glm-5.3-flash', 'supports_images' => true]];
+                }
+            }
+        );
         $this->chat = ChatServiceFixture::create(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $this->registry);
     }
 
@@ -132,8 +147,12 @@ final class ZaiChatIntegrationTest extends TestCase
 
     public function testProviderDiagnosticsDoNotEscapeTransport(): void
     {
-        $client = new OpenAiCompatClient(ZaiEndpointPolicy::BASE_URI, 'dummy-value', 'glm-5.3',
-            httpClient: new Client(['handler' => HandlerStack::create(new MockHandler([new Response(401, [], 'private diagnostic dummy-value')]))]));
+        $client = new OpenAiCompatClient(
+            ZaiEndpointPolicy::BASE_URI,
+            'dummy-value',
+            'glm-5.3',
+            httpClient: new Client(['handler' => HandlerStack::create(new MockHandler([new Response(401, [], 'private diagnostic dummy-value')]))])
+        );
         try {
             $client->generate([['role' => 'user', 'content' => 'Hi']]);
             $this->fail('Expected access rejection');
@@ -147,20 +166,36 @@ final class ZaiChatIntegrationTest extends TestCase
     private function environmentRegistry(bool $configured = true): ZaiChatModelRegistry
     {
         $client = $this->client;
-        $factory = new class($client) implements AiClientFactoryInterface {
-            public function __construct(private AiClientInterface $client) {}
-            public function fromModel(AiModel $model): AiClientInterface { return $this->client; }
+        $factory = new class ($client) implements AiClientFactoryInterface {
+            public function __construct(private AiClientInterface $client)
+            {
+            }
+            public function fromModel(AiModel $model): AiClientInterface
+            {
+                return $this->client;
+            }
         };
-        return new ZaiChatModelRegistry(new AiModelRepository($this->pdo), static fn() => $factory,
-            new class implements \App\Infrastructure\AI\ModelCatalogueInterface {
-                public function listModels(): array { return [['id' => 'glm-5.3-flash', 'supports_images' => true]]; }
-            }, environmentClient: $configured ? $client : null);
+        return new ZaiChatModelRegistry(
+            new AiModelRepository($this->pdo),
+            static fn () => $factory,
+            new class () implements \App\Infrastructure\AI\ModelCatalogueInterface {
+                public function listModels(): array
+                {
+                    return [['id' => 'glm-5.3-flash', 'supports_images' => true]];
+                }
+            },
+            environmentClient: $configured ? $client : null
+        );
     }
 
     private function chatUsing(ZaiChatModelRegistry $registry): ChatService
     {
-        return ChatServiceFixture::create(new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)),
-            new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'), new NullLogger(), $registry);
+        return ChatServiceFixture::create(
+            new ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)),
+            new OvhAiClient('https://example.invalid/v1', '', 'Qwen3.6-27B'),
+            new NullLogger(),
+            $registry
+        );
     }
 
     public function testEnvironmentConnectionSendsImagesAndHistoryToStandardZaiEndpoint(): void

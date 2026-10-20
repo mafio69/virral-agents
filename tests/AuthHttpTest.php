@@ -43,7 +43,8 @@ final class AuthHttpTest extends TestCase
         $repository = new UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $logger = new NullLogger();
         $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger, new \App\Service\LoginAttemptLimiter(
-            new \App\Repository\LoginAttemptRepository($this->pdo), ProtectedDataFixture::cipher($this->pdo)
+            new \App\Repository\LoginAttemptRepository($this->pdo),
+            ProtectedDataFixture::cipher($this->pdo)
         ));
         $container = new Container([
             LoggerInterface::class => $logger,
@@ -84,7 +85,8 @@ final class AuthHttpTest extends TestCase
     private function confirmEmail(): void
     {
         self::assertSame(200, $this->request(
-            'GET', '/api/auth/verify-email?token='.$this->verificationToken
+            'GET',
+            '/api/auth/verify-email?token='.$this->verificationToken
         )->getStatusCode());
     }
 

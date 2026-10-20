@@ -22,8 +22,11 @@ final class OpenRouterProviderTest extends TestCase
     {
         $handler = HandlerStack::create(new MockHandler($responses));
         $handler->push(Middleware::history($this->history));
-        return new OpenRouterProvider(new ProviderTransport(OpenRouterProvider::BASE_URI, 'fixture-key',
-            http: new Client(['base_uri' => OpenRouterProvider::BASE_URI, 'handler' => $handler])), $allowed);
+        return new OpenRouterProvider(new ProviderTransport(
+            OpenRouterProvider::BASE_URI,
+            'fixture-key',
+            http: new Client(['base_uri' => OpenRouterProvider::BASE_URI, 'handler' => $handler])
+        ), $allowed);
     }
 
     private function response(array $body): Response

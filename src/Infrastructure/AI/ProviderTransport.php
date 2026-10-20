@@ -56,15 +56,21 @@ final readonly class ProviderTransport
         $stream = $response->getBody();
         try {
             $json = '';
-            while (!$stream->eof() && strlen($json) <= $maxResponseBytes) $json .= $stream->read(8192);
-            if (strlen($json) > $maxResponseBytes) throw new AiConnectionException('invalid_response');
+            while (!$stream->eof() && strlen($json) <= $maxResponseBytes) {
+                $json .= $stream->read(8192);
+            }
+            if (strlen($json) > $maxResponseBytes) {
+                throw new AiConnectionException('invalid_response');
+            }
             $body = json_decode($json, true, 128, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw new AiConnectionException('invalid_response');
         } finally {
             $stream->close();
         }
-        if (!is_array($body)) throw new AiConnectionException('invalid_response');
+        if (!is_array($body)) {
+            throw new AiConnectionException('invalid_response');
+        }
         return $body;
     }
 

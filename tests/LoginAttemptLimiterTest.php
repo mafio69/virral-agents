@@ -25,7 +25,9 @@ final class LoginAttemptLimiterTest extends TestCase
     private function newLimiter(): LoginAttemptLimiter
     {
         return new LoginAttemptLimiter(
-            new LoginAttemptRepository($this->pdo), ProtectedDataFixture::cipher($this->pdo), fn() => $this->now
+            new LoginAttemptRepository($this->pdo),
+            ProtectedDataFixture::cipher($this->pdo),
+            fn () => $this->now
         );
     }
 

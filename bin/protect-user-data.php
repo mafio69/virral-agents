@@ -24,7 +24,9 @@ try {
     $settings = $container->get('settings');
     $stage = 'database_file';
     $path = $settings['db']['path'];
-    if (!is_file($path)) throw new RuntimeException();
+    if (!is_file($path)) {
+        throw new RuntimeException();
+    }
     $stage = 'database_connection';
     $pdo = new PDO('sqlite:'.$path, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec('PRAGMA busy_timeout = 5000');
@@ -34,10 +36,14 @@ try {
     (new DataProtectionMigration($pdo, $cipher))->run();
     $stage = 'database_cleanup';
     $checkpoint = $pdo->query('PRAGMA wal_checkpoint(TRUNCATE)')->fetch(PDO::FETCH_NUM);
-    if ((int)$checkpoint[0] > 0) throw new RuntimeException();
+    if ((int)$checkpoint[0] > 0) {
+        throw new RuntimeException();
+    }
     $pdo->exec('VACUUM');
     $checkpoint = $pdo->query('PRAGMA wal_checkpoint(TRUNCATE)')->fetch(PDO::FETCH_NUM);
-    if ((int)$checkpoint[0] > 0) throw new RuntimeException();
+    if ((int)$checkpoint[0] > 0) {
+        throw new RuntimeException();
+    }
     fwrite(STDOUT, "Migracja ochrony danych zakończona. Uruchom aplikację ponownie.\n");
 } catch (Throwable $error) {
     if ($error instanceof \App\Exception\DataProtectionException && $error->reason !== null) {

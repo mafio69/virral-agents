@@ -29,12 +29,16 @@ return function (App $app) {
             return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => $e->getMessage()], 422);
         } catch (\App\Exception\LoginRateLimitException $e) {
             $response = \App\Infrastructure\Http\JsonResponder::respond(
-                new Response(), ['error' => $e->getMessage()], 429
+                new Response(),
+                ['error' => $e->getMessage()],
+                429
             );
             return $response->withHeader('Retry-After', (string)$e->retryAfter);
         } catch (\App\Exception\EmailConfirmationRequiredException $e) {
             return \App\Infrastructure\Http\JsonResponder::respond(
-                new Response(), ['error' => $e->getMessage(), 'code' => 'email_confirmation_required'], 403
+                new Response(),
+                ['error' => $e->getMessage(), 'code' => 'email_confirmation_required'],
+                403
             );
         } catch (UnauthorizedException $e) {
             $logger->warning($e->getMessage());
@@ -54,8 +58,11 @@ return function (App $app) {
         } catch (\App\Exception\DataProtectionException) {
             $logger->error('Data protection unavailable');
             $response = new Response();
-            return \App\Infrastructure\Http\JsonResponder::respond($response,
-                ['error' => 'Ochrona danych jest niedostępna. Skontaktuj się z administratorem.'], 503);
+            return \App\Infrastructure\Http\JsonResponder::respond(
+                $response,
+                ['error' => 'Ochrona danych jest niedostępna. Skontaktuj się z administratorem.'],
+                503
+            );
         } catch (\Slim\Exception\HttpMethodNotAllowedException $e) {
             return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Metoda HTTP jest niedozwolona.'], 405)
                 ->withHeader('Allow', implode(', ', $e->getAllowedMethods()));

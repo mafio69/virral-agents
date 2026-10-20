@@ -51,17 +51,30 @@ final class ChatControllerErrorTest extends TestCase
 
     private function request(string $method, string $path, string $session = ''): ResponseInterface
     {
-        $legacy = new class implements ChatModelRegistryInterface {
-            public function listModels(): array { return []; }
-            public function resolve(string $selector): AiModel { throw new AiConnectionException('model_unavailable'); }
-            public function clientFor(AiModel $model): AiClientInterface { throw new AiConnectionException('missing_configuration'); }
+        $legacy = new class () implements ChatModelRegistryInterface {
+            public function listModels(): array
+            {
+                return [];
+            }
+            public function resolve(string $selector): AiModel
+            {
+                throw new AiConnectionException('model_unavailable');
+            }
+            public function clientFor(AiModel $model): AiClientInterface
+            {
+                throw new AiConnectionException('missing_configuration');
+            }
         };
         $registry = new ProviderRegistry($legacy, ['openai' => new OpenAiProvider(new ProviderTransport('https://api.openai.com/v1/', ''))]);
         $catalog = new ModelCatalogService(new OvhAiClient('https://example.invalid/', '', 'fixture'), $registry, new NullLogger());
         $auth = $this->createMock(\App\Service\AuthService::class);
         $auth->method('validateToken')->willReturn(1);
-        $controller = new ChatController(new \App\Mapper\Chat\CreateChatInputMapper(), new \App\Mapper\Chat\AddChatMessageInputMapper(),
-            $this->createMock(\App\Service\ChatService::class), $catalog);
+        $controller = new ChatController(
+            new \App\Mapper\Chat\CreateChatInputMapper(),
+            new \App\Mapper\Chat\AddChatMessageInputMapper(),
+            $this->createMock(\App\Service\ChatService::class),
+            $catalog
+        );
         $app = AppFactory::create(container: new \DI\Container([
             ChatController::class => $controller,
             \App\Service\SessionAuthenticatorInterface::class => $auth,

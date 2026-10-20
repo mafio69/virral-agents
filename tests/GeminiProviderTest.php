@@ -51,7 +51,9 @@ final class GeminiProviderTest extends TestCase
                 $this->provider([$this->response(['candidates' => [['content' => ['parts' => [['inlineData' => $image]]]]]])])
                     ->generateReply([['role' => 'user', 'content' => 'Fixture']], 'gemini-3.1-flash-image');
                 self::fail('Invalid image must fail');
-            } catch (AiConnectionException $error) { self::assertSame('invalid_response', $error->reason); }
+            } catch (AiConnectionException $error) {
+                self::assertSame('invalid_response', $error->reason);
+            }
         }
         $this->expectException(AiConnectionException::class);
         $this->provider([$this->response(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [['text' => 'Partial']]]]]])])
@@ -62,12 +64,19 @@ final class GeminiProviderTest extends TestCase
     {
         $handler = HandlerStack::create(new MockHandler($responses));
         $handler->push(Middleware::history($this->history));
-        return new GeminiProvider(new ProviderTransport('https://generativelanguage.googleapis.com/v1beta/', 'fixture-key',
-            authHeader: 'x-goog-api-key', authPrefix: '',
-            http: new Client(['base_uri' => 'https://generativelanguage.googleapis.com/v1beta/', 'handler' => $handler])));
+        return new GeminiProvider(new ProviderTransport(
+            'https://generativelanguage.googleapis.com/v1beta/',
+            'fixture-key',
+            authHeader: 'x-goog-api-key',
+            authPrefix: '',
+            http: new Client(['base_uri' => 'https://generativelanguage.googleapis.com/v1beta/', 'handler' => $handler])
+        ));
     }
 
-    private function response(array $body): Response { return new Response(200, [], json_encode($body, JSON_THROW_ON_ERROR)); }
+    private function response(array $body): Response
+    {
+        return new Response(200, [], json_encode($body, JSON_THROW_ON_ERROR));
+    }
 
     public function testCataloguePaginationFilteringAndRegistryBinding(): void
     {

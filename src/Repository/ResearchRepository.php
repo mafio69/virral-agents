@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Infrastructure\DataProtection\DataCipherInterface;
@@ -34,7 +36,9 @@ final readonly class ResearchRepository implements ResearchRepositoryInterface
             $this->pdo->commit();
             return $state;
         } catch (\Throwable $error) {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $error;
         }
     }
@@ -46,20 +50,30 @@ final readonly class ResearchRepository implements ResearchRepositoryInterface
             $draft = $this->read($userId, 0);
             $query = $this->pdo->prepare('INSERT OR IGNORE INTO research_workspaces (user_id, chat_id, payload) VALUES (?, ?, ?)');
             $query->execute([$userId, $chatId, $this->encode($draft, $userId, $chatId)]);
-            if ($query->rowCount() !== 1) throw new \App\Exception\ValidationException('Rozmowa ma już własną listę źródeł. Szkic zachowano.');
+            if ($query->rowCount() !== 1) {
+                throw new \App\Exception\ValidationException('Rozmowa ma już własną listę źródeł. Szkic zachowano.');
+            }
             $delete = $this->pdo->prepare('DELETE FROM research_workspaces WHERE user_id = ? AND chat_id = 0');
             $delete->execute([$userId]);
             $this->pdo->commit();
         } catch (\Throwable $error) {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $error;
         }
     }
 
-    private function context(int $userId, int $chatId): string { return 'research:owner:'.$userId.':chat:'.$chatId; }
+    private function context(int $userId, int $chatId): string
+    {
+        return 'research:owner:'.$userId.':chat:'.$chatId;
+    }
     private function encode(array $state, int $userId, int $chatId): string
     {
         return $this->cipher->encrypt(json_encode($state, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), $this->context($userId, $chatId));
     }
-    private static function emptyState(): array { return ['results' => [], 'sources' => [], 'actions' => []]; }
+    private static function emptyState(): array
+    {
+        return ['results' => [], 'sources' => [], 'actions' => []];
+    }
 }

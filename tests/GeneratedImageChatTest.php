@@ -11,7 +11,6 @@ use App\Dto\Chat\CreateChatInput;
 use App\Infrastructure\AI\ChatModelRegistryInterface;
 use App\Infrastructure\AI\MultimodalClientInterface;
 use App\Infrastructure\AI\OvhAiClient;
-use App\Service\ChatService;
 use Psr\Log\NullLogger;
 
 final class GeneratedImageChatTest extends ChatServiceTestCase

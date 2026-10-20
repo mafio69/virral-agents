@@ -59,12 +59,12 @@ class ChatServiceTest extends TestCase
 
         // Create service dependencies
         $chatRepository = new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
-        
+
         // Mock OVH AI client
         $ovhAiClient = $this->createMock(\App\Infrastructure\AI\OvhAiClient::class);
         $ovhAiClient->method('generate')->willReturn('AI response');
         $ovhAiClient->method('getBaseUrl')->willReturn('https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/');
-        
+
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
 
         $this->chatService = ChatServiceFixture::create($chatRepository, $ovhAiClient, $logger);
@@ -119,7 +119,7 @@ class ChatServiceTest extends TestCase
     public function testGetChatWithMessages(): void
     {
         $chat = $this->chatService->createChat(new CreateChatInput($this->userId, 'Test Chat', 'TestModel'));
-        
+
         // Add a message
         $messageInput = new AddChatMessageInput($chat->id, $this->userId, 'Hello');
         $this->chatService->addMessage($messageInput);
@@ -137,7 +137,7 @@ class ChatServiceTest extends TestCase
     {
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Chat not found');
-        
+
         $this->chatService->getChatWithMessages(999, $this->userId);
     }
 
@@ -154,14 +154,14 @@ class ChatServiceTest extends TestCase
         // Try to get chat with different user
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Chat not found');
-        
+
         $this->chatService->getChatWithMessages($chat->id, $otherUserId);
     }
 
     public function testAddMessage(): void
     {
         $chat = $this->chatService->createChat(new CreateChatInput($this->userId, 'Test Chat', 'TestModel'));
-        
+
         $messageInput = new AddChatMessageInput($chat->id, $this->userId, 'Hello AI');
         $messages = $this->chatService->addMessage($messageInput);
 
@@ -178,7 +178,7 @@ class ChatServiceTest extends TestCase
 
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Chat not found');
-        
+
         $this->chatService->addMessage($messageInput);
     }
 
@@ -197,7 +197,7 @@ class ChatServiceTest extends TestCase
 
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Chat not found');
-        
+
         $this->chatService->addMessage($messageInput);
     }
     public function testImagesAreSavedAndRemainInModelHistory(): void

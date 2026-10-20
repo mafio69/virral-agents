@@ -29,12 +29,18 @@ final readonly class ZaiModelCatalogue implements ModelCatalogueInterface
                 'connect_timeout' => 5,
                 'stream' => true,
             ]);
-            if ($response->getStatusCode() !== 200) throw new AiConnectionException('catalogue_unavailable');
+            if ($response->getStatusCode() !== 200) {
+                throw new AiConnectionException('catalogue_unavailable');
+            }
             $stream = $response->getBody();
             try {
                 $json = '';
-                while (!$stream->eof() && strlen($json) <= 2097152) $json .= $stream->read(8192);
-                if (strlen($json) > 2097152) throw new AiConnectionException('invalid_response');
+                while (!$stream->eof() && strlen($json) <= 2097152) {
+                    $json .= $stream->read(8192);
+                }
+                if (strlen($json) > 2097152) {
+                    throw new AiConnectionException('invalid_response');
+                }
             } finally {
                 $stream->close();
             }
@@ -53,7 +59,9 @@ final readonly class ZaiModelCatalogue implements ModelCatalogueInterface
                     $models[$id] = ['id' => $id, 'supports_images' => $vision];
                 }
             }
-            if ($models === []) throw new AiConnectionException('invalid_response');
+            if ($models === []) {
+                throw new AiConnectionException('invalid_response');
+            }
             return array_values($models);
         } catch (AiConnectionException $error) {
             throw $error;

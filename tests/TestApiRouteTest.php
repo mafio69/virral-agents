@@ -72,7 +72,8 @@ final class TestApiRouteTest extends TestCase
         (require __DIR__.'/../src/routes.php')($app);
         (require __DIR__.'/../src/middleware.php')($app);
         return $app->handle((new ServerRequestFactory())->createServerRequest(
-            'GET', 'https://fixture.example.invalid'.$path
+            'GET',
+            'https://fixture.example.invalid'.$path
         ));
     }
 }

@@ -21,7 +21,7 @@
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
-| E2E (opcjonalnie) | `npm run test:e2e` / `npm run test:local` | Playwright + osobny Mailpit na 18025/11025; szczegóły `docs/E2E.md` |
+| E2E (opcjonalnie) | `npm run test:e2e` / `npm run test:local` | Playwright + testowy Mailpit `mail-trap.dom`; szczegóły `docs/E2E.md` |
 | Build | brak | frontend to statyczne moduły ES w `public/ui`, bez bundlera |
 
 Sekrety (klucze dostawców, `USER_DATA_KEY`, `DB_HASH`, `MAIL_DSN`) trafiają do kontenera wyłącznie przez zmienne Compose → `docker/php-fpm-env.conf`. Nie wpisuj ich do `config/app.php` ani dokumentacji.
@@ -80,7 +80,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 
 ## 6. Stałe operacyjne
 
-- **Porty:** aplikacja `8181` (Nginx), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
+- **Porty:** aplikacja `8181` (Nginx), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182`, poczta E2E `mail-trap.dom`.
 - **Limity / timeouty:**
   - logowanie: 5 nieudanych prób / 900 s osobno dla IP i e-maila (`LoginAttemptLimiter`); hasło min. 10 znaków;
   - obraz wejściowy: max 512 KiB po stronie serwera (`ChatImageValidator::MAX_BYTES`), przeglądarka skaluje do 1600 px; obraz generowany Gemini: max 8 MiB;

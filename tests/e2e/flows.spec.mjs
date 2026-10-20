@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 test.describe.configure({ mode: 'serial' });
 const email = `e2e-${Date.now()}@example.invalid`;
 const password = 'Synthetic-E2E-password-42';
-const mailbox = 'http://127.0.0.1:18025';
+const mailbox = process.env.E2E_MAILBOX_URL || 'http://mail-trap.dom';
 const dependencies = 'http://127.0.0.1:18182';
 const observations = new WeakMap();
 

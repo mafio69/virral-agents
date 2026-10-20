@@ -3,7 +3,7 @@
 Testy nie wczytują `.env`, `src/settings.php`, rzeczywistej bazy ani prywatnej historii.
 Chromium obsługuje rzeczywisty frontend; backend używa produkcyjnego kontenera DI,
 tras, middleware, serwisów, szyfrowanych repozytoriów i SQLite. Poczta przechodzi przez
-rzeczywisty SMTP do osobnego Mailpita. Transporty Gemini i MCP wykonują HTTP do
+rzeczywisty SMTP do testowego Mailpita `mail-trap.dom`. Transporty Gemini i MCP wykonują HTTP do
 lokalnych serwerów kontraktowych. Pobieranie stron ma lokalny adapter testowy.
 Nie są to testy dostępności ani jakości odpowiedzi rzeczywistych dostawców AI/WWW.
 
@@ -14,14 +14,14 @@ Z katalogu repozytorium, po instalacji zależności Composer:
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
 PLAYWRIGHT_BROWSERS_PATH=tests/e2e/runtime/browsers npx playwright install chromium
-sudo docker run --detach --rm --name virral-agents-e2e-mailpit \
-  --publish 127.0.0.1:18025:8025 --publish 127.0.0.1:11025:1025 \
-  --env MP_MAX_MESSAGES=100 axllent/mailpit:v1.31.6
 ```
 
-Kontener nie ma wolumenów ani przekazywania poczty na zewnątrz. Nie używaj do tego
-prywatnej skrzynki. Porty 18025/11025 są oddzielne od profilu dev aplikacji.
-Brak Mailpita powoduje jawny błąd przygotowania, a nie pominięcie testów.
+Poczta trafia do zewnętrznego Mailpita `mail-trap.dom` (ten sam co w dev, utrzymywany
+poza repozytorium): SMTP `smtp://mail-trap.dom:1025`, API `http://mail-trap.dom/api/v1`.
+Przechwytuje każdą wiadomość, nic nie wychodzi na zewnątrz. Test tylko czyta skrzynkę
+i szuka wiadomości po unikalnym adresie `e2e-<czas>@example.invalid`; niczego nie usuwa.
+Inny serwer: `E2E_MAILBOX_URL` (API HTTP) i `E2E_SMTP_DSN` (SMTP). Nie używaj prywatnej
+skrzynki. Niedostępne API Mailpita powoduje jawny błąd przygotowania, a nie pominięcie testów.
 
 ## Uruchomienie
 
@@ -69,10 +69,6 @@ najpierw potwierdź tryb z operatorem, zamiast zmieniać asercję pod otrzymany 
 
 ## Sprzątanie
 
-```bash
-sudo docker stop virral-agents-e2e-mailpit
-```
-
-`--rm` usuwa tylko ten kontener wraz z jego syntetyczną pocztą. Nie zatrzymuj
-kontenerów aplikacji ani prywatnej skrzynki. Przeglądarkę i zależności testowe
+Nie ma kontenerów do zatrzymania. Syntetyczne wiadomości zostają w `mail-trap.dom`
+do czasu wyczyszczenia skrzynki przez właściciela. Przeglądarkę i zależności testowe
 pozostawia się do kolejnych przebiegów.

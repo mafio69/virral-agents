@@ -9,9 +9,16 @@ use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
 
 return function (App $app) {
-    $app->get('/', function ($request, $response) {
-        $body = $response->getBody();
-        $body->write(file_get_contents(__DIR__.'/../public/ui/landing.html'));
+    $settings = $app->getContainer()->get('settings');
+    $development = ($settings['environment'] ?? 'prod') === 'dev';
+
+    $app->get('/', function ($request, $response) use ($development) {
+        $html = file_get_contents(__DIR__.'/../public/ui/landing.html');
+        if (!$development) {
+            // The /test-api panel exists only in dev; do not show links that would return 404.
+            $html = preg_replace('~<!-- dev-only -->.*?<!-- /dev-only -->~s', '', $html);
+        }
+        $response->getBody()->write($html);
 
         return $response->withHeader('Content-Type', 'text/html');
     });
@@ -22,8 +29,7 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'text/html; charset=UTF-8');
     });
 
-    $settings = $app->getContainer()->get('settings');
-    if (($settings['environment'] ?? 'prod') === 'dev') {
+    if ($development) {
         $app->get('/test-api', function ($request, $response) {
             $response->getBody()->write(file_get_contents(__DIR__.'/../resources/views/test-api.html'));
 

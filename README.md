@@ -32,9 +32,9 @@ Pełna lista nazw i procedury: `docs/KONFIGURACJA.md`, `docs/AI_PROVIDERS.md`, `
 ## Uruchamianie
 
 ```bash
-./dev-start.sh dev            # APP_ENV=dev
-./dev-start.sh prod           # APP_ENV=prod
-./dev-start.sh dev --dry-run  # tylko podgląd komend
+./dev-start.sh                # development (APP_ENV=dev)
+./prod-start.sh               # produkcja (APP_ENV=prod)
+./dev-start.sh --dry-run      # tylko podgląd komend
 ```
 
 - Aplikacja: `http://localhost:8181` (start), `http://localhost:8181/chat` (czat).

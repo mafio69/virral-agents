@@ -535,3 +535,10 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Karty „Test API” i „Zadania” prowadzą do `/test-api`, który istnieje tylko przy `APP_ENV=dev` (S3); w prod dawały 404. Trasa `/` usuwa blok `<!-- dev-only -->…<!-- /dev-only -->` z `landing.html` poza dev; w dev pulpit bez zmian.
 - Testy: `TestApiRouteTest` (pulpit w każdym środowisku innym niż dokładne `dev` i w `dev`).
 - Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 84/84.
+
+## 2026-10-20 — Osobne skrypty dev-start.sh i prod-start.sh
+
+- `./dev-start.sh` bez argumentu zawsze uruchamia dev (APP_ENV powłoki nie wpływa na wybór).
+- Nowy `./prod-start.sh` uruchamia prod; wywołuje `dev-start.sh prod`, więc logika startu jest jedna. Nie da się go przełączyć na dev.
+- Testy `tests/ui/dev-start.test.mjs` i dokumentacja (`README.md`, `REPO.md`, `docs/KONFIGURACJA.md`) zaktualizowane.
+- Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.

@@ -16,8 +16,8 @@
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
-| Development | `./dev-start.sh dev` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
-| Produkcja (lokalnie) | `./dev-start.sh prod` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
+| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
+| Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
@@ -156,7 +156,7 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 
 ### Start dev/prod
 
-- `dev-start.sh [dev|prod] [--dry-run]` eksportuje wybrany tryb jako `APP_ENV` i wywołuje `sudo --preserve-env=APP_ENV docker compose` (prod dodaje `docker-compose.prod.yml`). Bez argumentu tylko APP_ENV=dev procesu wybiera dev, inaczej prod. Skrypt nie analizuje plików środowiska.
+- `dev-start.sh [--dry-run]` (zawsze dev) i `prod-start.sh [--dry-run]` (zawsze prod, wywołuje `dev-start.sh prod`) eksportują tryb jako `APP_ENV` i wywołuje `sudo --preserve-env=APP_ENV docker compose` (prod dodaje `docker-compose.prod.yml`). APP_ENV powłoki nie wpływa na wybór trybu. Skrypt nie analizuje plików środowiska.
 - `docker-compose.prod.yml` wymusza APP_ENV=prod w app. Poczta w obu trybach z `MAIL_DSN`.
 - Start app poprzedza start Nginxa bez odtwarzania; reload Nginxa odświeża upstream po zmianie adresu app. Błąd startu app przerywa skrypt przed operacjami na Nginxie. Dry-run tylko pokazuje komendy.
 

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 usage() {
-    printf '%s\n' 'Użycie: ./dev-start.sh [dev|prod] [--dry-run]' \
-        'Bez argumentu: APP_ENV=dev wybiera dev; pozostałe wartości wybierają prod.' \
+    printf '%s\n' 'Użycie: ./dev-start.sh [--dry-run]   (development)' \
+        '        ./prod-start.sh [--dry-run]  (produkcja)' \
         'Uruchamiaj z głównego katalogu repozytorium. Skrypt nie odczytuje .env.'
 }
 
@@ -20,8 +20,9 @@ for argument in "$@"; do
         *) usage >&2; exit 2 ;;
     esac
 done
+# Development by default, regardless of APP_ENV in the calling shell; prod-start.sh passes prod.
 if [[ -z "$mode" ]]; then
-    if [[ "${APP_ENV:-}" == dev ]]; then mode=dev; else mode=prod; fi
+    mode=dev
 fi
 for file in docker-compose.yml docker-compose.prod.yml; do
     if [[ ! -f "$file" ]]; then

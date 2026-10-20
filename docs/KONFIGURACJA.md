@@ -83,7 +83,7 @@ i prod idzie przez `MAIL_DSN` ze środowiska, bez nadpisywania w Compose. Testow
 odbiera zewnętrzny serwer `mail-trap.dom`, utrzymywany poza tym repozytorium; jego
 adres i poświadczenia są wyłącznie w `MAIL_DSN` po stronie właściciela.
 
-1. Uruchom `./dev-start.sh dev` i otwórz `http://localhost:8181`.
+1. Uruchom `./dev-start.sh` i otwórz `http://localhost:8181`.
 2. Zarejestruj konto testowe i otwórz wiadomość „Potwierdź rejestrację” w `mail-trap.dom`.
 3. Kliknij link z wiadomości — prowadzi do aplikacji (`app_url`, lokalnie `localhost:8181`).
 4. Po komunikacie potwierdzenia zaloguj się.
@@ -101,14 +101,13 @@ bezpośrednio plików środowiska, nie wyświetla konfiguracji ani sekretów. Ur
 wykonuje właściciel w swoim terminalu.
 
 ```bash
-./dev-start.sh dev
-./dev-start.sh prod
-APP_ENV=dev ./dev-start.sh
-./dev-start.sh dev --dry-run
+./dev-start.sh            # development
+./prod-start.sh           # produkcja
+./dev-start.sh --dry-run  # tylko podgląd komend
 ```
 
-Argument ma pierwszeństwo przed APP_ENV procesu. Bez argumentu tylko dokładne
-`APP_ENV=dev` wybiera dev; brak lub inna wartość wybiera prod. Wybrany tryb jest
+`dev-start.sh` zawsze uruchamia dev, a `prod-start.sh` zawsze prod (wywołuje
+`dev-start.sh prod`); APP_ENV powłoki nie wpływa na wybór. Wybrany tryb jest
 eksportowany jako `APP_ENV` i przekazywany przez sudo do Compose, więc ma pierwszeństwo
 przed wpisem w pliku środowiska. W prod `docker-compose.prod.yml` dodatkowo wymusza
 APP_ENV=prod w kontenerze.

@@ -7,9 +7,10 @@ import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'dev-start.sh');
+const prodScript = join(root, 'prod-start.sh');
 
-function preview(args = [], environment = {}) {
-    return spawnSync('bash', [script, ...args, '--dry-run'], {
+function preview(args = [], environment = {}, entry = script) {
+    return spawnSync('bash', [entry, ...args, '--dry-run'], {
         cwd: root, encoding: 'utf8', env: { PATH: '/usr/bin:/bin', ...environment },
     });
 }
@@ -27,8 +28,8 @@ function withFakeSudo(body, exitCode = 0, appRunning = true) {
     }
 }
 
-test('exported APP_ENV dev starts only the application stack and every Docker call uses sudo', () => {
-    const result = preview([], { APP_ENV: 'dev' });
+test('dev-start defaults to dev, starts only the application stack and every Docker call uses sudo', () => {
+    const result = preview([], { APP_ENV: 'prod' });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Tryb: dev/);
     assert.match(result.stdout, /sudo --preserve-env=APP_ENV docker compose -f docker-compose.yml up -d app/);
@@ -38,9 +39,9 @@ test('exported APP_ENV dev starts only the application stack and every Docker ca
     assert.doesNotMatch(result.stdout, /mailpit|docker-compose\.dev\.yml|--profile|--force-recreate| down | rm /);
 });
 
-test('missing or non-dev APP_ENV selects prod with the production override', () => {
-    for (const environment of [{}, { APP_ENV: 'prod' }, { APP_ENV: 'staging' }]) {
-        const result = preview([], environment);
+test('prod-start always selects prod with the production override', () => {
+    for (const environment of [{}, { APP_ENV: 'dev' }, { APP_ENV: 'staging' }]) {
+        const result = preview([], environment, prodScript);
         assert.equal(result.status, 0, result.stderr);
         assert.match(result.stdout, /Tryb: prod/);
         assert.match(result.stdout, /-f docker-compose.yml -f docker-compose.prod.yml up -d app/);
@@ -86,7 +87,7 @@ test('startup failure stops the script before touching nginx', () => {
 
 test('successful production start preserves nginx and reloads it', () => {
     withFakeSudo((directory, log) => {
-        const result = spawnSync('bash', [script, 'prod'], {
+        const result = spawnSync('bash', [prodScript], {
             cwd: root, encoding: 'utf8',
             env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, DEV_START_APP_WAIT: '0' },
         });
@@ -113,4 +114,13 @@ test('an app that exits after start stops the script before nginx with a clear h
         assert.equal(calls.length, 2);
         assert.doesNotMatch(calls.join('\n'), /nginx/);
     }, 0, false);
+});
+
+test('prod-start cannot be switched to dev and forwards only known options', () => {
+    for (const args of [['dev'], ['--unknown']]) {
+        const result = spawnSync('bash', [prodScript, ...args, '--dry-run'], { cwd: root, encoding: 'utf8', env: { PATH: '/usr/bin:/bin' } });
+        assert.equal(result.status, 2);
+        assert.doesNotMatch(result.stdout, /sudo/);
+    }
+    assert.match(spawnSync('bash', [prodScript, '--help'], { cwd: root, encoding: 'utf8', env: { PATH: '/usr/bin:/bin' } }).stdout, /prod-start\.sh/);
 });

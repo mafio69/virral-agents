@@ -1,0 +1,33 @@
+### Log in; the session is kept only in the HTTP Client memory
+POST {{host}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.global.set("session", response.body.token);
+%}
+
+### 1. Start a long reply (run it, then run request 2 while this one is still pending)
+POST {{host}}/api/chats/{{chat_id}}/messages
+Authorization: Bearer {{session}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "content": "Napisz szczegółowe, długie podsumowanie poprzedniej rozmowy."
+}
+
+### 2. Read the same chat during request 1 (reproduces the 500 / PDOException)
+GET {{host}}/api/chats/{{chat_id}}
+Authorization: Bearer {{session}}
+Accept: application/json
+
+### 3. Chat list during request 1
+GET {{host}}/api/chats
+Authorization: Bearer {{session}}
+Accept: application/json

@@ -1,0 +1,5 @@
+
+
+### GET request with parameter
+GET http://localhost:8181/api/chats/24
+Accept: application/json

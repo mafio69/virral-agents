@@ -567,3 +567,8 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `/api/research/*` bez skonfigurowanej usługi: nowy `ServiceUnavailableException` → 503 (było 422).
 - Testy: nowy `ChatControllerErrorTest`, `AuthHttpTest` (token weryfikacyjny), aktualizacja wywołań w `AuthServiceTest`, `ChatRetryTest`, `tests/browser/research-router.php`. `REPO.md` opisuje mapowanie wyjątków.
 - Walidacja: formatter 0/51, PHP 215/215 (1051 asercji), UI 85/85.
+
+## 2026-10-20 — Panel testowy: zakładki zmieniają adres
+
+- `resources/views/test-api.html`: zakładki Auth / Zadania / Czaty ustawiają `#auth`, `#tasks`, `#chats` w pasku adresu (wcześniej usuwały hash). Odświeżenie i link otwierają tę samą zakładkę, przycisk Wstecz wraca do poprzedniej.
+- Sprawdzone w przeglądarce: kliknięcia, Wstecz, wejście z `#tasks`. Walidacja: formatter 0/51, PHP 215/215, UI 85/85.

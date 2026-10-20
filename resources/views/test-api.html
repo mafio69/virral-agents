@@ -92,9 +92,9 @@ pre {
 
 <nav>
   <h1>Virral Agents</h1>
-  <a class="active" data-section="auth" onclick="showSection('auth')">Auth</a>
-  <a data-section="tasks" onclick="showSection('tasks')">Zadania</a>
-  <a data-section="chats" onclick="showSection('chats')">Czaty</a>
+  <a class="active" href="#auth" data-section="auth" onclick="showSection('auth'); return false;">Auth</a>
+  <a href="#tasks" data-section="tasks" onclick="showSection('tasks'); return false;">Zadania</a>
+  <a href="#chats" data-section="chats" onclick="showSection('chats'); return false;">Czaty</a>
   <span style="flex:1"></span>
   <span id="auth-indicator" class="auth-status logged-out">❌ Niezalogowany</span>
 </nav>
@@ -270,14 +270,15 @@ function authHeaders() {
   return h;
 }
 
-function showSection(name) {
+function showSection(name, updateUrl = true) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
   document.getElementById('section-' + name).classList.add('active');
   document.querySelector('nav a[data-section="' + name + '"]').classList.add('active');
   localStorage.removeItem('spa_section');
-  if (window.location.hash) {
-    history.replaceState(null, '', window.location.pathname);
+  // Keep the active section in the address bar so refresh and links open the same tab.
+  if (updateUrl && window.location.hash !== '#' + name) {
+    history.pushState(null, '', '#' + name);
   }
 }
 
@@ -649,7 +650,7 @@ async function loadModels() {
 
   const section = window.location.hash.replace('#', '') || localStorage.getItem('spa_section');
   if (section && ['auth', 'tasks', 'chats'].includes(section)) {
-    showSection(section);
+    showSection(section, false);
   }
 
   if (isAuth()) {
@@ -670,6 +671,13 @@ async function loadModels() {
       showAllPre();
     });
   }
+
+  window.addEventListener('popstate', function () {
+    const section = window.location.hash.replace('#', '') || 'auth';
+    if (['auth', 'tasks', 'chats'].includes(section)) {
+      showSection(section, false);
+    }
+  });
 
   window.addEventListener('hashchange', function () {
     const section = window.location.hash.replace('#', '');

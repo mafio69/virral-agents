@@ -60,7 +60,13 @@ return function (App $app) {
             return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Metoda HTTP jest niedozwolona.'], 405)
                 ->withHeader('Allow', implode(', ', $e->getAllowedMethods()));
         } catch (Throwable $e) {
-            $logger->error('Application operation failed', ['type' => get_class($e)]);
+            // Only closed diagnostic codes and the throw site; never messages, queries or bound values.
+            $context = ['type' => get_class($e), 'origin' => basename($e->getFile()).':'.$e->getLine()];
+            if ($e instanceof PDOException) {
+                $context['sqlstate'] = (string)$e->getCode();
+                $context['driver_code'] = $e->errorInfo[1] ?? null;
+            }
+            $logger->error('Application operation failed', $context);
 
             return \App\Infrastructure\Http\JsonResponder::respond(new Response(), ['error' => 'Internal Server Error'], 500);
         }

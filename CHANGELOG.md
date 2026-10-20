@@ -542,3 +542,8 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Nowy `./prod-start.sh` uruchamia prod; wywołuje `dev-start.sh prod`, więc logika startu jest jedna. Nie da się go przełączyć na dev.
 - Testy `tests/ui/dev-start.test.mjs` i dokumentacja (`README.md`, `REPO.md`, `docs/KONFIGURACJA.md`) zaktualizowane.
 - Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.
+
+## 2026-10-20 — README: cel repo, integracje i podłączanie dostawców
+
+- `README.md`: sekcje „Po co to repozytorium”, tabela integracji (dostawca → zmienna środowiska → dokumentacja), ogólna procedura podłączenia dostawcy, krok po kroku dla OpenRouter, sekcja dla agentów AI pracujących nad kodem; OpenRouter dopisany do listy funkcji czatu.
+- Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.

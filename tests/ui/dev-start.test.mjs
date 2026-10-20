@@ -14,12 +14,13 @@ function preview(args = [], environment = {}) {
     });
 }
 
-function withFakeSudo(body, exitCode = 0) {
+function withFakeSudo(body, exitCode = 0, appRunning = true) {
     const directory = mkdtempSync(join(root, 'tests', 'start-fixture-'));
     const log = join(directory, 'calls');
     try {
-        // Records arguments and the APP_ENV that sudo would preserve for Compose.
-        writeFileSync(join(directory, 'sudo'), `#!/bin/bash\nprintf "%s|%s\\n" "$APP_ENV" "$*" >> "$START_SCRIPT_LOG"\nexit ${exitCode}\n`, { mode: 0o755 });
+        // Records arguments and the APP_ENV that sudo would preserve; `ps` reports the running services.
+        const running = appRunning ? 'printf "app\\n"' : 'true';
+        writeFileSync(join(directory, 'sudo'), `#!/bin/bash\nprintf "%s|%s\\n" "$APP_ENV" "$*" >> "$START_SCRIPT_LOG"\n[[ " $* " == *" ps "* ]] && ${running}\nexit ${exitCode}\n`, { mode: 0o755 });
         return body(directory, log);
     } finally {
         rmSync(directory, { recursive: true, force: true });
@@ -61,7 +62,7 @@ test('selected mode is exported to Compose even when the shell says otherwise', 
     withFakeSudo((directory, log) => {
         const result = spawnSync('bash', [script, 'dev'], {
             cwd: root, encoding: 'utf8',
-            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, APP_ENV: 'prod' },
+            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, APP_ENV: 'prod', DEV_START_APP_WAIT: '0' },
         });
         assert.equal(result.status, 0, result.stderr);
         const calls = readFileSync(log, 'utf8').trim().split('\n');
@@ -73,7 +74,7 @@ test('startup failure stops the script before touching nginx', () => {
     withFakeSudo((directory, log) => {
         const result = spawnSync('bash', [script, 'dev'], {
             cwd: root, encoding: 'utf8',
-            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log },
+            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, DEV_START_APP_WAIT: '0' },
         });
         assert.equal(result.status, 17);
         const calls = readFileSync(log, 'utf8').trim().split('\n');
@@ -87,14 +88,29 @@ test('successful production start preserves nginx and reloads it', () => {
     withFakeSudo((directory, log) => {
         const result = spawnSync('bash', [script, 'prod'], {
             cwd: root, encoding: 'utf8',
-            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log },
+            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, DEV_START_APP_WAIT: '0' },
         });
         assert.equal(result.status, 0, result.stderr);
         const calls = readFileSync(log, 'utf8').trim().split('\n');
-        assert.equal(calls.length, 3);
+        assert.equal(calls.length, 4);
         assert.match(calls[0], /^prod\|.*-f docker-compose.prod.yml up -d app$/);
-        assert.match(calls[1], /up -d --no-deps --no-recreate nginx$/);
-        assert.match(calls[2], /exec -T nginx nginx -s reload$/);
+        assert.match(calls[1], /ps --status running --services$/);
+        assert.match(calls[2], /up -d --no-deps --no-recreate nginx$/);
+        assert.match(calls[3], /exec -T nginx nginx -s reload$/);
         assert.doesNotMatch(result.stdout, /Mailpit/);
     });
+});
+
+test('an app that exits after start stops the script before nginx with a clear hint', () => {
+    withFakeSudo((directory, log) => {
+        const result = spawnSync('bash', [script, 'dev'], {
+            cwd: root, encoding: 'utf8',
+            env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, DEV_START_APP_WAIT: '0' },
+        });
+        assert.equal(result.status, 1);
+        assert.match(result.stderr, /Kontener app nie działa/);
+        const calls = readFileSync(log, 'utf8').trim().split('\n');
+        assert.equal(calls.length, 2);
+        assert.doesNotMatch(calls.join('\n'), /nginx/);
+    }, 0, false);
 });

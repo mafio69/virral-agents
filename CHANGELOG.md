@@ -523,3 +523,9 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Testy `tests/ui/dev-start.test.mjs` przepisane (w tym przekazanie trybu do Compose przez sudo).
 - Dokumentacja: `README.md`, `REPO.md`, `docs/KONFIGURACJA.md`. E2E bez zmian — nadal używa osobnego, ręcznie uruchamianego kontenera Mailpit (`docs/E2E.md`).
 - Walidacja: formatter 0/46, PHP 199/199 (986 asercji), UI 83/83.
+
+## 2026-10-20 — dev-start: kontrola działania app przed Nginxem
+
+- Przyczyna „host not found in upstream app”: błąd składni pliku środowiska (Dotenv `InvalidFileException`) zatrzymywał migrator, kontener app kończył pracę zaraz po starcie, a skrypt 10 razy próbował przeładować Nginxa (każda próba z sudo/FIDO). Plik środowiska poprawił właściciel.
+- `dev-start.sh` po `up -d app` sprawdza `ps --status running --services`; gdy app nie działa, kończy się od razu z podpowiedzią (`docker compose logs app`), bez operacji na Nginxie. Czas oczekiwania `DEV_START_APP_WAIT` (domyślnie 2 s, testy 0).
+- Walidacja: formatter 0/46, PHP 199/199 (986 asercji), UI 84/84.

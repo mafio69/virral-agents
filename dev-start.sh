@@ -46,6 +46,15 @@ run() {
 
 printf 'Tryb: %s\n' "$mode"
 run "${compose[@]}" up -d app
+if ! "$dry_run"; then
+    # The app exits early when configuration or migrations fail; nginx would then retry a missing host.
+    sleep "${DEV_START_APP_WAIT:-2}"
+    if ! "${compose[@]}" ps --status running --services | grep -qx app; then
+        printf '%s\n' 'Kontener app nie działa (najczęściej błąd składni pliku środowiska lub migracji).' \
+            'Kod przyczyny: sudo docker compose logs --tail=20 app' >&2
+        exit 1
+    fi
+fi
 # Do not recreate nginx or change its ports/volumes. Refresh the upstream after app starts.
 run "${compose[@]}" up -d --no-deps --no-recreate nginx
 if "$dry_run"; then

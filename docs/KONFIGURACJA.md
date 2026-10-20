@@ -19,6 +19,7 @@ src/settings.php pobiera tylko:
 - OPEN_AI_KEY — bezpośrednie OpenAI Responses API.
 - ANTHROPIC_API_KEY — bezpośrednie Anthropic Messages API.
 - GEMINI_KEY — bezpośrednie Google Gemini API.
+- OPENROUTER_API_KEY — OpenRouter (Chat Completions); opcjonalnie OPENROUTER_MODELS — identyfikatory modeli po przecinku, np. `anthropic/claude-sonnet-4.5,google/gemini-2.5-flash`. Bez tej listy widoczny jest cały katalog tekstowy.
 - MAIL_DSN — transport poczty, jeśli zawiera poświadczenia lub prywatny adres. Gdy go nie ma, używana jest lokalna wartość z konfiguracji PHP.
 
 HTTP i migrator CLI wczytują lokalny plik środowiska przez wspólne src/settings.php.
@@ -46,7 +47,7 @@ Poniższy wariant dotyczy tylko instalacji używających dotenvx, dxrun i sudo;
 zachowaj wtedy tylko wymagane wartości wrażliwe:
 
 ```bash
-dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,OPEN_AI_KEY,ANTHROPIC_API_KEY,GEMINI_KEY,MAIL_DSN docker compose up -d --force-recreate
+dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,OPEN_AI_KEY,ANTHROPIC_API_KEY,GEMINI_KEY,OPENROUTER_API_KEY,OPENROUTER_MODELS,MAIL_DSN docker compose up -d --force-recreate
 ```
 
 Polecenie wykonuje właściciel. Zmiana ustawień tablicy PHP nie wymaga ponownego budowania obrazu. Zmiana Compose lub listy PHP-FPM wymaga odtworzenia kontenerów.

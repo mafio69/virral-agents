@@ -70,3 +70,34 @@ uprawnień rzeczywistego konta ani płatnej odpowiedzi modelu.
 [Messages API](https://platform.claude.com/docs/en/api/messages/create),
 [katalog](https://platform.claude.com/docs/en/api/models/list),
 [możliwości modeli](https://platform.claude.com/docs/en/models/overview).
+
+## OpenRouter
+
+- Klucz: `OPENROUTER_API_KEY` (nagłówek `Authorization: Bearer`), przekazywany przez Compose
+  i `docker/php-fpm-env.conf`. Bez nagłówków atrybucji (`HTTP-Referer`, `X-OpenRouter-Title`):
+  nazwa i adres aplikacji nie są wysyłane.
+- Katalog: `GET https://openrouter.ai/api/v1/models`. Widoczne są modele z wyjściem tekstowym
+  i poprawnym identyfikatorem `vendor/model`. Opcjonalna lista `OPENROUTER_MODELS`
+  (po przecinku) zawęża katalog; identyfikatory spoza katalogu są pomijane.
+- Rozmowa: `POST /api/v1/chat/completions` (format OpenAI), limit 4096 tokenów. Każde żądanie
+  ma `provider.data_collection: "deny"`: OpenRouter kieruje je tylko do dostawców, którzy nie
+  zbierają danych użytkownika. Gdy żaden dostawca modelu nie spełnia tego wymogu, OpenRouter
+  zwraca 503 → `connection_failed` (może dotyczyć części modeli `:free`).
+- Obrazy wejściowe: tylko modele z `image` w `architecture.input_modalities`.
+- Badanie źródeł: narzędzia `web_search`/`web_fetch` są przekazywane tylko modelom z `tools`
+  w `supported_parameters`; wywołanie narzędzia to wyłącznie prośba o zgodę (ASK).
+  Pozostałe modele odpowiadają bez narzędzi.
+- Błędy: 402 (brak środków) i 429 → `provider_limit`, 401/403 → `provider_auth`, 404 → `model_unavailable`,
+  błąd w body przy statusie 200 → `invalid_response`. Treść błędu dostawcy nie trafia do UI ani logów.
+- Selektor rozmowy: `openrouter:<vendor>/<model>` (identyfikator może zawierać `:`, np. `:free`).
+- Zmiana środowiska wymaga odtworzenia kontenerów (`--force-recreate`); obrazu nie trzeba budować.
+
+Źródła sprawdzone 2026-10-20:
+[Chat Completions](https://openrouter.ai/docs/api-reference/chat-completion),
+[katalog modeli](https://openrouter.ai/docs/api/api-reference/models/get-models),
+[routing dostawców i data_collection](https://openrouter.ai/docs/features/provider-routing),
+[kody błędów](https://openrouter.ai/docs/api-reference/errors),
+[atrybucja aplikacji](https://openrouter.ai/docs/app-attribution).
+
+Testy używają fikcyjnego klucza i atrap HTTP; nie potwierdzają dostępu rzeczywistego konta,
+salda ani działania konkretnego modelu.

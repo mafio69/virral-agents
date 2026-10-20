@@ -506,3 +506,12 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `qodana.yaml`: wykluczony `public/ui/lib` (zminifikowana biblioteka marked, 151 z 317 zgłoszeń).
 - Świadomie bez zmian: `chat-controller.js:192` (fałszywy alarm — flaga chroni przed podwójnym wysłaniem), lokalne `throw` w obsłudze błędów UI, „Non-optimal if conditions” (kolejność warunków to strażnicy typów).
 - Walidacja: formatter 0/46, PHP 192/192 (936 asercji), UI 82/82.
+
+## 2026-10-20 — #62-510: integracja OpenRouter
+
+- `OpenRouterProvider` (selektor `openrouter:<vendor>/<model>`): katalog `GET /api/v1/models` (tylko wyjście tekstowe, poprawny identyfikator), opcjonalna lista `OPENROUTER_MODELS`; rozmowa przez `chat/completions` z limitem 4096 tokenów.
+- Prywatność: każde żądanie ma `provider.data_collection: "deny"`; bez nagłówków atrybucji (`HTTP-Referer`, tytuł aplikacji).
+- Obrazy wejściowe wg `architecture.input_modalities`; narzędzia WWW (ASK) tylko dla modeli z `tools` w `supported_parameters`.
+- `ProviderTransport`: 402 (brak środków) → `provider_limit`. Błąd w body przy statusie 200 → `invalid_response`; 503 (brak dostawcy spełniającego `data_collection`) → `connection_failed`.
+- Konfiguracja: `OPENROUTER_API_KEY`, `OPENROUTER_MODELS` w `src/settings.php`, `docker-compose.yml`, `docker/php-fpm-env.conf`; dokumentacja `docs/AI_PROVIDERS.md`, `docs/KONFIGURACJA.md`, `REPO.md`.
+- Walidacja: formatter 0/46, PHP 199/199 (986 asercji). UI 77/82 — 5 testów `dev-start.sh` pada przez lokalne, niezacommitowane usunięcie `docker-compose.dev.yml` po stronie właściciela (poza tym commitem).

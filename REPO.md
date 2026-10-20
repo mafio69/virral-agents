@@ -69,7 +69,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Temat | Przyjęte rozwiązanie | Dlaczego / czego nie robić |
 |---|---|---|
 | Konfiguracja | jawne ustawienia w `config/app.php`, sekrety tylko ze środowiska procesu (`src/settings.php`) | nie przenosić kluczy do `config/app.php`; zmiana Compose/FPM wymaga odtworzenia kontenerów przez operatora |
-| Nazwy kluczy | `OPEN_AI_KEY`, `GEMINI_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `OVH_AI_ENDPOINTS_ACCESS_TOKEN` | nazwy wybrane przez właściciela; nie „poprawiać” na `OPENAI_API_KEY` itp. |
+| Nazwy kluczy | `OPEN_AI_KEY`, `GEMINI_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `OVH_AI_ENDPOINTS_ACCESS_TOKEN`, `OPENROUTER_API_KEY` | nazwy wybrane przez właściciela; nie „poprawiać” na `OPENAI_API_KEY` itp. |
 | Sieć MCP | aplikacja w sieciach `default` i zewnętrznej `ai`; `MCP_SEARCH_URL=http://mcp-search:8000/mcp` | brak sieci `ai` = `search.status: unavailable` (DNS); PHP na hoście potrzebuje `http://127.0.0.1:8890/mcp` |
 | Podgląd UI | otwierać `http://localhost:8181/chat` | `file:///…/chat.html` nie działa (brak API); po zmianie JS podbić `?v=` w importach, bo przeglądarka trzyma cache modułów |
 | Reverse proxy | limit logowań liczy `REMOTE_ADDR` | `X-Forwarded-For` celowo ignorowany; za proxy trzeba skonfigurować zaufany peer po stronie serwera WWW |

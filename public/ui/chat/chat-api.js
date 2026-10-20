@@ -35,8 +35,12 @@ export class ChatApi {
     async request(method, path, payload) {
         const headers = { Accept: 'application/json' };
         const session = this.getSession();
-        if (session) headers.Authorization = 'Bearer ' + session;
-        if (payload !== undefined) headers['Content-Type'] = 'application/json';
+        if (session) {
+            headers.Authorization = 'Bearer ' + session;
+        }
+        if (payload !== undefined) {
+            headers['Content-Type'] = 'application/json';
+        }
 
         let response;
         try {
@@ -68,19 +72,25 @@ export class ChatApi {
 
     async listChats() {
         const chats = await this.request('GET', '/chats');
-        if (!Array.isArray(chats)) throw new ChatApiError('Nieprawidłowa lista rozmów.');
+        if (!Array.isArray(chats)) {
+            throw new ChatApiError('Nieprawidłowa lista rozmów.');
+        }
         return chats;
     }
 
     async listConnections() {
         const connections = await this.request('GET', '/ai-connections');
-        if (!Array.isArray(connections)) throw new ChatApiError('Nieprawidłowa lista połączeń.');
+        if (!Array.isArray(connections)) {
+            throw new ChatApiError('Nieprawidłowa lista połączeń.');
+        }
         return connections;
     }
 
     async listModels(connection) {
         const models = await this.request('GET', '/ai-models' + (connection ? '?connection=' + encodeURIComponent(connection) : ''));
-        if (!Array.isArray(models)) throw new ChatApiError('Nieprawidłowa lista modeli.');
+        if (!Array.isArray(models)) {
+            throw new ChatApiError('Nieprawidłowa lista modeli.');
+        }
         return models;
     }
 
@@ -97,7 +107,9 @@ export class ChatApi {
             title,
             ...(model ? { model } : {}),
         });
-        if (!chat || !Number.isInteger(chat.id)) throw new ChatApiError('Nie udało się utworzyć rozmowy.');
+        if (!chat || !Number.isInteger(chat.id)) {
+            throw new ChatApiError('Nie udało się utworzyć rozmowy.');
+        }
         return chat;
     }
 
@@ -122,17 +134,25 @@ export class ChatApi {
     }
 
     chatId(id) {
-        if (!Number.isInteger(id) || id <= 0) throw new ChatApiError('Nieprawidłowa rozmowa.');
+        if (!Number.isInteger(id) || id <= 0) {
+            throw new ChatApiError('Nieprawidłowa rozmowa.');
+        }
         return id;
     }
 
     async research(operation, scope, payload) {
-        if (!Number.isInteger(scope) || scope < 0) throw new ChatApiError('Nieprawidłowe badanie.');
+        if (!Number.isInteger(scope) || scope < 0) {
+            throw new ChatApiError('Nieprawidłowe badanie.');
+        }
         const routes = { state: ['GET', ''], propose: ['POST', '/actions'], decide: ['POST', '/decisions'], select: ['PUT', '/sources'], prepare: ['POST', '/prepare'] };
         const route = routes[operation];
-        if (!route) throw new ChatApiError('Nieznana operacja badania.');
+        if (!route) {
+            throw new ChatApiError('Nieznana operacja badania.');
+        }
         const data = await this.request(route[0], '/research' + route[1] + '?chat_id=' + scope, payload);
-        if (!data || !Array.isArray(data.results) || !Array.isArray(data.sources) || !Array.isArray(data.actions)) throw new ChatApiError('Nieprawidłowy stan źródeł.');
+        if (!data || !Array.isArray(data.results) || !Array.isArray(data.sources) || !Array.isArray(data.actions)) {
+            throw new ChatApiError('Nieprawidłowy stan źródeł.');
+        }
         return data;
     }
 }

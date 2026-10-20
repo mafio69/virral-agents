@@ -9,7 +9,9 @@ export class ChatPreferences {
     }
 
     save(connection, model) {
-        if (!connection || !model) return;
+        if (!connection || !model) {
+            return;
+        }
         try {
             const saved = this.read();
             localStorage.setItem(KEY, JSON.stringify({ connection, models: { ...saved.models, [connection]: model } }));

@@ -149,8 +149,12 @@ test('continue click fetches selected pages without a second prompt then resumes
     let snapshot = state([source]);
     const panel = fixture({ research: async (operation, scope, payload) => {
         calls.push([operation, payload]);
-        if (operation === 'prepare') snapshot = state([source], [action]);
-        if (operation === 'decide') snapshot = state([{ ...source, page: { status: 'loaded' } }], [{ ...action, status: 'done' }]);
+        if (operation === 'prepare') {
+            snapshot = state([source], [action]);
+        }
+        if (operation === 'decide') {
+            snapshot = state([{ ...source, page: { status: 'loaded' } }], [{ ...action, status: 'done' }]);
+        }
         return snapshot;
     } });
     panel.onContinue = async () => { if (await panel.beforeSend()) sends++; };
@@ -165,7 +169,9 @@ test('failed preparation and blocked chat never dispatch a continuation', async 
     const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
     let sends = 0;
     const panel = fixture({ research: async operation => {
-        if (operation === 'prepare') throw new Error('Fixture unavailable');
+        if (operation === 'prepare') {
+            throw new Error('Fixture unavailable');
+        }
         return state([source]);
     } });
     panel.onContinue = async () => { if (await panel.beforeSend()) sends++; };
@@ -235,8 +241,12 @@ test('switching chats during preparation cancels old fetch approval and continua
     const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
     let resolvePrepare, continued = 0, fetches = 0;
     const panel = fixture({ research: async (operation, scope) => {
-        if (operation === 'prepare') return new Promise(resolve => { resolvePrepare = resolve; });
-        if (operation === 'decide') fetches++;
+        if (operation === 'prepare') {
+            return new Promise(resolve => { resolvePrepare = resolve; });
+        }
+        if (operation === 'decide') {
+            fetches++;
+        }
         return scope === 1 ? state([source]) : state();
     } }, { onContinue: () => { continued++; } });
     await panel.setScope(1);
@@ -255,8 +265,12 @@ test('continue stays visibly locked through page loading, rerenders and the AI r
     let resolveFetch, resolveAi, aiCalls = 0;
     const locks = [];
     const panel = fixture({ research: async operation => {
-        if (operation === 'state') return state([source]);
-        if (operation === 'prepare') return state([source], [action]);
+        if (operation === 'state') {
+            return state([source]);
+        }
+        if (operation === 'prepare') {
+            return state([source], [action]);
+        }
         return new Promise(resolve => { resolveFetch = () => resolve(state([
             { ...source, page: { status: 'loaded' } },
         ], [{ ...action, status: 'done' }])); });

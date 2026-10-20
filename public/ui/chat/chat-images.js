@@ -11,7 +11,9 @@ export function isGeneratedImage(value) {
 
 export function appendMessageImages(body, message, documentApi = document) {
     const assistant = message.role === 'assistant';
-    if (!Array.isArray(message.images)) return;
+    if (!Array.isArray(message.images)) {
+        return;
+    }
     message.images.filter(assistant ? isGeneratedImage : isInlineImage).slice(0, 1).forEach(source => {
         const picture = documentApi.createElement('img');
         picture.className = 'message-image';
@@ -47,13 +49,17 @@ export async function prepareImage(file) {
         canvas.width = Math.max(1, Math.round(bitmap.width * scale));
         canvas.height = Math.max(1, Math.round(bitmap.height * scale));
         const context = canvas.getContext('2d');
-        if (!context) throw new Error('Przeglądarka nie mogła przygotować obrazu.');
+        if (!context) {
+            throw new Error('Przeglądarka nie mogła przygotować obrazu.');
+        }
         context.fillStyle = '#fff';
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
         for (const quality of [0.9, 0.75, 0.55, 0.35]) {
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
-            if (!blob || blob.size > MAX_IMAGE_BYTES) continue;
+            if (!blob || blob.size > MAX_IMAGE_BYTES) {
+                continue;
+            }
             return await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);

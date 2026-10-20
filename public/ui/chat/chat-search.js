@@ -1,7 +1,9 @@
 /** Approval is obtained for this query only; it is never remembered. */
 export function approveSearch(query, confirm = () => false) {
     const text = query.trim();
-    if (!text || new TextEncoder().encode(text).length > 1000) return null;
+    if (!text || new TextEncoder().encode(text).length > 1000) {
+        return null;
+    }
     const accepted = confirm(`Zezwolić na jedno wyszukanie WWW?\n\nZapytanie: ${text}\n\nOdbiorcy: MCP Search → SearXNG; po błędzie lub braku wyników Perplexity. Wyniki trafią do wybranego dostawcy AI. Nie wysyłaj danych prywatnych. Strony nie będą pobierane przez fetch.`);
     return accepted === true ? { engine: 'mcp', query: text, approved: true, max_calls: 1 } : null;
 }
@@ -10,7 +12,9 @@ export function approveSearch(query, confirm = () => false) {
 export function createSearchApproval({ panel, queryText, allow, deny }) {
     let pending = null;
     const finish = accepted => {
-        if (!pending) return;
+        if (!pending) {
+            return;
+        }
         const { query, resolve } = pending;
         pending = null;
         panel.hidden = true;
@@ -24,7 +28,9 @@ export function createSearchApproval({ panel, queryText, allow, deny }) {
     return {
         request(query) {
             const text = query.trim();
-            if (pending || !text || new TextEncoder().encode(text).length > 1000) return Promise.resolve(null);
+            if (pending || !text || new TextEncoder().encode(text).length > 1000) {
+                return Promise.resolve(null);
+            }
             queryText.textContent = text;
             panel.hidden = false;
             deny.focus();
@@ -52,7 +58,9 @@ export function bindSearchControls({ query, button, controller, isPreparing = ()
     };
     query.addEventListener('input', () => update());
     button.addEventListener('click', async () => {
-        if (awaitingApproval || !canSearch(controller.state, query.value, isPreparing())) return;
+        if (awaitingApproval || !canSearch(controller.state, query.value, isPreparing())) {
+            return;
+        }
         const version = controller.selectionVersion;
         const chatId = controller.state.activeChat?.id;
         const model = controller.state.selectedModel;

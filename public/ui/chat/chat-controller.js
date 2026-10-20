@@ -56,42 +56,60 @@ export class ChatController {
             const prepared = items.filter(item => typeof item.id === 'string' && typeof item.name === 'string');
             this.update({ connections: prepared });
             const selected = this.preferredConnection(prepared);
-            if (selected) await this.selectConnection(selected.id);
-            else this.update({ notice: 'Brak przygotowanych połączeń AI.' });
+            if (selected) {
+                await this.selectConnection(selected.id);
+            }
+            else {
+                this.update({ notice: 'Brak przygotowanych połączeń AI.' });
+            }
         }).catch(async () => {
             const selected = this.preferredConnection(this.state.connections);
-            if (selected) await this.selectConnection(selected.id);
-            else this.update({ notice: 'Nie udało się pobrać połączeń AI. Odśwież stronę.' });
+            if (selected) {
+                await this.selectConnection(selected.id);
+            }
+            else {
+                this.update({ notice: 'Nie udało się pobrać połączeń AI. Odśwież stronę.' });
+            }
         });
         await Promise.all([chats, connections]);
     }
 
     async selectConnection(connection, { forHistory = false } = {}) {
         if (this.state.busy || (this.state.activeChat && !forHistory)
-            || !this.state.connections.some(item => item.id === connection)) return false;
+            || !this.state.connections.some(item => item.id === connection)) {
+            return false;
+        }
         const version = ++this.modelsVersion;
         const remembered = this.preferences.read().models[connection];
         this.update({ selectedConnection: connection, models: [], selectedModel: forHistory ? this.state.activeChat.model : '',
             modelsLoading: true, images: forHistory ? this.state.images : [], notice: '' });
         try {
             const items = await this.api.listModels(connection);
-            if (version !== this.modelsVersion) return false;
+            if (version !== this.modelsVersion) {
+                return false;
+            }
             const models = items.filter(item => typeof item.id === 'string' && item.id !== '');
             const selected = forHistory ? this.state.activeChat?.model
                 : models.find(item => item.id === remembered)?.id || models[0]?.id || '';
             this.update({ models, selectedModel: selected || '', modelsLoading: false,
                 notice: models.length ? models.every(item => item.configured === false) ? 'Katalog pobrany. Aby rozmawiać, skonfiguruj dostęp do wybranego dostawcy.' : '' : 'To połączenie nie ma skonfigurowanych modeli.' });
-            if (!forHistory && selected) this.preferences.save(connection, selected);
+            if (!forHistory && selected) {
+                this.preferences.save(connection, selected);
+            }
             return true;
         } catch (error) {
-            if (version !== this.modelsVersion) return false;
+            if (version !== this.modelsVersion) {
+                return false;
+            }
             this.update({ modelsLoading: false, notice: aiFailureMessage(error) || 'Nie udało się pobrać modeli tego połączenia. Wybierz połączenie ponownie.' });
             return false;
         }
     }
 
     setDraft(draft) {
-        if (!this.state.busy) this.update({ draft });
+        if (!this.state.busy) {
+            this.update({ draft });
+        }
     }
 
     canAttachImage() {
@@ -101,13 +119,17 @@ export class ChatController {
 
     setImage(image) {
         if (this.state.busy || this.state.loading || this.state.deliveryUncertain
-            || this.state.authenticated !== true || !this.canAttachImage() || !isInlineImage(image)) return false;
+            || this.state.authenticated !== true || !this.canAttachImage() || !isInlineImage(image)) {
+            return false;
+        }
         this.update({ images: [image], error: '' });
         return true;
     }
 
     removeImage() {
-        if (!this.state.busy && !this.state.deliveryUncertain) this.update({ images: [] });
+        if (!this.state.busy && !this.state.deliveryUncertain) {
+            this.update({ images: [] });
+        }
     }
 
     selectModel(model) {
@@ -119,7 +141,9 @@ export class ChatController {
     }
 
     newChat() {
-        if (this.state.busy) return false;
+        if (this.state.busy) {
+            return false;
+        }
         this.selectionVersion++;
         this.uncertainDelivery = null;
         this.update({
@@ -127,17 +151,23 @@ export class ChatController {
             pendingMessage: null, retryMessageId: null, error: '', notice: '', deliveryUncertain: false,
         });
         const connection = this.preferredConnection(this.state.connections)?.id;
-        if (connection) void this.selectConnection(connection);
+        if (connection) {
+            void this.selectConnection(connection);
+        }
         return true;
     }
 
     async openChat(id) {
-        if (this.state.busy || this.state.authenticated !== true) return false;
+        if (this.state.busy || this.state.authenticated !== true) {
+            return false;
+        }
         const version = ++this.selectionVersion;
         this.update({ loading: true, error: '' });
         try {
             const chat = await this.api.getChat(id);
-            if (version !== this.selectionVersion) return false;
+            if (version !== this.selectionVersion) {
+                return false;
+            }
             const last = chat.messages.at(-1);
             const running = last?.role === 'user' && last.reply_status === 'running';
             this.uncertainDelivery = running ? { content: last.content, images: last.images || [], previousIds: new Set(chat.messages.slice(0, -1).map(message => message.id)) } : null;
@@ -152,7 +182,9 @@ export class ChatController {
             await this.selectConnection(connection, { forHistory: true });
             return true;
         } catch (error) {
-            if (version !== this.selectionVersion) return false;
+            if (version !== this.selectionVersion) {
+                return false;
+            }
             this.update({
                 loading: false,
                 authenticated: error.status === 401 ? false : this.state.authenticated,
@@ -167,7 +199,9 @@ export class ChatController {
             || (search?.approved === true && typeof search.query === 'string' ? search.query.trim() : '');
         const images = this.state.images;
         if ((!content && !images.length) || this.state.busy || this.state.loading
-            || this.state.deliveryUncertain || this.state.authenticated !== true || this.state.modelsLoading) return false;
+            || this.state.deliveryUncertain || this.state.authenticated !== true || this.state.modelsLoading) {
+            return false;
+        }
 
         if (!this.state.activeChat && !this.state.selectedModel) {
             this.update({ error: 'Wybierz połączenie z dostępnym modelem.' });
@@ -214,7 +248,9 @@ export class ChatController {
     }
 
     async reconcileDelivery() {
-        if (!this.uncertainDelivery || !this.state.activeChat) return true;
+        if (!this.uncertainDelivery || !this.state.activeChat) {
+            return true;
+        }
         try {
             const chat = await this.api.getChat(this.state.activeChat.id);
             const { content, images, previousIds } = this.uncertainDelivery;
@@ -226,7 +262,9 @@ export class ChatController {
                 message.role === 'assistant' && chat.messages.slice(0, index).some(previous =>
                     matches(previous)));
             const running = saved && !answered && chat.messages.some(message => matches(message) && message.reply_status === 'running');
-            if (!running) this.uncertainDelivery = null;
+            if (!running) {
+                this.uncertainDelivery = null;
+            }
             this.update({
                 activeChat: chat, messages: chat.messages, deliveryUncertain: running,
                 retryMessageId: running ? null : this.retryableMessage(chat.messages),
@@ -253,9 +291,13 @@ export class ChatController {
 
     async retryReply() {
         const id = this.state.retryMessageId;
-        if (!id || this.state.busy || this.state.loading || this.state.deliveryUncertain || this.state.authenticated !== true) return false;
+        if (!id || this.state.busy || this.state.loading || this.state.deliveryUncertain || this.state.authenticated !== true) {
+            return false;
+        }
         const target = this.state.messages.find(message => message.id === id);
-        if (!target) return false;
+        if (!target) {
+            return false;
+        }
         this.update({ busy: true, error: '', notice: '', retryMessageId: null });
         try {
             // Read first: another tab or the slow original request may already have completed.
@@ -280,7 +322,9 @@ export class ChatController {
     }
 
     async checkDelivery() {
-        if (this.state.busy) return false;
+        if (this.state.busy) {
+            return false;
+        }
         this.update({ busy: true });
         try {
             return await this.reconcileDelivery();
@@ -291,7 +335,11 @@ export class ChatController {
 }
 
 export function handleComposerKey(event, send) {
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) {
+        return;
+    }
     event.preventDefault();
-    if (!event.repeat) send();
+    if (!event.repeat) {
+        send();
+    }
 }

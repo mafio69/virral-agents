@@ -28,8 +28,12 @@ const markdown = new MarkdownRenderer();
 const searchDog = mountSearchDog(byId('search-dog'));
 const element = (tag, className, text) => {
     const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
+    if (className) {
+        node.className = className;
+    }
+    if (text !== undefined) {
+        node.textContent = text;
+    }
     return node;
 };
 const icon = name => {
@@ -142,15 +146,21 @@ function render(state) {
         list.replaceChildren(element('h2', 'group-label', 'Rozmowy'));
         const items = element('ul');
         state.chats.forEach(chat => {
-            if (!Number.isInteger(chat.id) || chat.id <= 0) return;
+            if (!Number.isInteger(chat.id) || chat.id <= 0) {
+                return;
+            }
             const item = element('li');
             const button = element('button', 'chat-item');
             button.type = 'button';
             button.dataset.chatId = String(chat.id);
             button.append(element('span', '', chat.title || 'Rozmowa'));
-            if (chat.id === currentId) button.setAttribute('aria-current', 'true');
+            if (chat.id === currentId) {
+                button.setAttribute('aria-current', 'true');
+            }
             button.addEventListener('click', async () => {
-                if (await controller.openChat(chat.id) && mobile.matches) setSidebar(false);
+                if (await controller.openChat(chat.id) && mobile.matches) {
+                    setSidebar(false);
+                }
             });
             item.append(button);
             items.append(item);
@@ -163,7 +173,9 @@ function render(state) {
 
     if (renderedConnections !== state.connections || renderedConnection !== state.selectedConnection) {
         connection.replaceChildren(...state.connections.map(item => new Option(item.name, item.id)));
-        if (!state.connections.length) connection.append(new Option('Wczytywanie połączeń…', ''));
+        if (!state.connections.length) {
+            connection.append(new Option('Wczytywanie połączeń…', ''));
+        }
         connection.value = state.selectedConnection;
         renderedConnections = state.connections;
         renderedConnection = state.selectedConnection;
@@ -179,7 +191,9 @@ function render(state) {
         if (state.activeChat && state.selectedModel && !state.models.some(item => item.id === state.selectedModel)) {
             model.append(new Option('Model zapisanej rozmowy — niedostępny', state.selectedModel));
         }
-        if (!model.options.length) model.append(new Option(state.modelsLoading ? 'Pobieranie modeli…' : 'Brak dostępnych modeli', ''));
+        if (!model.options.length) {
+            model.append(new Option(state.modelsLoading ? 'Pobieranie modeli…' : 'Brak dostępnych modeli', ''));
+        }
         model.value = state.selectedModel;
         renderedModels = state.models;
         renderedModel = state.selectedModel;
@@ -206,8 +220,12 @@ function render(state) {
         const nearBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 100;
         const changedChat = renderedMessages !== state.messages;
         thread.replaceChildren(...state.messages.map(messageNode));
-        if (state.pendingMessage) thread.append(messageNode(state.pendingMessage));
-        if (state.busy) thread.append(element('p', 'pending-reply', 'Oczekiwanie na odpowiedź…'));
+        if (state.pendingMessage) {
+            thread.append(messageNode(state.pendingMessage));
+        }
+        if (state.busy) {
+            thread.append(element('p', 'pending-reply', 'Oczekiwanie na odpowiedź…'));
+        }
         renderedMessages = state.messages;
         renderedPending = state.pendingMessage;
         renderedBusy = state.busy;
@@ -227,7 +245,9 @@ const controller = new ChatController(new ChatApi({
 setSidebar(!mobile.matches);
 mobile.addEventListener('change', () => setSidebar(!mobile.matches));
 document.addEventListener('click', event => {
-    if (event.target.closest('[data-toggle-sidebar]')) setSidebar(app.dataset.sidebar !== 'open');
+    if (event.target.closest('[data-toggle-sidebar]')) {
+        setSidebar(app.dataset.sidebar !== 'open');
+    }
     const suggestion = event.target.closest('[data-suggest]');
     if (suggestion && !input.disabled) {
         controller.setDraft(suggestion.dataset.suggest);
@@ -242,8 +262,12 @@ document.addEventListener('keydown', event => {
     }
 });
 byId('new-chat').addEventListener('click', () => {
-    if (!controller.newChat()) return;
-    if (mobile.matches) setSidebar(false);
+    if (!controller.newChat()) {
+        return;
+    }
+    if (mobile.matches) {
+        setSidebar(false);
+    }
     input.focus();
 });
 connection.addEventListener('change', () => controller.selectConnection(connection.value));
@@ -251,12 +275,18 @@ model.addEventListener('change', () => controller.selectModel(model.value));
 enhanceModelPicker(model);
 input.addEventListener('input', () => { controller.setDraft(input.value); autosize(); });
 async function sendDraft() {
-    if (preparingImage || researchBusy || controller.state.busy || !controller.state.draft.trim() && !controller.state.images.length) return;
+    if (preparingImage || researchBusy || controller.state.busy || !controller.state.draft.trim() && !controller.state.images.length) {
+        return;
+    }
     const useResearch = byId('research-mode').checked;
     if (useResearch && !await researchPanel.beforeSend()) { researchModal.open(); return; }
     await controller.send(null, useResearch);
-    if (useResearch) await researchPanel.refreshAfterReply();
-    if (!input.disabled) input.focus();
+    if (useResearch) {
+        await researchPanel.refreshAfterReply();
+    }
+    if (!input.disabled) {
+        input.focus();
+    }
 }
 input.addEventListener('keydown', event => handleComposerKey(event, sendDraft));
 byId('chat-form').addEventListener('submit', event => {
@@ -270,7 +300,9 @@ researchPanel = new ResearchPanel(controller.api, {
     onContinuationChange: busy => { if (busy) researchModal.close(); researchContinuation = busy; render(controller.state); },
     onBusy: busy => { researchBusy = busy; render(controller.state); },
     onNotice: (text, error = false) => {
-        if (!researchContinuation) researchModal.open();
+        if (!researchContinuation) {
+            researchModal.open();
+        }
         controller.update(error ? { error: text, notice: '' } : { notice: text, error: '' });
     },
     onActivity: activity => { researchActivity = activity; render(controller.state); },
@@ -292,7 +324,9 @@ byId('attach-image').addEventListener('click', () => byId('image-file').click())
 byId('image-file').addEventListener('change', async event => {
     const file = event.target.files[0];
     event.target.value = '';
-    if (!file || preparingImage || !controller.canAttachImage()) return;
+    if (!file || preparingImage || !controller.canAttachImage()) {
+        return;
+    }
     const version = controller.selectionVersion;
     const selected = controller.state.activeChat?.model || controller.state.selectedModel;
     preparingImage = true;
@@ -300,8 +334,12 @@ byId('image-file').addEventListener('change', async event => {
     try {
         const source = await prepareImage(file);
         if (version !== controller.selectionVersion
-            || selected !== (controller.state.activeChat?.model || controller.state.selectedModel)) return;
-        if (controller.setImage(source)) controller.update({ notice: '' });
+            || selected !== (controller.state.activeChat?.model || controller.state.selectedModel)) {
+            return;
+        }
+        if (controller.setImage(source)) {
+            controller.update({ notice: '' });
+        }
     } catch {
         if (version === controller.selectionVersion) {
             controller.update({ error: 'Nie udało się dodać obrazu. Wybierz PNG, JPEG lub WebP do 20 MB.', notice: '' });

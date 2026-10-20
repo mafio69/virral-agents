@@ -47,7 +47,9 @@ export class MarkdownRenderer {
                 ? Array.from(element.classList).find(name => /^language-[\w+-]{1,24}$/.test(name))
                 : null;
             element.removeAttribute('class');
-            if (language) element.className = language;
+            if (language) {
+                element.className = language;
+            }
         });
 
         fragment.querySelectorAll('a').forEach(anchor => {
@@ -70,7 +72,9 @@ export class MarkdownRenderer {
 
         fragment.querySelectorAll('pre').forEach(pre => {
             const code = pre.querySelector('code');
-            if (!code) return;
+            if (!code) {
+                return;
+            }
             const document = container.ownerDocument;
             const wrapper = document.createElement('div');
             wrapper.className = 'code';
@@ -86,7 +90,9 @@ export class MarkdownRenderer {
             copy.setAttribute('aria-label', 'Kopiuj blok kodu');
             copy.addEventListener('click', async () => {
                 try {
-                    if (!this.clipboard) throw new Error('Clipboard unavailable');
+                    if (!this.clipboard) {
+                        throw new Error('Clipboard unavailable');
+                    }
                     await this.clipboard.writeText(code.textContent || '');
                     copy.textContent = 'Skopiowano';
                 } catch {

@@ -268,7 +268,9 @@ function updateAuthUI() {
 
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
-  if (isAuth()) h['Authorization'] = 'Bearer ' + token;
+  if (isAuth()) {
+      h['Authorization'] = 'Bearer ' + token;
+  }
   return h;
 }
 
@@ -291,7 +293,9 @@ function show(el, msg, cls) {
 
 async function api(method, path, body) {
   const opts = { method, headers: authHeaders() };
-  if (body) opts.body = JSON.stringify(body);
+  if (body) {
+      opts.body = JSON.stringify(body);
+  }
   const res = await fetch('/api' + path, opts);
   const text = await res.text();
   let data;
@@ -364,20 +368,30 @@ async function createTask() {
 
 async function editTask(id) {
   const title = prompt('Nowy tytuł:');
-  if (!title) return;
+  if (!title) {
+      return;
+  }
   const status = prompt('Nowy status (todo / in_progress / done):', 'todo');
-  if (!status) return;
+  if (!status) {
+      return;
+  }
   const description = prompt('Nowy opis (lub puste):');
   const r = await api('PUT', '/tasks/' + id, { title, status, description: description || null });
   show(document.getElementById('tasks-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
-  if (r.ok) listTasks();
+  if (r.ok) {
+      listTasks();
+  }
 }
 
 async function deleteTask(id) {
-  if (!confirm('Usunąć zadanie #' + id + '?')) return;
+  if (!confirm('Usunąć zadanie #' + id + '?')) {
+      return;
+  }
   const r = await api('DELETE', '/tasks/' + id);
   show(document.getElementById('tasks-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
-  if (r.ok) listTasks();
+  if (r.ok) {
+      listTasks();
+  }
 }
 
 // ==================== CHATS ====================
@@ -410,14 +424,18 @@ async function createChat() {
   const model = document.getElementById('chat-model').value;
   if (!title) { show(document.getElementById('chats-result'), 'Podaj tytuł czatu', 'error'); return; }
   const payload = { title };
-  if (model) payload.model = model;
+  if (model) {
+      payload.model = model;
+  }
   const r = await api('POST', '/chats', payload);
   show(document.getElementById('chats-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
   if (r.ok) { listChats(); document.getElementById('chat-title').value = ''; document.getElementById('chat-model').value = ''; }
 }
 
 async function openChat(id) {
-  if (!isAuth()) return;
+  if (!isAuth()) {
+      return;
+  }
   currentChatId = id;
   chatHistory = []; // Reset chat history
 
@@ -458,9 +476,13 @@ function closeChatDetail() {
 let sendOnEnter = true;
 
 async function addMessage() {
-  if (!currentChatId) return;
+  if (!currentChatId) {
+      return;
+  }
   const content = document.getElementById('chat-msg-input').value;
-  if (!content) return;
+  if (!content) {
+      return;
+  }
 
   // Pokaż animację ładowania
   document.getElementById('loading-indicator').style.display = 'block';
@@ -550,7 +572,9 @@ function recordMessage(role, content, metadata = null) {
 }
 
 async function replayChat() {
-  if (!currentChatId || isReplaying) return;
+  if (!currentChatId || isReplaying) {
+      return;
+  }
 
   isReplaying = true;
   const originalMessages = [...chatHistory];
@@ -619,7 +643,9 @@ function toggleSendOnEnter() {
 
 // ==================== HELPERS ====================
 function esc(s) {
-  if (s == null) return '';
+  if (s == null) {
+      return '';
+  }
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;

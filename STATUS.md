@@ -5,33 +5,33 @@
 - Stan **na teraz**: plik jest nadpisywany, nie dopisywany. Historia każdej zmiany trafia do `CHANGELOG.md`.
 - Sekcje: Aktualnie, Gotowe, Otwarte/niepotwierdzone, Następny priorytet. Krótko, bez opisów przebiegu testów.
 - Wyniki testów podawaj tylko ostatnie, z datą.
-- Kolejka zadań: DevBrain-Todo, lista „virralAI” (id 62); zadania podawaj jako `#62-<id zadania>` (480–508).
+- Kolejka zadań: DevBrain-Todo, lista „virralAI” (id 62); zadania podawaj jako `#62-<id zadania>` (480–510).
 
 ---
 
-**Ostatnia aktualizacja:** 2026-10-19
-**Gałąź:** `develop` — lokalnie `684fbf7`, `1fee123`, `733edb9` czekają na push właściciela; `master` przez PR na GitHub, CI sprawdza też `develop`.
-**Ostatnia pełna walidacja (2026-10-19):** `composer check-all` — formatter 0/46, PHP 182/182 (862 asercje), UI 82/82; E2E Playwright 4/4 (przed #62-483).
+**Ostatnia aktualizacja:** 2026-10-21
+**Gałąź:** `develop` zawiera uwagi z przeglądu wydania 1.0; `master` (PR #8) zawiera stan do `982f1a8`, nowsze commity czekają na PR do `master`. Deploy na serwer prod (Optiplex) wykonuje właściciel.
+**Ostatnia pełna walidacja (2026-10-21):** `composer check-all` — formatter 0/164, PHP 227/227 (1086 asercji), UI 86/86; E2E 4/4 (poczta przez `mail-trap.dom`).
 
-## Gotowe (w develop, lokalnie)
+## Gotowe (w develop)
 
-- **Konto:** rejestracja (min. 10 znaków, neutralny komunikat dla istniejącego adresu), obowiązkowe potwierdzenie e-maila, logowanie z limitem 5 prób / 15 min (IP + e-mail, czas z `Retry-After`), sesja HttpOnly + Bearer (`Secure` poza jawnym `dev`), wylogowanie po stronie serwera, CLI resetu hasła.
+- **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, CLI resetu hasła.
 - **Ochrona danych:** szyfrowanie pól (XChaCha20-Poly1305, `USER_DATA_KEY`), HMAC e-maila, hashe tokenów, migracja CLI `bin/protect-user-data.php`.
-- **Czat AI:** OVH, Z.ai (GLM), OpenAI (Responses), Anthropic (Messages), Google Gemini (tekst + generowanie obrazów); domyślnie Gemini. Wejściowe obrazy PNG/JPEG/WebP. Historia przypisana do dostawcy.
-- **Odporność czatu:** ponowienie nieudanej odpowiedzi (`/retry`, `chat_reply_attempts`), jeden budżet 300 s dla wszystkich dostawców z kodem `provider_timeout`, Nginx 360 s.
-- **WWW:** MCP `web_search` (SearXNG) w trybie ASK, badanie wybranych źródeł (checkboxy, szyfrowany koszyk, modal, „Kontynuuj z wybranymi stronami”), bezpieczny fetcher publicznych stron z kodem przyczyny błędu (`FETCH_REASONS`) w UI i evidence dla modelu (#62-483).
-- **Infrastruktura:** migracje przed startem FPM (`bin/migrate.php` z bezpiecznym kodem przyczyny błędu, `docker/start-app.sh`), `dev-start.sh dev|prod`, Mailpit w dev, `/test-api` tylko w dev.
-- **Jakość:** audyt S1–S3, A1–A6, K1, K3 (`docs/AUDYT-2026-10-17.md`); PHP CS Fixer (PSR-12), `composer check-all`, lokalne E2E (`docs/E2E.md`); licencja MIT.
+- **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter. Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny).
+- **Obsługa błędów:** wspólne mapowanie wyjątków w `src/middleware.php`; nieoczekiwane błędy logują miejsce oraz SQLSTATE/kod sterownika dla PDO.
+- **WWW:** MCP `web_search` w trybie ASK, badanie źródeł, fetcher z bezpiecznymi redirectami.
+- **Jakość:** formatter na całym PHP (`src/`, `bin/`, `tests/`), klamry we wszystkich if/else w PHP i JS.
+- **Testy:** E2E znów działa przez zewnętrzny Mailpit `mail-trap.dom`.
 
 ## Otwarte / niepotwierdzone
 
-- Błąd „Nie udało się odebrać odpowiedzi” po kontynuacji badania — przyczyna niezdiagnozowana na rzeczywistym modelu (#62-495).
-- Pobieranie stron słabej jakości (brak redirectów, UA blokowany 403, limit 16k znaków) — #62-484 … #62-493 (E1–E3); #62-483 zrobione.
-- Kod `charset_error` bez testu (iconv z `//IGNORE` praktycznie nie zawodzi).
-- Niepotwierdzone na działającej instalacji: migracja `chat_reply_attempts` i start kontenera (A5), pełny czat z rzeczywistym dostawcą po wyszukaniu, doręczenie poczty produkcyjnej.
+- #62-495: przyczyna „Nie udało się odebrać odpowiedzi” niepotwierdzona — po deployu jedna kontrolowana kontynuacja badania na rzeczywistym modelu; log poda teraz miejsce i kod błędu.
+- #62-503: na produkcji sprawdzić limit za proxy (6 błędnych logowań z telefonu, potem logowanie z komputera); w razie blokady ustawić `TRUSTED_PROXIES`. HTTPS i healthcheck kontenera nadal otwarte.
+- OpenRouter na rzeczywistym koncie — niesprawdzony (testy tylko na atrapach).
+- Po deployu: lista połączeń zgodna z kluczami, start przez `./prod-start.sh`, poczta produkcyjna.
 
 ## Następny priorytet
 
-1. #62-484 → #62-493 — jakość źródeł badania (E1 → E2 → E3).
-2. #62-494 — strumieniowanie odpowiedzi (SSE).
-3. #62-495 — diagnoza błędu odbioru odpowiedzi na rzeczywistym modelu.
+1. PR `develop` → `master`, deploy na Optiplex (właściciel), sprawdzenia z listy wyżej → tag `v1.0.0`.
+2. #62-486 → #62-493 — jakość źródeł badania.
+3. #62-494 — strumieniowanie odpowiedzi (SSE).

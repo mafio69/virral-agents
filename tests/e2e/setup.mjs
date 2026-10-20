@@ -3,10 +3,13 @@ import { mkdirSync } from 'node:fs';
 export default async function setup() {
     const runtime = new URL('./runtime/', import.meta.url);
     mkdirSync(runtime, { recursive: true });
+    const mailbox = process.env.E2E_MAILBOX_URL || 'http://mail-trap.dom';
     try {
-        const response = await fetch('http://127.0.0.1:18025/api/v1/info');
-        if (!response.ok) throw new Error();
+        const response = await fetch(`${mailbox}/api/v1/info`);
+        if (!response.ok) {
+            throw new Error();
+        }
     } catch {
-        throw new Error('Dedicated E2E Mailpit is required on loopback HTTP 18025 / SMTP 11025.');
+        throw new Error(`Test Mailpit API is required at ${mailbox} (override with E2E_MAILBOX_URL).`);
     }
 }

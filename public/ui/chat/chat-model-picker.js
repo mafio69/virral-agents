@@ -26,11 +26,15 @@ export function enhanceModelPicker(select) {
         button.textContent = select.selectedOptions[0]?.textContent || 'Brak modeli';
         button.disabled = select.disabled;
         button.title = select.title;
-        if (select.disabled) close();
+        if (select.disabled) {
+            close();
+        }
     };
     const choose = index => {
         const option = select.options[index];
-        if (!option || option.disabled) return;
+        if (!option || option.disabled) {
+            return;
+        }
         select.value = option.value;
         select.dispatchEvent(new Event('change', { bubbles: true }));
         sync();
@@ -39,12 +43,16 @@ export function enhanceModelPicker(select) {
     };
     const focusOption = index => {
         const options = [...popup.children];
-        if (!options.length) return;
+        if (!options.length) {
+            return;
+        }
         active = (index + options.length) % options.length;
         options[active].focus();
     };
     const open = () => {
-        if (select.disabled) return;
+        if (select.disabled) {
+            return;
+        }
         popup.replaceChildren(...[...select.options].map((option, index) => {
             const item = document.createElement('button');
             item.type = 'button';
@@ -77,7 +85,9 @@ export function enhanceModelPicker(select) {
         }
     });
     document.addEventListener('pointerdown', event => {
-        if (!popup.contains(event.target) && !button.contains(event.target)) close();
+        if (!popup.contains(event.target) && !button.contains(event.target)) {
+            close();
+        }
     });
     window.addEventListener('resize', close);
     select.addEventListener('change', sync);

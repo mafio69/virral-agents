@@ -22,8 +22,12 @@ final class OvhAiClientTest extends TestCase
             new Response(200, [], '{"data":[{"id":"Qwen3.8-27B"}]}'),
         ]));
         $handler->push(Middleware::history($history));
-        $client = new OvhAiClient('https://example.invalid/v1', 'dummy-value', 'unused',
-            httpClient: new Client(['base_uri' => 'https://example.invalid/v1/', 'handler' => $handler]));
+        $client = new OvhAiClient(
+            'https://example.invalid/v1',
+            'dummy-value',
+            'unused',
+            httpClient: new Client(['base_uri' => 'https://example.invalid/v1/', 'handler' => $handler])
+        );
         $this->assertSame([['id' => 'Qwen3.8-27B']], $client->listModels());
         $request = $history[0]['request'];
         $this->assertSame('GET', $request->getMethod());
@@ -33,10 +37,14 @@ final class OvhAiClientTest extends TestCase
 
     public function testMalformedCatalogueIsRejected(): void
     {
-        $client = new OvhAiClient('https://example.invalid/v1', 'dummy-value', 'unused',
+        $client = new OvhAiClient(
+            'https://example.invalid/v1',
+            'dummy-value',
+            'unused',
             httpClient: new Client(['handler' => HandlerStack::create(new MockHandler([
                 new Response(200, [], '{"data":[{"id":42}]}'),
-            ]))]));
+            ]))])
+        );
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('AI provider connection failed');
         $client->listModels();
@@ -44,10 +52,14 @@ final class OvhAiClientTest extends TestCase
 
     public function testHttpErrorDoesNotExposeResponseOrPreviousException(): void
     {
-        $client = new OvhAiClient('https://example.invalid/v1', 'dummy-value', 'unused',
+        $client = new OvhAiClient(
+            'https://example.invalid/v1',
+            'dummy-value',
+            'unused',
             httpClient: new Client(['handler' => HandlerStack::create(new MockHandler([
                 new Response(401, [], 'private diagnostic dummy-value'),
-            ]))]));
+            ]))])
+        );
         try {
             $client->listModels();
             $this->fail('Expected an unavailable catalogue');

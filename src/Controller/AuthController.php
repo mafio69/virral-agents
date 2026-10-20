@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Exception\UnauthorizedException;
-use App\Exception\ValidationException;
 use App\Infrastructure\Http\JsonResponder;
 use App\Mapper\Auth\LoginInputMapper;
 use App\Mapper\Auth\RegisterInputMapper;
-use App\Repository\UserRepository;
+use App\Mapper\Auth\VerifyEmailInputMapper;
 use App\Service\AuthService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -20,9 +19,9 @@ final class AuthController
         private readonly RegisterInputMapper $registerInputMapper,
         private readonly LoginInputMapper $loginInputMapper,
         private readonly AuthService $authService,
-        private readonly UserRepository $userRepository,
         private readonly \App\Http\SessionTokenResolver $sessionTokens,
         private readonly string $environment = 'prod',
+        private readonly \App\Http\ClientIpResolver $clientIp = new \App\Http\ClientIpResolver(),
     ) {
     }
 
@@ -43,8 +42,7 @@ final class AuthController
         $data = (array)$request->getParsedBody();
         $input = $this->loginInputMapper->map($data);
 
-        $clientIp = $request->getServerParams()['REMOTE_ADDR'] ?? '';
-        $result = $this->authService->login($input, is_string($clientIp) ? $clientIp : '');
+        $result = $this->authService->login($input, $this->clientIp->resolve($request));
 
         return JsonResponder::respond($response, [
             'token' => $result->token,
@@ -81,12 +79,8 @@ final class AuthController
 
     public function verifyEmail(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $token = $request->getQueryParams()['token'] ?? '';
-        if ($token === '') {
-            throw new ValidationException('Token is required');
-        }
-
-        $this->authService->verifyEmail($token);
+        $input = (new VerifyEmailInputMapper())->map($request->getQueryParams());
+        $this->authService->verifyEmail($input);
 
         return JsonResponder::respond($response, ['message' => 'Email confirmed successfully']);
     }
@@ -95,12 +89,9 @@ final class AuthController
     {
         $userId = (int)$request->getAttribute('userId');
 
-        $user = $this->userRepository->findById($userId);
+        $user = $this->authService->currentUser($userId);
 
-        return JsonResponder::respond($response, [
-            'id' => $user['id'],
-            'email' => $user['email'],
-        ]);
+        return JsonResponder::respond($response, $user);
     }
 
 }

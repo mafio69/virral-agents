@@ -13,7 +13,6 @@ use App\Infrastructure\AI\OvhAiClient;
 use App\Infrastructure\Search\SearchClientInterface;
 use App\Infrastructure\Search\SearchException;
 use App\Service\ChatReplyGenerator;
-use App\Service\ChatService;
 use Psr\Log\NullLogger;
 
 final class ChatSearchTest extends ChatServiceTestCase
@@ -26,7 +25,9 @@ final class ChatSearchTest extends ChatServiceTestCase
             try {
                 SearchOptions::fromInput($input);
                 self::fail('Missing approval or unsupported operation must be rejected');
-            } catch (ValidationException) { self::assertTrue(true); }
+            } catch (ValidationException) {
+                self::assertTrue(true);
+            }
         }
         self::assertSame('off', SearchOptions::fromInput([])->engine);
     }
@@ -93,8 +94,11 @@ final class ChatSearchTest extends ChatServiceTestCase
         foreach (['empty', 'unavailable'] as $status) {
             $search = $this->createMock(SearchClientInterface::class);
             $expect = $search->expects(self::once())->method('search');
-            if ($status === 'empty') $expect->willReturn(['source' => 'perplexity-fast', 'results' => []]);
-            else $expect->willThrowException(new SearchException());
+            if ($status === 'empty') {
+                $expect->willReturn(['source' => 'perplexity-fast', 'results' => []]);
+            } else {
+                $expect->willThrowException(new SearchException());
+            }
             $search->expects(self::once())->method('close');
             $client = $this->createMock(AiClientInterface::class);
             $client->expects(self::never())->method('generate');

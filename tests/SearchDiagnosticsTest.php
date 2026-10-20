@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Tests;
 
 use App\Infrastructure\AI\AiClientInterface;
@@ -39,8 +41,10 @@ final class SearchDiagnosticsTest extends TestCase
     {
         $failure = new ConnectException('php_network_getaddresses: getaddrinfo failed; fixture-private-diagnostic', new Request('POST', 'http://mcp.example/mcp'));
         $client = new McpSearchClient('http://mcp.example/mcp', new Client(['handler' => HandlerStack::create(new MockHandler([$failure]))]));
-        try { $client->definition(); self::fail('Expected DNS error'); }
-        catch (SearchException $error) {
+        try {
+            $client->definition();
+            self::fail('Expected DNS error');
+        } catch (SearchException $error) {
             self::assertSame('dns_failed', $error->reason);
             self::assertSame('initialize', $error->stage);
             self::assertStringNotContainsString('fixture-private-diagnostic', $error->getMessage());
@@ -53,8 +57,10 @@ final class SearchDiagnosticsTest extends TestCase
             McpSearchClientTest::rpc(1, ['protocolVersion' => '2025-03-26']), new Response(202), new Response(503),
         ]));
         $client = new McpSearchClient('http://mcp.example/mcp', new Client(['handler' => $handler]));
-        try { $client->definition(); self::fail('Expected HTTP error'); }
-        catch (SearchException $error) {
+        try {
+            $client->definition();
+            self::fail('Expected HTTP error');
+        } catch (SearchException $error) {
             self::assertSame('http_error', $error->reason);
             self::assertSame('tools_list', $error->stage);
         }
@@ -66,8 +72,10 @@ final class SearchDiagnosticsTest extends TestCase
         $client->expects(self::never())->method('search');
         $client->expects(self::once())->method('definition')->willReturn(['function' => ['name' => 'web_search']]);
         $client->expects(self::once())->method('close');
-        self::assertSame(['available' => true, 'target' => 'custom', 'tool' => 'web_search', 'searched' => false],
-            (new SearchDiagnostics($client, 'https://fixture.example/mcp'))->status());
+        self::assertSame(
+            ['available' => true, 'target' => 'custom', 'tool' => 'web_search', 'searched' => false],
+            (new SearchDiagnostics($client, 'https://fixture.example/mcp'))->status()
+        );
     }
 
     public function testUnresolvedDockerNameIsReportedWithoutConnecting(): void
@@ -75,8 +83,10 @@ final class SearchDiagnosticsTest extends TestCase
         $client = $this->createMock(SearchClientInterface::class);
         $client->expects(self::never())->method('definition');
         $client->expects(self::never())->method('search');
-        self::assertSame(['available' => false, 'target' => 'docker-service', 'reason' => 'dns_failed', 'stage' => 'initialize', 'searched' => false],
-            (new SearchDiagnostics($client, 'http://mcp-search:8000/mcp', static fn() => false))->status());
+        self::assertSame(
+            ['available' => false, 'target' => 'docker-service', 'reason' => 'dns_failed', 'stage' => 'initialize', 'searched' => false],
+            (new SearchDiagnostics($client, 'http://mcp-search:8000/mcp', static fn () => false))->status()
+        );
     }
 
     public function testArbitraryDiagnosticValuesAreNotReturned(): void
@@ -92,8 +102,13 @@ final class SearchDiagnosticsTest extends TestCase
         $diagnostics->expects(self::once())->method('status')->willReturn(['available' => false, 'reason' => 'dns_failed', 'searched' => false]);
         $auth = $this->createMock(\App\Service\AuthService::class);
         $auth->method('validateToken')->with('fixture-session')->willReturn(1);
-        $controller = new \App\Controller\ChatController(new \App\Mapper\Chat\CreateChatInputMapper(), new \App\Mapper\Chat\AddChatMessageInputMapper(),
-            $this->createMock(\App\Service\ChatService::class), $this->createMock(\App\Service\ModelCatalogService::class), $diagnostics);
+        $controller = new \App\Controller\ChatController(
+            new \App\Mapper\Chat\CreateChatInputMapper(),
+            new \App\Mapper\Chat\AddChatMessageInputMapper(),
+            $this->createMock(\App\Service\ChatService::class),
+            $this->createMock(\App\Service\ModelCatalogService::class),
+            $diagnostics
+        );
         $container = new \DI\Container([
             \App\Controller\ChatController::class => $controller,
             \App\Service\SessionAuthenticatorInterface::class => $auth,

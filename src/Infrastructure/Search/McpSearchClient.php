@@ -18,8 +18,11 @@ final class McpSearchClient implements SearchClientInterface
     private int $id = 0;
     private ?array $tool = null;
 
-    public function __construct(private readonly string $url, ?ClientInterface $http = null)
-    {
+    public function __construct(
+        private readonly string $url,
+        ?ClientInterface $http = null,
+        #[\SensitiveParameter] private readonly string $token = '',
+    ) {
         $this->http = $http ?? new Client();
     }
 
@@ -130,6 +133,7 @@ final class McpSearchClient implements SearchClientInterface
     {
         return ['Content-Type' => 'application/json', 'Accept' => 'application/json, text/event-stream',
             'MCP-Protocol-Version' => $this->protocol,
+            ...($this->token !== '' ? ['Authorization' => 'Bearer '.$this->token] : []),
             ...($this->session !== null ? ['Mcp-Session-Id' => $this->session] : [])];
     }
 
@@ -155,6 +159,9 @@ final class McpSearchClient implements SearchClientInterface
         ]);
         $stream = $response->getBody();
         try {
+            if (in_array($response->getStatusCode(), [401, 403], true)) {
+                throw new SearchException('unauthorized');
+            }
             if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
                 throw new SearchException('http_error');
             }
@@ -237,6 +244,10 @@ final class McpSearchClient implements SearchClientInterface
             }
             return new SearchException($reason, $stage);
         }
-        return new SearchException($error instanceof \GuzzleHttp\Exception\RequestException ? 'http_error' : 'protocol_error', $stage);
+        if ($error instanceof \GuzzleHttp\Exception\RequestException) {
+            $status = $error->getResponse()?->getStatusCode();
+            return new SearchException(in_array($status, [401, 403], true) ? 'unauthorized' : 'http_error', $stage);
+        }
+        return new SearchException('protocol_error', $stage);
     }
 }

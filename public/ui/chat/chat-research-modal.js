@@ -7,14 +7,18 @@ export class ResearchModal {
         closeButton.addEventListener('click', () => this.close());
         dialog.addEventListener('click', event => { if (event.target === dialog) {
             const bounds = dialog.getBoundingClientRect();
-            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) this.close();
+            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+                this.close();
+            }
         } });
         dialog.addEventListener('close', () => (this.opener?.isConnected ? this.opener : this.openButtons[0])?.focus());
     }
 
     open(opener = this.openButtons[0]) {
         this.opener = opener;
-        if (!this.dialog.open) this.dialog.showModal();
+        if (!this.dialog.open) {
+            this.dialog.showModal();
+        }
     }
 
     close() { if (this.dialog.open) this.dialog.close(); }

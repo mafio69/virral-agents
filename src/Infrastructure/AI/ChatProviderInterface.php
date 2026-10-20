@@ -8,4 +8,5 @@ interface ChatProviderInterface extends AiClientInterface, ModelCatalogueInterfa
 {
     public function id(): string;
     public function name(): string;
+    public function isConfigured(): bool;
 }

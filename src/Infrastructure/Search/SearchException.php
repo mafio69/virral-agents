@@ -17,7 +17,7 @@ final class SearchException extends \RuntimeException
 
     public function __construct(string $reason = 'unavailable', string $stage = 'unknown')
     {
-        $reasons = ['unavailable', 'missing_configuration', 'connection_refused', 'protocol_error', 'tool_error', 'provider_response', ...self::FETCH_REASONS];
+        $reasons = ['unavailable', 'missing_configuration', 'unauthorized', 'connection_refused', 'protocol_error', 'tool_error', 'provider_response', ...self::FETCH_REASONS];
         $this->reason = in_array($reason, $reasons, true) ? $reason : 'unavailable';
         $this->stage = in_array($stage, ['unknown', 'definition', 'initialize', 'initialized', 'tools_list', 'tools_call', 'search_result', 'fetch'], true) ? $stage : 'unknown';
         parent::__construct('Wyszukiwanie jest niedostępne.');

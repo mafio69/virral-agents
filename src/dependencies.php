@@ -23,6 +23,9 @@ return function (ContainerBuilder $containerBuilder) {
         \App\Controller\AuthController::class => \DI\autowire()->constructorParameter(
             'environment',
             \DI\factory(fn (ContainerInterface $c) => $c->get('settings')['environment'] ?? 'prod'),
+        )->constructorParameter('clientIp', \DI\get(\App\Http\ClientIpResolver::class)),
+        \App\Http\ClientIpResolver::class => fn (ContainerInterface $c) => new \App\Http\ClientIpResolver(
+            $c->get('settings')['trusted_proxies'] ?? [],
         ),
         \App\Service\ModelCatalogInterface::class => \DI\autowire(\App\Service\ModelCatalogService::class),
         \App\Infrastructure\DataProtection\DataCipherInterface::class => function (ContainerInterface $c) {
@@ -43,7 +46,7 @@ return function (ContainerBuilder $containerBuilder) {
                 timezone: $config['timezone'] ?? 'Europe/Warsaw',
             );
         },
-        LoggerInterface::class => fn(ContainerInterface $c) => $c->get(DualLogger::class),
+        LoggerInterface::class => fn (ContainerInterface $c) => $c->get(DualLogger::class),
         PDO::class => function (ContainerInterface $c) {
             $settings = $c->get('settings')['db'];
 
@@ -66,26 +69,35 @@ return function (ContainerBuilder $containerBuilder) {
             $key = $c->get('settings')['zai']['key'] ?? '';
             $legacy = new \App\Infrastructure\AI\ZaiChatModelRegistry(
                 $c->get(\App\Repository\AiModelRepository::class),
-                static fn() => $c->get(\App\Infrastructure\AI\AiClientFactoryInterface::class),
+                static fn () => $c->get(\App\Infrastructure\AI\AiClientFactoryInterface::class),
                 environmentClient: $key !== '' ? new \App\Infrastructure\AI\OpenAiCompatClient(
-                    \App\Infrastructure\AI\ZaiEndpointPolicy::BASE_URI, $key, 'glm-5.3',
+                    \App\Infrastructure\AI\ZaiEndpointPolicy::BASE_URI,
+                    $key,
+                    'glm-5.3',
                 ) : null,
             );
             return new \App\Infrastructure\AI\ProviderRegistry($legacy, [
                 'google' => new \App\Infrastructure\AI\GeminiProvider(new \App\Infrastructure\AI\ProviderTransport(
-                    'https://generativelanguage.googleapis.com/v1beta/', $c->get('settings')['google']['key'] ?? '',
-                    authHeader: 'x-goog-api-key', authPrefix: '',
+                    'https://generativelanguage.googleapis.com/v1beta/',
+                    $c->get('settings')['google']['key'] ?? '',
+                    authHeader: 'x-goog-api-key',
+                    authPrefix: '',
                 )),
                 'anthropic' => new \App\Infrastructure\AI\AnthropicProvider(new \App\Infrastructure\AI\ProviderTransport(
-                    'https://api.anthropic.com/v1/', $c->get('settings')['anthropic']['key'] ?? '',
-                    authHeader: 'x-api-key', authPrefix: '', headers: ['anthropic-version' => '2023-06-01'],
+                    'https://api.anthropic.com/v1/',
+                    $c->get('settings')['anthropic']['key'] ?? '',
+                    authHeader: 'x-api-key',
+                    authPrefix: '',
+                    headers: ['anthropic-version' => '2023-06-01'],
                 )),
                 'openai' => new \App\Infrastructure\AI\OpenAiProvider(new \App\Infrastructure\AI\ProviderTransport(
-                    'https://api.openai.com/v1/', $c->get('settings')['openai']['key'] ?? '',
+                    'https://api.openai.com/v1/',
+                    $c->get('settings')['openai']['key'] ?? '',
                 )),
                 'openrouter' => new \App\Infrastructure\AI\OpenRouterProvider(new \App\Infrastructure\AI\ProviderTransport(
-                    \App\Infrastructure\AI\OpenRouterProvider::BASE_URI, $c->get('settings')['openrouter']['key'] ?? '',
-                ),\App\Infrastructure\AI\OpenRouterProvider::allowedModels($c->get('settings')['openrouter']['models'] ?? '')),
+                    \App\Infrastructure\AI\OpenRouterProvider::BASE_URI,
+                    $c->get('settings')['openrouter']['key'] ?? '',
+                ), \App\Infrastructure\AI\OpenRouterProvider::allowedModels($c->get('settings')['openrouter']['models'] ?? '')),
             ]);
         },
         \App\Infrastructure\AI\AiClientFactoryInterface::class => function (ContainerInterface $c) {
@@ -109,8 +121,8 @@ return function (ContainerBuilder $containerBuilder) {
 
             return new MailService($dsn);
         },
-        \App\Repository\LoginAttemptRepositoryInterface::class => fn(ContainerInterface $c) => new \App\Repository\LoginAttemptRepository($c->get(PDO::class)),
-        \App\Service\LoginAttemptLimiterInterface::class => fn(ContainerInterface $c) => new \App\Service\LoginAttemptLimiter(
+        \App\Repository\LoginAttemptRepositoryInterface::class => fn (ContainerInterface $c) => new \App\Repository\LoginAttemptRepository($c->get(PDO::class)),
+        \App\Service\LoginAttemptLimiterInterface::class => fn (ContainerInterface $c) => new \App\Service\LoginAttemptLimiter(
             $c->get(\App\Repository\LoginAttemptRepositoryInterface::class),
             $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
         ),
@@ -137,7 +149,8 @@ return function (ContainerBuilder $containerBuilder) {
             );
         },
         \App\Infrastructure\Search\SearchClientInterface::class => function (ContainerInterface $c) {
-            return new \App\Infrastructure\Search\McpSearchClient($c->get('settings')['search']['mcp_url']);
+            $search = $c->get('settings')['search'];
+            return new \App\Infrastructure\Search\McpSearchClient($search['mcp_url'], token: $search['mcp_token'] ?? '');
         },
         \App\Service\ChatReplyGeneratorInterface::class => function (ContainerInterface $c) {
             return new \App\Service\ChatReplyGenerator($c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get(LoggerInterface::class));
@@ -145,15 +158,16 @@ return function (ContainerBuilder $containerBuilder) {
         \App\Service\SearchDiagnosticsInterface::class => function (ContainerInterface $c) {
             return new \App\Service\SearchDiagnostics($c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get('settings')['search']['mcp_url']);
         },
-        \App\Repository\ResearchRepositoryInterface::class => fn(ContainerInterface $c) => new \App\Repository\ResearchRepository($c->get(PDO::class), $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class)),
-        \App\Infrastructure\Search\WebPageFetcherInterface::class => fn() => new \App\Infrastructure\Search\PublicWebPageFetcher(),
-        \App\Service\ResearchServiceInterface::class => fn(ContainerInterface $c) => new \App\Service\ResearchService($c->get(\App\Repository\ResearchRepositoryInterface::class), $c->get(ChatRepository::class), $c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get(\App\Infrastructure\Search\WebPageFetcherInterface::class)),
-        \App\Service\ResearchReplyGeneratorInterface::class => fn(ContainerInterface $c) => new \App\Service\ResearchReplyGenerator($c->get(\App\Service\ResearchServiceInterface::class), $c->get(\App\Service\ChatReplyGeneratorInterface::class)),
+        \App\Repository\ResearchRepositoryInterface::class => fn (ContainerInterface $c) => new \App\Repository\ResearchRepository($c->get(PDO::class), $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class)),
+        \App\Infrastructure\Search\WebPageFetcherInterface::class => fn () => new \App\Infrastructure\Search\PublicWebPageFetcher(),
+        \App\Service\ResearchServiceInterface::class => fn (ContainerInterface $c) => new \App\Service\ResearchService($c->get(\App\Repository\ResearchRepositoryInterface::class), $c->get(ChatRepository::class), $c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get(\App\Infrastructure\Search\WebPageFetcherInterface::class)),
+        \App\Service\ResearchReplyGeneratorInterface::class => fn (ContainerInterface $c) => new \App\Service\ResearchReplyGenerator($c->get(\App\Service\ResearchServiceInterface::class), $c->get(\App\Service\ChatReplyGeneratorInterface::class)),
         \App\Controller\ChatController::class => function (ContainerInterface $c) {
             return new \App\Controller\ChatController(
                 $c->get(\App\Mapper\Chat\CreateChatInputMapper::class),
                 $c->get(\App\Mapper\Chat\AddChatMessageInputMapper::class),
-                $c->get(ChatService::class), $c->get(\App\Service\ModelCatalogService::class),
+                $c->get(ChatService::class),
+                $c->get(\App\Service\ModelCatalogService::class),
                 $c->get(\App\Service\SearchDiagnosticsInterface::class),
                 $c->get(\App\Service\ResearchServiceInterface::class),
             );

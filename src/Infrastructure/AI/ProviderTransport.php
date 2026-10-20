@@ -26,9 +26,14 @@ final readonly class ProviderTransport
         $this->http = $http ?? new Client(['base_uri' => $baseUri, 'connect_timeout' => 10]);
     }
 
+    public function isConfigured(): bool
+    {
+        return trim($this->apiKey) !== '' && !str_starts_with($this->apiKey, 'encrypted:');
+    }
+
     public function request(string $method, string $path, ?array $payload = null, array $query = [], int $maxResponseBytes = 4194304): array
     {
-        if (trim($this->apiKey) === '' || str_starts_with($this->apiKey, 'encrypted:')) {
+        if (!$this->isConfigured()) {
             throw new AiConnectionException('missing_configuration');
         }
         try {
@@ -51,15 +56,21 @@ final readonly class ProviderTransport
         $stream = $response->getBody();
         try {
             $json = '';
-            while (!$stream->eof() && strlen($json) <= $maxResponseBytes) $json .= $stream->read(8192);
-            if (strlen($json) > $maxResponseBytes) throw new AiConnectionException('invalid_response');
+            while (!$stream->eof() && strlen($json) <= $maxResponseBytes) {
+                $json .= $stream->read(8192);
+            }
+            if (strlen($json) > $maxResponseBytes) {
+                throw new AiConnectionException('invalid_response');
+            }
             $body = json_decode($json, true, 128, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw new AiConnectionException('invalid_response');
         } finally {
             $stream->close();
         }
-        if (!is_array($body)) throw new AiConnectionException('invalid_response');
+        if (!is_array($body)) {
+            throw new AiConnectionException('invalid_response');
+        }
         return $body;
     }
 

@@ -41,7 +41,7 @@ $builder->addDefinitions([
         'environment' => 'dev', 'displayErrorDetails' => false,
         'app_url' => 'http://127.0.0.1:18181',
         'ovh_ai' => ['url' => 'http://127.0.0.1:18182/unused/', 'token' => 'e2e-dummy', 'model' => 'Qwen3.6-27B'],
-        'mail' => ['dsn' => 'smtp://127.0.0.1:11025'],
+        'mail' => ['dsn' => getenv('E2E_SMTP_DSN') ?: 'smtp://mail-trap.dom:1025'],
         'search' => ['mcp_url' => 'http://127.0.0.1:18182/mcp'],
     ],
     PDO::class => $pdo,

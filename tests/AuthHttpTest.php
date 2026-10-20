@@ -43,12 +43,13 @@ final class AuthHttpTest extends TestCase
         $repository = new UserRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
         $logger = new NullLogger();
         $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger, new \App\Service\LoginAttemptLimiter(
-            new \App\Repository\LoginAttemptRepository($this->pdo), ProtectedDataFixture::cipher($this->pdo)
+            new \App\Repository\LoginAttemptRepository($this->pdo),
+            ProtectedDataFixture::cipher($this->pdo)
         ));
         $container = new Container([
             LoggerInterface::class => $logger,
             'settings' => ['displayErrorDetails' => false],
-            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, $repository, new \App\Http\SessionTokenResolver(), $this->environment),
+            AuthController::class => new AuthController(new RegisterInputMapper(), new LoginInputMapper(), $service, new \App\Http\SessionTokenResolver(), $this->environment),
             \App\Service\SessionAuthenticatorInterface::class => $service,
         ]);
         $this->app = AppFactory::create(container: $container);
@@ -84,7 +85,8 @@ final class AuthHttpTest extends TestCase
     private function confirmEmail(): void
     {
         self::assertSame(200, $this->request(
-            'GET', '/api/auth/verify-email?token='.$this->verificationToken
+            'GET',
+            '/api/auth/verify-email?token='.$this->verificationToken
         )->getStatusCode());
     }
 
@@ -203,6 +205,34 @@ final class AuthHttpTest extends TestCase
         $login = $this->request('POST', '/api/auth/login', $this->credentials());
         $this->pdo->exec("UPDATE sessions SET expires_at = '2000-01-01 00:00:00'");
         self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $this->data($login)['token']])->getStatusCode());
+    }
+
+    public function testSessionOfDeletedUserIsRejected(): void
+    {
+        $this->registerConfirmed();
+        $token = $this->data($this->request('POST', '/api/auth/login', $this->credentials()))['token'];
+        $this->pdo->exec('PRAGMA foreign_keys = OFF');
+        $this->pdo->exec('DELETE FROM users');
+        $response = $this->request('GET', '/api/auth/me', cookies: ['token' => $token]);
+        self::assertSame(401, $response->getStatusCode());
+        self::assertArrayNotHasKey('email', $this->data($response));
+    }
+
+    public function testVerifyEmailRejectsMissingOrNonStringTokenAsValidationError(): void
+    {
+        foreach (['/api/auth/verify-email', '/api/auth/verify-email?token=', '/api/auth/verify-email?token[]=fixture'] as $path) {
+            $response = $this->request('GET', $path);
+            self::assertSame(422, $response->getStatusCode());
+            self::assertSame(['error' => 'Token is required'], $this->data($response));
+        }
+    }
+
+    public function testWrongHttpMethodReturns405WithAllowHeader(): void
+    {
+        $response = $this->request('DELETE', '/api/auth/login');
+        self::assertSame(405, $response->getStatusCode());
+        self::assertSame('POST', $response->getHeaderLine('Allow'));
+        self::assertSame(['error' => 'Metoda HTTP jest niedozwolona.'], $this->data($response));
     }
 
     public function testRememberMeCreatesThirtyDaySession(): void

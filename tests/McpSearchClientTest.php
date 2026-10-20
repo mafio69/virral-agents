@@ -126,4 +126,46 @@ final class McpSearchClientTest extends TestCase
         $this->expectException(SearchException::class);
         $client->search('  ', 3);
     }
+
+    public function testTokenIsSentAsBearerOnEveryRequestIncludingClose(): void
+    {
+        $history = [];
+        $handler = HandlerStack::create(new MockHandler([
+            self::rpc(1, ['protocolVersion' => '2025-06-18']), new Response(202), self::rpc(3, self::tools()), new Response(204),
+        ]));
+        $handler->push(Middleware::history($history));
+        $client = new McpSearchClient('http://mcp.test/mcp', new Client(['handler' => $handler]), 'fixture-mcp-token');
+        self::assertSame('web_search', $client->definition()['function']['name']);
+        $client->close();
+        self::assertCount(4, $history);
+        foreach ($history as $entry) {
+            self::assertSame('Bearer fixture-mcp-token', $entry['request']->getHeaderLine('Authorization'));
+        }
+    }
+
+    public function testRejectedOrMissingTokenIsReportedAsUnauthorizedWithoutLeakingIt(): void
+    {
+        foreach ([401, 403] as $status) {
+            $client = new McpSearchClient('http://mcp.test/mcp', new Client(['handler' => HandlerStack::create(new MockHandler([
+                new Response($status, ['WWW-Authenticate' => 'Bearer'], '{"error":"Unauthorized"}'),
+            ]))]), 'fixture-mcp-token');
+            try {
+                $client->definition();
+                self::fail('Expected an authentication failure.');
+            } catch (SearchException $error) {
+                self::assertSame('unauthorized', $error->reason);
+                self::assertSame('initialize', $error->stage);
+                self::assertStringNotContainsString('fixture-mcp-token', $error->getMessage());
+            }
+        }
+        $client = new McpSearchClient('http://mcp.test/mcp', new Client(['http_errors' => false, 'handler' => HandlerStack::create(new MockHandler([
+            new Response(401, [], '{"error":"Unauthorized"}'),
+        ]))]));
+        try {
+            $client->definition();
+            self::fail('Expected an authentication failure.');
+        } catch (SearchException $error) {
+            self::assertSame('unauthorized', $error->reason);
+        }
+    }
 }

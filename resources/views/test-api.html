@@ -92,10 +92,12 @@ pre {
 
 <nav>
   <h1>Virral Agents</h1>
-  <a class="active" data-section="auth" onclick="showSection('auth')">Auth</a>
-  <a data-section="tasks" onclick="showSection('tasks')">Zadania</a>
-  <a data-section="chats" onclick="showSection('chats')">Czaty</a>
+  <a class="active" href="#auth" data-section="auth" onclick="showSection('auth'); return false;">Auth</a>
+  <a href="#tasks" data-section="tasks" onclick="showSection('tasks'); return false;">Zadania</a>
+  <a href="#chats" data-section="chats" onclick="showSection('chats'); return false;">Czaty (test API)</a>
   <span style="flex:1"></span>
+  <a href="/">Pulpit</a>
+  <a href="/chat">Czat AI</a>
   <span id="auth-indicator" class="auth-status logged-out">❌ Niezalogowany</span>
 </nav>
 
@@ -266,18 +268,21 @@ function updateAuthUI() {
 
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
-  if (isAuth()) h['Authorization'] = 'Bearer ' + token;
+  if (isAuth()) {
+      h['Authorization'] = 'Bearer ' + token;
+  }
   return h;
 }
 
-function showSection(name) {
+function showSection(name, updateUrl = true) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
   document.getElementById('section-' + name).classList.add('active');
   document.querySelector('nav a[data-section="' + name + '"]').classList.add('active');
   localStorage.removeItem('spa_section');
-  if (window.location.hash) {
-    history.replaceState(null, '', window.location.pathname);
+  // Keep the active section in the address bar so refresh and links open the same tab.
+  if (updateUrl && window.location.hash !== '#' + name) {
+    history.pushState(null, '', '#' + name);
   }
 }
 
@@ -288,7 +293,9 @@ function show(el, msg, cls) {
 
 async function api(method, path, body) {
   const opts = { method, headers: authHeaders() };
-  if (body) opts.body = JSON.stringify(body);
+  if (body) {
+      opts.body = JSON.stringify(body);
+  }
   const res = await fetch('/api' + path, opts);
   const text = await res.text();
   let data;
@@ -361,20 +368,30 @@ async function createTask() {
 
 async function editTask(id) {
   const title = prompt('Nowy tytuł:');
-  if (!title) return;
+  if (!title) {
+      return;
+  }
   const status = prompt('Nowy status (todo / in_progress / done):', 'todo');
-  if (!status) return;
+  if (!status) {
+      return;
+  }
   const description = prompt('Nowy opis (lub puste):');
   const r = await api('PUT', '/tasks/' + id, { title, status, description: description || null });
   show(document.getElementById('tasks-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
-  if (r.ok) listTasks();
+  if (r.ok) {
+      listTasks();
+  }
 }
 
 async function deleteTask(id) {
-  if (!confirm('Usunąć zadanie #' + id + '?')) return;
+  if (!confirm('Usunąć zadanie #' + id + '?')) {
+      return;
+  }
   const r = await api('DELETE', '/tasks/' + id);
   show(document.getElementById('tasks-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
-  if (r.ok) listTasks();
+  if (r.ok) {
+      listTasks();
+  }
 }
 
 // ==================== CHATS ====================
@@ -407,14 +424,18 @@ async function createChat() {
   const model = document.getElementById('chat-model').value;
   if (!title) { show(document.getElementById('chats-result'), 'Podaj tytuł czatu', 'error'); return; }
   const payload = { title };
-  if (model) payload.model = model;
+  if (model) {
+      payload.model = model;
+  }
   const r = await api('POST', '/chats', payload);
   show(document.getElementById('chats-result'), r.ok ? r.data : r.data, r.ok ? 'success' : 'error');
   if (r.ok) { listChats(); document.getElementById('chat-title').value = ''; document.getElementById('chat-model').value = ''; }
 }
 
 async function openChat(id) {
-  if (!isAuth()) return;
+  if (!isAuth()) {
+      return;
+  }
   currentChatId = id;
   chatHistory = []; // Reset chat history
 
@@ -455,9 +476,13 @@ function closeChatDetail() {
 let sendOnEnter = true;
 
 async function addMessage() {
-  if (!currentChatId) return;
+  if (!currentChatId) {
+      return;
+  }
   const content = document.getElementById('chat-msg-input').value;
-  if (!content) return;
+  if (!content) {
+      return;
+  }
 
   // Pokaż animację ładowania
   document.getElementById('loading-indicator').style.display = 'block';
@@ -547,7 +572,9 @@ function recordMessage(role, content, metadata = null) {
 }
 
 async function replayChat() {
-  if (!currentChatId || isReplaying) return;
+  if (!currentChatId || isReplaying) {
+      return;
+  }
 
   isReplaying = true;
   const originalMessages = [...chatHistory];
@@ -616,7 +643,9 @@ function toggleSendOnEnter() {
 
 // ==================== HELPERS ====================
 function esc(s) {
-  if (s == null) return '';
+  if (s == null) {
+      return '';
+  }
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;
@@ -649,7 +678,7 @@ async function loadModels() {
 
   const section = window.location.hash.replace('#', '') || localStorage.getItem('spa_section');
   if (section && ['auth', 'tasks', 'chats'].includes(section)) {
-    showSection(section);
+    showSection(section, false);
   }
 
   if (isAuth()) {
@@ -670,6 +699,13 @@ async function loadModels() {
       showAllPre();
     });
   }
+
+  window.addEventListener('popstate', function () {
+    const section = window.location.hash.replace('#', '') || 'auth';
+    if (['auth', 'tasks', 'chats'].includes(section)) {
+      showSection(section, false);
+    }
+  });
 
   window.addEventListener('hashchange', function () {
     const section = window.location.hash.replace('#', '');

@@ -4,19 +4,13 @@ declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
     ->in([
-        __DIR__.'/src/Controller',
-        __DIR__.'/src/Service',
-        __DIR__.'/src/Mapper',
-        __DIR__.'/src/Http',
-        __DIR__.'/src/Middleware',
-        __DIR__.'/src/Dto/Chat',
-        __DIR__.'/src/Infrastructure/Search',
-        __DIR__.'/src/Infrastructure/Database',
+        __DIR__.'/src',
+        __DIR__.'/bin',
+        __DIR__.'/tests',
     ])
+    ->exclude('e2e/runtime')
     ->append([
         __DIR__.'/public/index.php',
-        __DIR__.'/bin/migrate.php',
-        __DIR__.'/src/routes.php',
     ]);
 
 return (new PhpCsFixer\Config())

@@ -60,7 +60,8 @@ class AuthServiceTest extends TestCase
             'http://localhost',
             $logger,
             new \App\Service\LoginAttemptLimiter(
-                new \App\Repository\LoginAttemptRepository($this->pdo), ProtectedDataFixture::cipher($this->pdo)
+                new \App\Repository\LoginAttemptRepository($this->pdo),
+                ProtectedDataFixture::cipher($this->pdo)
             )
         );
     }
@@ -68,7 +69,7 @@ class AuthServiceTest extends TestCase
     public function testRegisterNewUser(): void
     {
         $input = new RegisterInput('test@example.com', 'password123');
-        
+
         $this->authService->register($input);
 
         // Verify user was created
@@ -87,7 +88,7 @@ class AuthServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('Ten adres email ma już konto. Zaloguj się; jeśli konto nie jest jeszcze potwierdzone, użyj linku z wiadomości potwierdzającej.');
-        
+
         $this->authService->register($input);
     }
 
@@ -97,7 +98,7 @@ class AuthServiceTest extends TestCase
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
 
-        $this->authService->verifyEmail($this->verificationToken);
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput($this->verificationToken));
 
         // Now login
         $loginInput = new LoginInput('test@example.com', 'password123', false);
@@ -120,7 +121,7 @@ class AuthServiceTest extends TestCase
 
         $this->expectException(UnauthorizedException::class);
         $this->expectExceptionMessage('Invalid credentials');
-        
+
         $this->authService->login($loginInput);
     }
 
@@ -130,7 +131,7 @@ class AuthServiceTest extends TestCase
 
         $this->expectException(UnauthorizedException::class);
         $this->expectExceptionMessage('Invalid credentials');
-        
+
         $this->authService->login($loginInput);
     }
 
@@ -140,7 +141,7 @@ class AuthServiceTest extends TestCase
         $registerInput = new RegisterInput('test@example.com', 'password123');
         $this->authService->register($registerInput);
 
-        $this->authService->verifyEmail($this->verificationToken);
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput($this->verificationToken));
 
         $loginInput = new LoginInput('test@example.com', 'password123', false);
         $result = $this->authService->login($loginInput);
@@ -155,7 +156,7 @@ class AuthServiceTest extends TestCase
     {
         $this->expectException(UnauthorizedException::class);
         $this->expectExceptionMessage('Invalid or expired token');
-        
+
         $this->authService->validateToken('invalid_token');
     }
 
@@ -169,7 +170,7 @@ class AuthServiceTest extends TestCase
         $token = $this->verificationToken;
 
         // Verify email
-        $this->authService->verifyEmail($token);
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput($token));
 
         // Check that email_confirmed_at is set
         $user = $this->users->findByEmail('test@example.com');
@@ -181,7 +182,7 @@ class AuthServiceTest extends TestCase
     {
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('Invalid verification token');
-        
-        $this->authService->verifyEmail('invalid_token');
+
+        $this->authService->verifyEmail(new \App\Dto\Auth\VerifyEmailInput('invalid_token'));
     }
 }

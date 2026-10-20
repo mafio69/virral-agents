@@ -149,8 +149,12 @@ test('continue click fetches selected pages without a second prompt then resumes
     let snapshot = state([source]);
     const panel = fixture({ research: async (operation, scope, payload) => {
         calls.push([operation, payload]);
-        if (operation === 'prepare') snapshot = state([source], [action]);
-        if (operation === 'decide') snapshot = state([{ ...source, page: { status: 'loaded' } }], [{ ...action, status: 'done' }]);
+        if (operation === 'prepare') {
+            snapshot = state([source], [action]);
+        }
+        if (operation === 'decide') {
+            snapshot = state([{ ...source, page: { status: 'loaded' } }], [{ ...action, status: 'done' }]);
+        }
         return snapshot;
     } });
     panel.onContinue = async () => { if (await panel.beforeSend()) sends++; };
@@ -165,7 +169,9 @@ test('failed preparation and blocked chat never dispatch a continuation', async 
     const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
     let sends = 0;
     const panel = fixture({ research: async operation => {
-        if (operation === 'prepare') throw new Error('Fixture unavailable');
+        if (operation === 'prepare') {
+            throw new Error('Fixture unavailable');
+        }
         return state([source]);
     } });
     panel.onContinue = async () => { if (await panel.beforeSend()) sends++; };
@@ -235,8 +241,12 @@ test('switching chats during preparation cancels old fetch approval and continua
     const source = { id: 'a', url: 'https://example.org/a', page: { status: 'unread' } };
     let resolvePrepare, continued = 0, fetches = 0;
     const panel = fixture({ research: async (operation, scope) => {
-        if (operation === 'prepare') return new Promise(resolve => { resolvePrepare = resolve; });
-        if (operation === 'decide') fetches++;
+        if (operation === 'prepare') {
+            return new Promise(resolve => { resolvePrepare = resolve; });
+        }
+        if (operation === 'decide') {
+            fetches++;
+        }
         return scope === 1 ? state([source]) : state();
     } }, { onContinue: () => { continued++; } });
     await panel.setScope(1);
@@ -255,8 +265,12 @@ test('continue stays visibly locked through page loading, rerenders and the AI r
     let resolveFetch, resolveAi, aiCalls = 0;
     const locks = [];
     const panel = fixture({ research: async operation => {
-        if (operation === 'state') return state([source]);
-        if (operation === 'prepare') return state([source], [action]);
+        if (operation === 'state') {
+            return state([source]);
+        }
+        if (operation === 'prepare') {
+            return state([source], [action]);
+        }
         return new Promise(resolve => { resolveFetch = () => resolve(state([
             { ...source, page: { status: 'loaded' } },
         ], [{ ...action, status: 'done' }])); });
@@ -320,4 +334,18 @@ test('fetch failure codes map to readable labels and unknown codes stay visible'
     assert.equal(fetchReasonText('insecure_redirect'), 'przekierowanie z HTTPS na HTTP');
     assert.equal(fetchReasonText('future_code'), 'future_code');
     assert.equal(fetchReasonText(undefined), '');
+});
+test('a web operation requested by AI in a reply opens the consent view once', async () => {
+    const action = { id: 'ai-1', request: { kind: 'search', query: 'Public query' }, origin: 'ai', status: 'pending' };
+    let pending = false;
+    const notices = [];
+    const panel = fixture({ research: async () => state([], pending ? [action] : []) }, { onNotice: (text, error = false) => notices.push([text, error]) });
+    await panel.setScope(0);
+    assert.equal(await panel.refreshAfterReply(), true);
+    assert.deepEqual(notices, []);
+    pending = true;
+    assert.equal(await panel.refreshAfterReply(), true);
+    assert.equal(notices.length, 1);
+    assert.match(notices[0][0], /Allow lub Deny/);
+    assert.equal(notices[0][1], false);
 });

@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Tests;
 
 use App\Exception\ValidationException;
@@ -12,13 +14,16 @@ final class ResearchServiceTest extends ChatServiceTestCase
 {
     private function results(string $prefix, int $count): array
     {
-        return ['source' => 'searxng', 'results' => array_map(static fn(int $i): array => ['title' => $prefix.$i, 'url' => 'https://example.org/'.$prefix.$i, 'snippet' => 'Fixture snippet'], range(1, $count))];
+        return ['source' => 'searxng', 'results' => array_map(static fn (int $i): array => ['title' => $prefix.$i, 'url' => 'https://example.org/'.$prefix.$i, 'snippet' => 'Fixture snippet'], range(1, $count))];
     }
     private function service(SearchClientInterface $search, WebPageFetcherInterface $fetcher): ResearchService
     {
         return new ResearchService(new ResearchRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo)), $this->chatRepository, $search, $fetcher);
     }
-    private function pending(array $state): array { return array_values(array_filter($state['actions'], static fn(array $a): bool => $a['status'] === 'pending')); }
+    private function pending(array $state): array
+    {
+        return array_values(array_filter($state['actions'], static fn (array $a): bool => $a['status'] === 'pending'));
+    }
 
     public function testThreePlusTwoSourcesSurviveSearchRefreshDeduplicationAndDraftAdoption(): void
     {
@@ -32,11 +37,15 @@ final class ResearchServiceTest extends ChatServiceTestCase
         $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
         $firstId = $state['results'][0]['id'];
         $service->select($this->userId, 0, $state['results'][3]['id'], false);
-        foreach (array_slice($state['results'], 0, 3) as $source) $service->select($this->userId, 0, $source['id'], true);
+        foreach (array_slice($state['results'], 0, 3) as $source) {
+            $service->select($this->userId, 0, $source['id'], true);
+        }
         $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Next public query']);
         $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
         $service->select($this->userId, 0, $state['results'][2]['id'], false);
-        foreach (array_slice($state['results'], 0, 2) as $source) $service->select($this->userId, 0, $source['id'], true);
+        foreach (array_slice($state['results'], 0, 2) as $source) {
+            $service->select($this->userId, 0, $source['id'], true);
+        }
         $state = $service->select($this->userId, 0, $firstId, true);
         self::assertCount(5, $state['sources']);
         self::assertCount(3, $state['results']);
@@ -76,7 +85,9 @@ final class ResearchServiceTest extends ChatServiceTestCase
         $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Public query']);
         $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
         $service->select($this->userId, 0, $state['results'][2]['id'], false);
-        foreach (array_slice($state['results'], 0, 2) as $source) $service->select($this->userId, 0, $source['id'], true);
+        foreach (array_slice($state['results'], 0, 2) as $source) {
+            $service->select($this->userId, 0, $source['id'], true);
+        }
         $state = $service->prepare($this->userId, 0);
         $pending = $this->pending($state);
         self::assertCount(2, $pending);
@@ -186,7 +197,9 @@ final class ResearchServiceTest extends ChatServiceTestCase
     {
         $search = $this->createMock(SearchClientInterface::class);
         $search->method('search')->willReturnOnConsecutiveCalls(
-            $this->results('first', 10), $this->results('second', 10), $this->results('third', 10)
+            $this->results('first', 10),
+            $this->results('second', 10),
+            $this->results('third', 10)
         );
         $fetch = $this->createMock(WebPageFetcherInterface::class);
         $fetch->expects(self::never())->method('fetch');

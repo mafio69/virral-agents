@@ -21,8 +21,12 @@ export const fetchReasonText = reason => FETCH_REASONS[reason] || reason || '';
 const withReason = (text, reason) => reason ? `${text}: ${fetchReasonText(reason)}` : text;
 const node = (tag, text, className = '') => {
     const el = document.createElement(tag);
-    if (text !== undefined) el.textContent = text;
-    if (className) el.className = className;
+    if (text !== undefined) {
+        el.textContent = text;
+    }
+    if (className) {
+        el.className = className;
+    }
     return el;
 };
 
@@ -45,9 +49,13 @@ export class ResearchPanel {
         query.addEventListener('input', () => this.updateButton());
         search.addEventListener('click', () => {
             const text = query.value.trim();
-            if (!this.canSearch()) return;
+            if (!this.canSearch()) {
+                return;
+            }
             void this.run('propose', { request: { kind: 'search', query: text } }).then(ok => {
-                if (ok) this.onNotice('Sprawdź dokładne zapytanie poniżej i wybierz Allow lub Deny.');
+                if (ok) {
+                    this.onNotice('Sprawdź dokładne zapytanie poniżej i wybierz Allow lub Deny.');
+                }
             });
         });
         this.render();
@@ -67,7 +75,9 @@ export class ResearchPanel {
     }
 
     async continueWithSources() {
-        if (!this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue()) return;
+        if (!this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue()) {
+            return;
+        }
         const version = this.version;
         // The explicit click approves fetching only the source URLs visible in this selection.
         const approved = new Set(this.state.sources.map(source => source.url));
@@ -79,15 +89,25 @@ export class ResearchPanel {
         this.render();
         try {
             if (this.state.sources.some(source => source.page.status === 'unread')) {
-                if (!await this.run('prepare', {}) || version !== this.version) return;
+                if (!await this.run('prepare', {}) || version !== this.version) {
+                    return;
+                }
             }
             const fetches = this.pendingFetches().filter(action => approved.has(action.request.url));
             for (const action of fetches) {
-                if (version !== this.version) return;
-                if (!this.state.sources.some(source => source.url === action.request.url)) continue;
-                if (!await this.run('decide', { id: action.id, allow: true }) || version !== this.version) return;
+                if (version !== this.version) {
+                    return;
+                }
+                if (!this.state.sources.some(source => source.url === action.request.url)) {
+                    continue;
+                }
+                if (!await this.run('decide', { id: action.id, allow: true }) || version !== this.version) {
+                    return;
+                }
             }
-            if (version !== this.version) return;
+            if (version !== this.version) {
+                return;
+            }
             this.continuationStage = 'ai';
             this.updateButton();
             this.onActivity('done');
@@ -102,7 +122,9 @@ export class ResearchPanel {
     }
 
     async setScope(scope) {
-        if (scope === this.scope) return;
+        if (scope === this.scope) {
+            return;
+        }
         const version = ++this.version;
         this.scope = scope;
         this.bulkApproval = null;
@@ -110,12 +132,16 @@ export class ResearchPanel {
         this.ready = false;
         this.state = empty();
         this.render();
-        if (scope === null) return;
+        if (scope === null) {
+            return;
+        }
         this.busy = true;
         this.onBusy(true);
         try {
             const state = await this.api.research('state', scope);
-            if (version !== this.version) return;
+            if (version !== this.version) {
+                return;
+            }
             this.state = state;
             this.ready = true;
         } catch { if (version === this.version) this.onNotice('Nie udało się wczytać źródeł. Spróbuj ponownie przyciskiem Odśwież listę.', true); }
@@ -126,22 +152,37 @@ export class ResearchPanel {
 
     async refresh() {
         if (this.busy) { this.refreshQueued = true; return false; }
-        if (this.scope === null) return false;
+        if (this.scope === null) {
+            return false;
+        }
         const scope = this.scope;
         this.scope = null;
         await this.setScope(scope);
         return this.ready;
     }
 
+    /** After an AI reply: a web operation requested by the model opens the consent view like a manual search. */
+    async refreshAfterReply() {
+        const ready = await this.refresh();
+        if (ready && this.state.actions.some(action => action.status === 'pending')) {
+            this.onNotice('AI prosi o zgodę na operację WWW. Sprawdź dokładne zapytanie i wybierz Allow lub Deny.');
+        }
+        return ready;
+    }
+
     async run(operation, payload) {
-        if (this.busy || this.scope === null) return false;
+        if (this.busy || this.scope === null) {
+            return false;
+        }
         const scope = this.scope, version = this.version;
         this.busy = true;
         this.onBusy(true);
         this.render();
         try {
             const state = await this.api.research(operation, scope, payload);
-            if (version !== this.version) return false;
+            if (version !== this.version) {
+                return false;
+            }
             this.state = state;
             this.ready = true;
             return true;
@@ -157,26 +198,36 @@ export class ResearchPanel {
     }
 
     async beforeSend() {
-        if (!this.ready || this.busy) return false;
+        if (!this.ready || this.busy) {
+            return false;
+        }
         if (this.state.sources.some(source => source.page.status === 'unread')) {
             this.resume = true;
             if (!await this.run('prepare', {})) { this.resume = false; return false; }
         }
         const waiting = this.state.actions.some(action => ['pending', 'running'].includes(action.status));
-        if (waiting) this.onNotice('Wybierz Allow lub Deny przy oczekujących operacjach. Sam checkbox nie zezwala na pobranie strony.');
+        if (waiting) {
+            this.onNotice('Wybierz Allow lub Deny przy oczekujących operacjach. Sam checkbox nie zezwala na pobranie strony.');
+        }
         return !waiting;
     }
 
     async decide(action, allow) {
-        if (this.busy) return;
+        if (this.busy) {
+            return;
+        }
         this.onActivity(allow ? 'searching' : 'idle');
         const ok = await this.run('decide', { id: action.id, allow });
         this.onActivity(ok && allow ? this.state.actions.find(item => item.id === action.id)?.status === 'failed' ? 'error' : 'done' : 'idle');
-        if (!ok) return;
+        if (!ok) {
+            return;
+        }
         const failed = this.state.actions.find(item => item.id === action.id)?.status === 'failed';
         if (failed) {
             this.onNotice('Operacja WWW nie powiodła się. Sprawdź stan poniżej; ponowienie wymaga nowej zgody.', true);
-            if (action.request.kind !== 'fetch') return;
+            if (action.request.kind !== 'fetch') {
+                return;
+            }
         }
         const waiting = this.state.actions.some(item => ['pending', 'running'].includes(item.status));
         if (this.resume && !waiting) {
@@ -186,7 +237,9 @@ export class ResearchPanel {
             await this.onAgent(allow);
         } else if (allow && action.request.kind === 'search' && !failed) {
             this.onNotice(this.state.results.length ? 'Wyniki są domyślnie zaznaczone do limitu 20 źródeł. Odznacz niepotrzebne i kliknij „Kontynuuj z wybranymi stronami”.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
-        } else if (!allow) this.onNotice('Odmowa zapisana. Operacja WWW nie została wykonana.');
+        } else if (!allow) {
+            this.onNotice('Odmowa zapisana. Operacja WWW nie została wykonana.');
+        }
     }
 
     pendingFetches() {
@@ -195,24 +248,34 @@ export class ResearchPanel {
     }
 
     async fetchAll() {
-        if (this.busy || !this.bulkApproval) return;
+        if (this.busy || !this.bulkApproval) {
+            return;
+        }
         const approved = this.bulkApproval, version = this.version;
         this.bulkApproval = null;
         this.onActivity('searching');
         let failures = 0;
         for (const action of approved) {
-            if (version !== this.version) return;
-            if (!this.pendingFetches().some(item => item.id === action.id && item.request.url === action.request.url)) continue;
+            if (version !== this.version) {
+                return;
+            }
+            if (!this.pendingFetches().some(item => item.id === action.id && item.request.url === action.request.url)) {
+                continue;
+            }
             if (!await this.run('decide', { id: action.id, allow: true })) {
                 this.resume = false;
                 this.onActivity('error');
                 this.onNotice('Nie można potwierdzić stanu operacji. Odśwież listę przed kontynuacją.', true);
                 return;
             }
-            if (this.state.actions.find(item => item.id === action.id)?.status === 'failed') failures++;
+            if (this.state.actions.find(item => item.id === action.id)?.status === 'failed') {
+                failures++;
+            }
         }
         this.onActivity('done');
-        if (failures) this.onNotice(`Nie udało się pobrać ${failures} stron. Opracowanie może korzystać z pozostałych przeczytanych źródeł.`);
+        if (failures) {
+            this.onNotice(`Nie udało się pobrać ${failures} stron. Opracowanie może korzystać z pozostałych przeczytanych źródeł.`);
+        }
         if (this.resume && !this.state.actions.some(item => ['pending', 'running'].includes(item.status))) {
             this.resume = false;
             await this.onResume();
@@ -229,13 +292,19 @@ export class ResearchPanel {
         refresh.type = 'button'; refresh.disabled = this.busy || this.scope === null;
         refresh.addEventListener('click', () => this.refresh());
         this.body.append(refresh);
-        if (!this.ready) this.body.append(node('p', this.busy ? 'Wczytywanie źródeł…' : 'Zaloguj się, aby zbierać źródła.'));
+        if (!this.ready) {
+            this.body.append(node('p', this.busy ? 'Wczytywanie źródeł…' : 'Zaloguj się, aby zbierać źródła.'));
+        }
         if (this.state.sources.length) {
             const button = this.continueControl || node('button', this.continueLabel, 'btn btn-silver btn-sm');
             button.type = 'button';
-            if (!this.continueControl) button.addEventListener('click', () => this.continueWithSources());
+            if (!this.continueControl) {
+                button.addEventListener('click', () => this.continueWithSources());
+            }
             this.continueButton = button;
-            if (!this.continueControl) this.body.append(button);
+            if (!this.continueControl) {
+                this.body.append(button);
+            }
             this.body.append(node('p', 'Kliknięcie pobierze treść zaznaczonych stron i przekaże ją wybranemu dostawcy AI. Bez dodatkowego potwierdzania pobrań. Odznaczone strony zostaną pominięte.'));
             this.updateButton();
         }
@@ -262,8 +331,12 @@ export class ResearchPanel {
             this.state.results.forEach(source => this.body.append(this.resultNode(source)));
         }
         const earlierSources = this.state.sources.filter(source => !this.state.results.some(result => result.id === source.id));
-        if (earlierSources.length) this.body.append(node('h3', 'Źródła z wcześniejszych wyszukiwań'));
-        if (!this.state.sources.length) this.body.append(node('p', 'Nowe wyniki będą domyślnie zaznaczone. Wybór pozostaje na liście podczas kolejnych wyszukiwań.'));
+        if (earlierSources.length) {
+            this.body.append(node('h3', 'Źródła z wcześniejszych wyszukiwań'));
+        }
+        if (!this.state.sources.length) {
+            this.body.append(node('p', 'Nowe wyniki będą domyślnie zaznaczone. Wybór pozostaje na liście podczas kolejnych wyszukiwań.'));
+        }
         earlierSources.forEach(source => {
             const row = node('div', undefined, 'research-source');
             const link = node('a', source.title || source.url); link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
@@ -287,7 +360,9 @@ export class ResearchPanel {
         checkbox.addEventListener('change', () => this.run('select', { id: source.id, selected: checkbox.checked }));
         const text = node('span'); text.append(node('strong', source.title || source.url), node('small', source.url), node('span', source.snippet));
         const selected = this.state.sources.find(item => item.id === source.id);
-        if (selected) text.append(node('small', selected.page.status === 'loaded' ? 'Treść pobrana i zachowana' : selected.page.status === 'failed' ? withReason('Pobranie nie powiodło się', selected.page.reason) : 'Wybrane do opracowania'));
+        if (selected) {
+            text.append(node('small', selected.page.status === 'loaded' ? 'Treść pobrana i zachowana' : selected.page.status === 'failed' ? withReason('Pobranie nie powiodło się', selected.page.reason) : 'Wybrane do opracowania'));
+        }
         row.append(checkbox, text); return row;
     }
 }

@@ -35,7 +35,7 @@ final readonly class AiProviderRepository
             'SELECT id, name, providers_secret, description, url_id, docs_url_id FROM ai_providers WHERE deleted_at IS NULL ORDER BY name'
         )->fetchAll();
 
-        return array_map(static fn(array $row) => AiProvider::fromRow($row), $rows);
+        return array_map(static fn (array $row) => AiProvider::fromRow($row), $rows);
     }
 
     /**

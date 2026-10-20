@@ -21,7 +21,7 @@
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
-| E2E (opcjonalnie) | `npm run test:e2e` / `npm run test:local` | Playwright + osobny Mailpit na 18025/11025; szczegóły `docs/E2E.md` |
+| E2E (opcjonalnie) | `npm run test:e2e` / `npm run test:local` | Playwright + testowy Mailpit `mail-trap.dom`; szczegóły `docs/E2E.md` |
 | Build | brak | frontend to statyczne moduły ES w `public/ui`, bez bundlera |
 
 Sekrety (klucze dostawców, `USER_DATA_KEY`, `DB_HASH`, `MAIL_DSN`) trafiają do kontenera wyłącznie przez zmienne Compose → `docker/php-fpm-env.conf`. Nie wpisuj ich do `config/app.php` ani dokumentacji.
@@ -44,6 +44,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 |---|---|---|
 | Wejście aplikacji | `public/index.php`, `src/settings.php`, `src/dependencies.php`, `src/middleware.php` | konfiguracja, DI, sprawdzenie gotowości bazy (bez migracji), obsługa błędów |
 | Interfejs / API | `src/routes.php`, `src/Controller/*`, `src/Mapper/*`, `src/Middleware/AuthMiddleware.php` | cienkie kontrolery; walidacja wejścia w mapperach |
+| Obsługa błędów | `src/middleware.php`, `src/Exception/*` | kontroler: dane → mapper → DTO → serwis → odpowiedź, bez try/catch; serwisy i mappery rzucają wyjątki, jeden wspólny catch mapuje je na kody: walidacja 422, 401, 404, 405 (+`Allow`), 429, 403 (e-mail), AI 503 + `X-AI-Error`, `ServiceUnavailableException` 503, reszta 500 bez szczegółów |
 | Logika domenowa | `src/Service/*` | rozmowy, wybór modelu, generowanie odpowiedzi, badanie źródeł, konto |
 | Dane | `src/Repository/*`, `src/Infrastructure/Database/*`, `src/Infrastructure/DataProtection/*` | SQLite przez PDO, migracje idempotentne, szyfrowanie pól |
 | Integracje | `src/Infrastructure/AI/*`, `src/Infrastructure/Search/*`, `src/Infrastructure/Mail/*` | dostawcy AI, MCP, fetch stron, poczta |
@@ -79,7 +80,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 
 ## 6. Stałe operacyjne
 
-- **Porty:** aplikacja `8181` (Nginx), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182` + Mailpit `18025/11025`.
+- **Porty:** aplikacja `8181` (Nginx), MCP w sieci Docker `mcp-search:8000`, E2E `18181/18182`, poczta E2E `mail-trap.dom`.
 - **Limity / timeouty:**
   - logowanie: 5 nieudanych prób / 900 s osobno dla IP i e-maila (`LoginAttemptLimiter`); hasło min. 10 znaków;
   - obraz wejściowy: max 512 KiB po stronie serwera (`ChatImageValidator::MAX_BYTES`), przeglądarka skaluje do 1600 px; obraz generowany Gemini: max 8 MiB;

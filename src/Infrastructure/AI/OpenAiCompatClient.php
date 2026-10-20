@@ -51,7 +51,9 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
             'tools' => $tools, 'tool_choice' => $tools === [] ? 'none' : 'auto',
         ]));
         $message = $body['choices'][0]['message'] ?? null;
-        if (!is_array($message) || ($message['role'] ?? 'assistant') !== 'assistant') throw new AiConnectionException('invalid_response');
+        if (!is_array($message) || ($message['role'] ?? 'assistant') !== 'assistant') {
+            throw new AiConnectionException('invalid_response');
+        }
         return $message;
     }
 
@@ -59,9 +61,13 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
     {
         $message = $this->generateWithTools($messages, WebTools::compat(), $model);
         $call = $message['tool_calls'][0]['function'] ?? null;
-        if ($call !== null) return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['arguments'] ?? null));
+        if ($call !== null) {
+            return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['arguments'] ?? null));
+        }
         $text = $message['content'] ?? null;
-        if (!is_string($text) || trim($text) === '') throw new AiConnectionException('invalid_response');
+        if (!is_string($text) || trim($text) === '') {
+            throw new AiConnectionException('invalid_response');
+        }
         return new \App\Dto\AI\AiReply($text);
     }
 
@@ -80,9 +86,14 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
         return $body['data'];
     }
 
+    public function isConfigured(): bool
+    {
+        return trim($this->apiKey) !== '' && $this->apiKey !== 'no-token-set' && !str_starts_with($this->apiKey, 'encrypted:');
+    }
+
     private function request(string $method, string $path, ?array $payload = null): ResponseInterface
     {
-        if (trim($this->apiKey) === '' || $this->apiKey === 'no-token-set' || str_starts_with($this->apiKey, 'encrypted:')) {
+        if (!$this->isConfigured()) {
             throw new AiConnectionException('missing_configuration');
         }
         try {
@@ -123,7 +134,9 @@ final readonly class OpenAiCompatClient implements ToolCallingClientInterface, W
         } catch (\JsonException) {
             throw new AiConnectionException('invalid_response');
         }
-        if (!is_array($body)) throw new AiConnectionException('invalid_response');
+        if (!is_array($body)) {
+            throw new AiConnectionException('invalid_response');
+        }
         return $body;
     }
 

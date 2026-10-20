@@ -1,6 +1,9 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Tests;
+
 use App\Infrastructure\Search\PublicWebPageFetcher;
 use App\Infrastructure\Search\PublicWebUrl;
 use App\Infrastructure\Search\SearchException;
@@ -16,7 +19,9 @@ final class PublicWebPageFetcherTest extends TestCase
     public function testPublicAddressNormalizationAndSpecialRanges(): void
     {
         self::assertSame('https://example.org/page', PublicWebUrl::normalize('https://EXAMPLE.org:443/page#part'));
-        foreach (['127.0.0.1', '10.1.2.3', '172.16.1.1', '192.168.1.1', '169.254.169.254', '100.64.1.1', '198.18.0.1', '192.0.2.1', '224.0.0.1', '::1', '0.0.0.0'] as $ip) self::assertFalse(PublicWebUrl::publicIp($ip), $ip);
+        foreach (['127.0.0.1', '10.1.2.3', '172.16.1.1', '192.168.1.1', '169.254.169.254', '100.64.1.1', '198.18.0.1', '192.0.2.1', '224.0.0.1', '::1', '0.0.0.0'] as $ip) {
+            self::assertFalse(PublicWebUrl::publicIp($ip), $ip);
+        }
         self::assertTrue(PublicWebUrl::publicIp('93.184.216.34'));
     }
     public function testOnlyDefaultPortsAndUrlsWithoutCredentialsAreAccepted(): void
@@ -36,7 +41,7 @@ final class PublicWebPageFetcherTest extends TestCase
     }
     public function testDnsRebindingOrPrivateAddressIsBlockedBeforeHttp(): void
     {
-        $fetcher = new PublicWebPageFetcher(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), static fn() => ['93.184.216.34', '127.0.0.1']);
+        $fetcher = new PublicWebPageFetcher(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), static fn () => ['93.184.216.34', '127.0.0.1']);
         $this->expectException(SearchException::class);
         $fetcher->fetch('https://example.org/');
     }
@@ -45,7 +50,7 @@ final class PublicWebPageFetcherTest extends TestCase
         $history = [];
         $handler = HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'text/html; charset=UTF-8'], '<html><head><title>Title</title></head><body><script>untrustedScript()</script><p>Visible fixture</p><p>'.str_repeat('a', 17000).'</p></body></html>')]));
         $handler->push(Middleware::history($history));
-        $fetcher = new PublicWebPageFetcher(new Client(['handler' => $handler]), static fn() => ['93.184.216.34'], true);
+        $fetcher = new PublicWebPageFetcher(new Client(['handler' => $handler]), static fn () => ['93.184.216.34'], true);
         $result = $fetcher->fetch('https://example.org/page');
         self::assertTrue($result['truncated']);
         self::assertSame(16000, mb_strlen($result['text']));
@@ -67,9 +72,11 @@ final class PublicWebPageFetcherTest extends TestCase
             $handler = HandlerStack::create(new MockHandler([$response]));
             $handler->push(Middleware::history($history));
             try {
-                (new PublicWebPageFetcher(new Client(['handler' => $handler]), static fn() => ['93.184.216.34']))->fetch('https://example.org/');
+                (new PublicWebPageFetcher(new Client(['handler' => $handler]), static fn () => ['93.184.216.34']))->fetch('https://example.org/');
                 self::fail('Expected rejected page');
-            } catch (SearchException) { self::assertCount(1, $history); }
+            } catch (SearchException) {
+                self::assertCount(1, $history);
+            }
         }
     }
 
@@ -108,7 +115,7 @@ final class PublicWebPageFetcherTest extends TestCase
     }
     public function testUnsafeRedirectsStopBeforeRequestingTheTarget(): void
     {
-        $chain = static fn(string ...$locations): array => array_map(static fn(string $location): Response => new Response(302, ['Location' => $location]), $locations);
+        $chain = static fn (string ...$locations): array => array_map(static fn (string $location): Response => new Response(302, ['Location' => $location]), $locations);
         $cases = [
             'too_many_redirects' => [$chain('/1', '/2', '/3', '/4'), 4],
             'redirect_loop' => [$chain('/b', '/a'), 2],
@@ -120,7 +127,7 @@ final class PublicWebPageFetcherTest extends TestCase
             $history = [];
             $handler = HandlerStack::create(new MockHandler($responses));
             $handler->push(Middleware::history($history));
-            $resolve = static fn(string $host): array => [$host === 'intranet.example.com' ? '10.0.0.5' : '93.184.216.34'];
+            $resolve = static fn (string $host): array => [$host === 'intranet.example.com' ? '10.0.0.5' : '93.184.216.34'];
             try {
                 (new PublicWebPageFetcher(new Client(['handler' => $handler]), $resolve))->fetch('https://example.org/a');
                 self::fail('Expected failure: '.$expected);
@@ -148,7 +155,7 @@ final class PublicWebPageFetcherTest extends TestCase
         foreach ($cases as $expected => $response) {
             $client = new Client(['handler' => HandlerStack::create(new MockHandler([$response]))]);
             try {
-                (new PublicWebPageFetcher($client, static fn() => ['93.184.216.34']))->fetch('https://example.org/');
+                (new PublicWebPageFetcher($client, static fn () => ['93.184.216.34']))->fetch('https://example.org/');
                 self::fail('Expected failure: '.$expected);
             } catch (SearchException $error) {
                 self::assertSame($expected, $error->reason, $expected);
@@ -158,7 +165,7 @@ final class PublicWebPageFetcherTest extends TestCase
         }
         foreach (['dns_failed' => [], 'private_address' => ['10.0.0.8']] as $expected => $addresses) {
             try {
-                (new PublicWebPageFetcher(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), static fn() => $addresses))->fetch('https://example.org/');
+                (new PublicWebPageFetcher(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), static fn () => $addresses))->fetch('https://example.org/');
                 self::fail('Expected failure: '.$expected);
             } catch (SearchException $error) {
                 self::assertSame($expected, $error->reason);

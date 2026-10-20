@@ -17,7 +17,6 @@ use App\Infrastructure\AI\ProviderRegistry;
 use App\Infrastructure\AI\ProviderTransport;
 use App\Infrastructure\Database\MigrationRunner;
 use App\Repository\ChatRepository;
-use App\Service\ChatService;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
@@ -37,16 +36,28 @@ final class ProviderIntegrationTest extends TestCase
     {
         $handler = HandlerStack::create(new MockHandler($responses));
         $handler->push(Middleware::history($this->history));
-        return new ProviderTransport('https://api.openai.com/v1/', $key,
-            http: new Client(['base_uri' => 'https://api.openai.com/v1/', 'handler' => $handler]));
+        return new ProviderTransport(
+            'https://api.openai.com/v1/',
+            $key,
+            http: new Client(['base_uri' => 'https://api.openai.com/v1/', 'handler' => $handler])
+        );
     }
 
     private function legacy(): ChatModelRegistryInterface
     {
-        return new class implements ChatModelRegistryInterface {
-            public function listModels(): array { return []; }
-            public function resolve(string $selector): AiModel { throw new AiConnectionException('model_unavailable'); }
-            public function clientFor(AiModel $model): AiClientInterface { throw new AiConnectionException('missing_configuration'); }
+        return new class () implements ChatModelRegistryInterface {
+            public function listModels(): array
+            {
+                return [];
+            }
+            public function resolve(string $selector): AiModel
+            {
+                throw new AiConnectionException('model_unavailable');
+            }
+            public function clientFor(AiModel $model): AiClientInterface
+            {
+                throw new AiConnectionException('missing_configuration');
+            }
         };
     }
 
@@ -63,6 +74,34 @@ final class ProviderIntegrationTest extends TestCase
             ['type' => 'reasoning', 'summary' => []],
             ['type' => 'message', 'content' => [['type' => 'output_text', 'text' => $text]]],
         ]], JSON_THROW_ON_ERROR));
+    }
+
+    public function testConnectionsWithoutUsableKeyAreHiddenButExistingSelectorsStillResolve(): void
+    {
+        foreach (['', '   ', 'encrypted:fixture'] as $key) {
+            $registry = new ProviderRegistry($this->legacy(), [
+                'openai' => new OpenAiProvider($this->transport([$this->catalogue()], $key)),
+            ]);
+            self::assertSame([], $registry->connections());
+            try {
+                $registry->resolve('openai:gpt-6-astra');
+                self::fail('A provider without a key must not list models.');
+            } catch (AiConnectionException $error) {
+                self::assertSame('missing_configuration', $error->reason);
+            }
+        }
+        self::assertSame([], $this->history);
+        $configured = new ProviderRegistry($this->legacy(), ['openai' => new OpenAiProvider($this->transport([$this->catalogue()]))]);
+        self::assertSame('gpt-6-astra', $configured->resolve('openai:gpt-6-astra')->idModel);
+    }
+
+    public function testOvhConnectionIsListedOnlyWithToken(): void
+    {
+        foreach (['' => false, 'no-token-set' => false, 'encrypted:fixture' => false, 'fixture-token' => true] as $token => $listed) {
+            $catalog = new \App\Service\ModelCatalogService(new OvhAiClient('https://example.invalid/', (string)$token, 'fixture'), $this->legacy(), new \Psr\Log\NullLogger());
+            self::assertSame($listed, in_array('ovh', array_column($catalog->getConnections(), 'id'), true));
+            self::assertContains('zai', array_column($catalog->getConnections(), 'id'));
+        }
     }
 
     public function testOpenAiCatalogueAndMultimodalStatelessResponse(): void

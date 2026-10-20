@@ -36,16 +36,23 @@ final readonly class SodiumDataCipher implements DataCipherInterface
 
     public function decrypt(#[\SensitiveParameter] string $value, string $context): string
     {
-        if (!str_starts_with($value, self::PREFIX)) throw new DataProtectionException();
+        if (!str_starts_with($value, self::PREFIX)) {
+            throw new DataProtectionException();
+        }
         $bytes = base64_decode(substr($value, strlen(self::PREFIX)), true);
         $nonceLength = SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES;
         if ($bytes === false || strlen($bytes) < $nonceLength + SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_ABYTES) {
             throw new DataProtectionException();
         }
         $plaintext = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt(
-            substr($bytes, $nonceLength), self::PREFIX.$context, substr($bytes, 0, $nonceLength), $this->key,
+            substr($bytes, $nonceLength),
+            self::PREFIX.$context,
+            substr($bytes, 0, $nonceLength),
+            $this->key,
         );
-        if ($plaintext === false) throw new DataProtectionException();
+        if ($plaintext === false) {
+            throw new DataProtectionException();
+        }
         return $plaintext;
     }
 

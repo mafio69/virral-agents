@@ -45,8 +45,8 @@ class ChatServiceModelsTest extends TestCase
 
         // Create service dependencies
         $chatRepository = new \App\Repository\ChatRepository($this->pdo, ProtectedDataFixture::cipher($this->pdo));
-        
-        $catalogue = ['data' => array_map(static fn(string $id): array => ['id' => $id], [
+
+        $catalogue = ['data' => array_map(static fn (string $id): array => ['id' => $id], [
             'Qwen3.8-27B', 'Qwen3.6-27B', 'Qwen3.5-397B-A17B',
             'bge-m3', 'whisper-large-v3', 'Qwen3Guard-Gen-8B', 'stable-diffusion-xl',
         ])];
@@ -56,7 +56,10 @@ class ChatServiceModelsTest extends TestCase
             ])),
         ]);
         $ovhAiClient = new \App\Infrastructure\AI\OvhAiClient(
-            'https://example.invalid/v1', 'dummy-value', 'Qwen3.8-27B', httpClient: $httpClient,
+            'https://example.invalid/v1',
+            'dummy-value',
+            'Qwen3.8-27B',
+            httpClient: $httpClient,
         );
 
         $logger = $this->createMock(\Psr\Log\LoggerInterface::class);

@@ -21,8 +21,10 @@ final readonly class ModelCatalogService implements ModelCatalogInterface
 
     public function getConnections(): array
     {
+        $ovh = $this->ovhAiClient->isConfigured() ? [['id' => 'ovh', 'name' => 'OVH']] : [];
+        // Z.ai stays listed: besides ZAI_API_KEY it may use providers stored in the encrypted registry.
         return [
-            ['id' => 'ovh', 'name' => 'OVH'],
+            ...$ovh,
             ['id' => 'zai', 'name' => 'Z.ai / GLM'],
             ...($this->modelRegistry instanceof \App\Infrastructure\AI\MultiProviderRegistryInterface ? $this->modelRegistry->connections() : []),
         ];
@@ -30,7 +32,10 @@ final readonly class ModelCatalogService implements ModelCatalogInterface
 
     public function getAvailableModels(?string $connection = null): array
     {
-        if ($connection !== null && !in_array($connection, array_column($this->getConnections(), 'id'), true)) {
+        // Known connections without a key stay addressable, so old chats get missing_configuration, not "unknown".
+        $known = in_array($connection, ['ovh', 'zai'], true)
+            || ($this->modelRegistry instanceof \App\Infrastructure\AI\MultiProviderRegistryInterface && $this->modelRegistry->hasConnection((string)$connection));
+        if ($connection !== null && !$known) {
             throw new ValidationException('Nieznane połączenie AI.');
         }
         if ($connection !== null && $connection !== 'ovh') {

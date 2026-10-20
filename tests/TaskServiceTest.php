@@ -89,7 +89,7 @@ class TaskServiceTest extends TestCase
     public function testGetTaskById(): void
     {
         $created = $this->taskService->createTask(new CreateTaskInput($this->userId, 'Test Task', 'Desc', 'todo'));
-        
+
         $task = $this->taskService->getTaskById($created->id, $this->userId);
 
         $this->assertEquals($created->id, $task->id);
@@ -100,7 +100,7 @@ class TaskServiceTest extends TestCase
     {
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Task not found');
-        
+
         $this->taskService->getTaskById(999, $this->userId);
     }
 
@@ -117,14 +117,14 @@ class TaskServiceTest extends TestCase
         // Try to get task with different user
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Task not found');
-        
+
         $this->taskService->getTaskById($created->id, $otherUserId);
     }
 
     public function testUpdateTask(): void
     {
         $created = $this->taskService->createTask(new CreateTaskInput($this->userId, 'Original Title', 'Original Desc', 'todo'));
-        
+
         $updateInput = new UpdateTaskInput(
             taskId: $created->id,
             userId: $this->userId,
@@ -143,7 +143,7 @@ class TaskServiceTest extends TestCase
     public function testDeleteTask(): void
     {
         $created = $this->taskService->createTask(new CreateTaskInput($this->userId, 'Test Task', 'Desc', 'todo'));
-        
+
         $this->taskService->deleteTask($created->id, $this->userId);
 
         // Verify task is deleted
@@ -158,7 +158,7 @@ class TaskServiceTest extends TestCase
     {
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Task not found');
-        
+
         $this->taskService->deleteTask(999, $this->userId);
     }
 
@@ -175,7 +175,7 @@ class TaskServiceTest extends TestCase
         // Try to delete task with different user
         $this->expectException(NotFoundException::class);
         $this->expectExceptionMessage('Task not found');
-        
+
         $this->taskService->deleteTask($created->id, $otherUserId);
     }
 }

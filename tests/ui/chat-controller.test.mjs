@@ -151,7 +151,9 @@ test('uncertain delivery blocks another POST until the conversation is checked',
     const controller = new ChatController(fixture({
         sendMessage: async () => { sends++; throw new ChatApiError('Failure'); },
         getChat: async id => {
-            if (!canRead) throw new ChatApiError('Offline');
+            if (!canRead) {
+                throw new ChatApiError('Offline');
+            }
             return chat(id);
         },
     }));

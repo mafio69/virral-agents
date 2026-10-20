@@ -1,6 +1,9 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Tests;
+
 use App\Dto\AI\AiReply;
 use App\Infrastructure\AI\AnthropicProvider;
 use App\Infrastructure\AI\GeminiProvider;

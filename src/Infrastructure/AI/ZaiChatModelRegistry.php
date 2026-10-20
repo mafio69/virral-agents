@@ -23,7 +23,7 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
         $registered = $this->availableModels();
         if ($registered === [] || $this->environmentClient !== null) {
             $configured = $this->environmentClient !== null;
-            return array_map(static fn(array $entry): array => [
+            return array_map(static fn (array $entry): array => [
                 'id' => 'zai:'.$entry['id'],
                 'name' => 'Z.ai — '.$entry['id'],
                 'description' => $configured
@@ -36,14 +36,19 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
             ], $remote);
         }
         $connections = [];
-        foreach ($registered as $model) $connections[$model->providerId.':'.$model->endpointUrlId] = $model;
+        foreach ($registered as $model) {
+            $connections[$model->providerId.':'.$model->endpointUrlId] = $model;
+        }
         $result = [];
         foreach ($connections as $template) {
             foreach ($remote as $entry) {
                 $model = null;
                 foreach ($registered as $existing) {
                     if ($existing->providerId === $template->providerId && $existing->endpointUrlId === $template->endpointUrlId
-                        && $existing->idModel === $entry['id']) { $model = $existing; break; }
+                        && $existing->idModel === $entry['id']) {
+                        $model = $existing;
+                        break;
+                    }
                 }
                 // Only public metadata is added. Provider records and encrypted credentials are untouched.
                 $model ??= $this->models->findOrCreateDiscovered($template, $entry['id']);
@@ -82,7 +87,9 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
             throw new AiConnectionException('model_unavailable');
         }
         foreach ($this->availableModels() as $model) {
-            if (hash_equals($this->selector($model), $selector)) return $model;
+            if (hash_equals($this->selector($model), $selector)) {
+                return $model;
+            }
         }
         // Never move an existing conversation to another provider or replacement model.
         throw new AiConnectionException('model_unavailable');
@@ -107,7 +114,7 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
     {
         return array_values(array_filter(
             $this->models->findAvailableAtEndpoint(ZaiEndpointPolicy::BASE_URI),
-            static fn(AiModel $model): bool => (bool)preg_match('/^glm-[a-z0-9.-]+$/D', $model->idModel),
+            static fn (AiModel $model): bool => (bool)preg_match('/^glm-[a-z0-9.-]+$/D', $model->idModel),
         ));
     }
 

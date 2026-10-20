@@ -542,3 +542,62 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Nowy `./prod-start.sh` uruchamia prod; wywołuje `dev-start.sh prod`, więc logika startu jest jedna. Nie da się go przełączyć na dev.
 - Testy `tests/ui/dev-start.test.mjs` i dokumentacja (`README.md`, `REPO.md`, `docs/KONFIGURACJA.md`) zaktualizowane.
 - Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.
+
+## 2026-10-20 — README: cel repo, integracje i podłączanie dostawców
+
+- `README.md`: sekcje „Po co to repozytorium”, tabela integracji (dostawca → zmienna środowiska → dokumentacja), ogólna procedura podłączenia dostawcy, krok po kroku dla OpenRouter, sekcja dla agentów AI pracujących nad kodem; OpenRouter dopisany do listy funkcji czatu.
+- Walidacja: formatter 0/46, PHP 207/207 (1010 asercji), UI 85/85.
+
+## 2026-10-20 — Ukrycie połączeń AI bez klucza i poprawki obsługi błędów
+
+- `GET /api/ai-connections` pokazuje tylko połączenia z kluczem: `isConfigured()` w `ProviderTransport`, `OpenAiCompatClient`, `OvhAiClient` i dostawcach; filtr w `ProviderRegistry::connections()` i `ModelCatalogService::getConnections()`. Pusty klucz, `encrypted:…` i `no-token-set` (OVH) oznaczają brak konfiguracji. Z.ai zostaje zawsze (może używać rejestru w bazie).
+- Istniejące rozmowy otwierają się bez zmian; odpowiedź przez połączenie bez klucza daje 503 `missing_configuration`.
+- Zła metoda HTTP zwraca 405 z nagłówkiem `Allow` zamiast 500 i wpisu błędu w logu.
+- `/auth/me`: strażnik na brak użytkownika (401 zamiast pustego profilu); dziś nieosiągalne, bo sesję usuniętego użytkownika odrzuca już middleware.
+- Testy: `ProviderIntegrationTest` (ukrywanie połączeń, OVH tylko z tokenem), `AuthHttpTest` (405, sesja usuniętego użytkownika), `ProviderRoutingTest` zaktualizowany. README opisuje nowe zachowanie.
+- Walidacja: formatter 0/46, PHP 211/211 (1034 asercje), UI 85/85.
+
+## 2026-10-20 — Jednolity przepływ kontrolerów i obsługi błędów
+
+- Kontrolery bez własnych try/catch: dane → mapper → DTO → serwis → odpowiedź; wyjątki mapuje wspólny catch w `src/middleware.php`.
+- `GET /api/ai-models`: `ListModelsInputMapper` + `ListModelsInput`; usunięty lokalny try/catch, który zamieniał każdy błąd (także błąd kodu) na 503. Nieznane połączenie → 422 (było 400). Znane połączenie bez klucza → 503 `missing_configuration` zamiast „Nieznane połączenie AI.” (stare rozmowy dostają właściwy komunikat); `MultiProviderRegistryInterface::hasConnection()`.
+- `POST …/retry`: `RetryMessageInputMapper` + `RetryMessageInput`; `ChatService::retryMessage(RetryMessageInput)`.
+- `GET /api/auth/verify-email`: `VerifyEmailInputMapper` + `VerifyEmailInput`; `?token[]=…` dawało 500 (TypeError), teraz 422.
+- `GET /api/auth/me`: profil z `AuthService::currentUser()`; `AuthController` nie korzysta już z repozytorium.
+- `/api/research/*` bez skonfigurowanej usługi: nowy `ServiceUnavailableException` → 503 (było 422).
+- Testy: nowy `ChatControllerErrorTest`, `AuthHttpTest` (token weryfikacyjny), aktualizacja wywołań w `AuthServiceTest`, `ChatRetryTest`, `tests/browser/research-router.php`. `REPO.md` opisuje mapowanie wyjątków.
+- Walidacja: formatter 0/51, PHP 215/215 (1051 asercji), UI 85/85.
+
+## 2026-10-20 — Panel testowy: zakładki zmieniają adres
+
+- `resources/views/test-api.html`: zakładki Auth / Zadania / Czaty ustawiają `#auth`, `#tasks`, `#chats` w pasku adresu (wcześniej usuwały hash). Odświeżenie i link otwierają tę samą zakładkę, przycisk Wstecz wraca do poprzedniej.
+- Sprawdzone w przeglądarce: kliknięcia, Wstecz, wejście z `#tasks`. Walidacja: formatter 0/51, PHP 215/215, UI 85/85.
+
+## 2026-10-20 — Przewidywalna nawigacja: „Czat” prowadzi do czatu
+
+- Pulpit: „Czat AI” jest pierwszym kafelkiem; kafelki panelu programisty mają dopisek „(dev)” i prowadzą do `/test-api#auth` i `/test-api#tasks`.
+- Panel `/test-api`: zakładka „Czaty (test API)” zamiast „Czaty”; nowe linki „Pulpit” (`/`) i „Czat AI” (`/chat`).
+- Sprawdzone w przeglądarce (kolejność kafelków, linki panelu, przejście do `/chat`). Walidacja: formatter 0/51, PHP 215/215, UI 85/85.
+
+## 2026-10-20 — Okno zgody otwiera się, gdy o WWW prosi AI
+
+- `ResearchPanel::refreshAfterReply()`: po odpowiedzi w trybie badania (także po „Ponów”), gdy model poprosił o operację WWW, otwiera się okno źródeł z Allow/Deny — tak jak przy ręcznym wyszukaniu. Wcześniej panel tylko się odświeżał, a w czacie zostawał komunikat bez okna.
+- Test UI w `tests/ui/chat-research.test.mjs`; sprawdzone w przeglądarce na atrapie `tests/browser/research-router.php`. Walidacja: formatter 0/51, PHP 215/215, UI 86/86.
+- Uwaga: samo wyszukiwanie wymaga działającego serwera MCP `mcp-search` (osobny projekt); 2026-10-20 nie odpowiadał (`bin/check-mcp-search.php`).
+
+## 2026-10-20 — Wyszukiwarka MCP: adres z konfiguracji i token Bearer
+
+- Diagnoza: `http://szukaj.dom/mcp` działa, ale wymaga tokenu (401, `WWW-Authenticate: Bearer`); `mcp-search:8000` / `127.0.0.1:8890` nie odpowiadają. Aplikacja nie umiała wysłać tokenu, a Compose wymuszał adres `mcp-search`.
+- `MCP_SEARCH_URL` przekazywany z pliku środowiska (domyślnie jak dotąd), nowy `MCP_SEARCH_TOKEN` (Compose, `docker/php-fpm-env.conf`, `src/settings.php`); `McpSearchClient` wysyła `Authorization: Bearer` we wszystkich żądaniach.
+- 401/403 → nowy kod `unauthorized` z komunikatem „Sprawdź MCP_SEARCH_TOKEN” (czat, `/api/search/status`). `bin/check-mcp-search.php` wypisuje kod i etap błędu; token tylko z `export MCP_SEARCH_TOKEN`, nie z `.env`.
+- Testy w `McpSearchClientTest` (Bearer w każdym żądaniu, 401/403 bez wycieku tokenu). Dokumentacja: README, `docs/KONFIGURACJA.md`, `docs/MCP-USAGE.md`. Walidacja: formatter 0/51, PHP 217/217, UI 86/86.
+
+## 2026-10-21 — Gotowość do 1.0: uwagi z przeglądu wydania
+
+- Gałąź `fix/release-1.0-readiness` z `develop`, pięć commitów.
+- `0ac093e` (#62-495): nieoczekiwany wyjątek loguje miejsce (`plik:linia`), a dla PDO także SQLSTATE i kod sterownika; bez komunikatów, zapytań i danych. Jedyny ślad w logach to `PDOException` 2026-10-18 12:30:36 (tylko typ) — przyczyna niepotwierdzona, potrzebna próba na rzeczywistym modelu po deployu.
+- `3252616`: E2E przez zewnętrzny Mailpit `mail-trap.dom` (SMTP `:1025`, API `http://mail-trap.dom/api/v1`), nadpisywalne `E2E_SMTP_DSN` / `E2E_MAILBOX_URL`; test tylko czyta skrzynkę po unikalnym adresie. Pierwszy zielony przebieg E2E od usunięcia Mailpita: 4/4.
+- `baf9547`: formatter obejmuje całe `src/`, `bin/`, `tests/` i `public/index.php` (52 pliki przeformatowane, klamry + PSR-12).
+- `e2b51df`: klamry we wszystkich jednoinstrukcyjnych if/else w JS czatu, `landing.html` i `test-api.html` (137 miejsc); bez zmiany zachowania.
+- `dbe674c` (#62-503, część kodowa): `TRUSTED_PROXIES` (adresy/CIDR, domyślnie pusto) — za zaufanym proxy limit logowań liczy IP z `X-Forwarded-For` od prawej, bez możliwości podszycia się. Test na kontenerze produkcyjnym: dwóch klientów za jednym proxy blokowanych osobno. Opis w `docs/KONFIGURACJA.md`.
+- Walidacja: formatter 0/164, PHP 227/227 (1086 asercji), UI 86/86, E2E 4/4.

@@ -19,15 +19,13 @@ Szablon:
 
 ---
 
-## 2026-10-19 — #62-483 zamknięte, dokumentacja zaktualizowana
+## 2026-10-20 — OpenRouter, start dev/prod, ukryte połączenia, przepływ błędów
 
-- **Gałąź:** `develop`; lokalne commity `684fbf7`, `1fee123`, `733edb9` (+ commit dokumentacji) czekają na push właściciela.
-- **Kolejka:** DevBrain-Todo, lista „virralAI” (62). Zadania jako `#62-<id>` (480–508), nie numerem z tytułu. Rezerwacja `[CLAIMED]`, `done` po spełnieniu DoD. Zamknięte: 480–483, 505–508.
-- **Od czego zacząć:** #62-484 (tytuł i fragment ≤400 znaków zawsze w evidence, także przy `failed`/`denied`), potem kolejno do #62-493.
+- **Gałąź:** `develop` wypchnięty; nowsze od `982f1a8` commity czekają na PR do `master` i deploy właściciela (Optiplex).
+- **Kolejka:** DevBrain-Todo, lista „virralAI” (62), zadania jako `#62-<id>`. Zamknięte: 480–485, 505–510.
+- **Od czego zacząć:** potwierdzić z właścicielem wynik deployu (lista połączeń, OpenRouter, poczta), potem #62-486 (realistyczny User-Agent i Accept-Language w `config/app.php`).
 - **Pułapki:**
-  - Poza Git: `http/*` (`http-client.env.json` może zawierać tokeny — nie czytać, nie commitować), `artifacts/chat-retry-*.png`, `.junie/plans/`.
-  - 3 stare stashe `research-source-selection: paused …` do usunięcia przez właściciela (`git stash drop` zablokowany dla agenta).
-  - Zdalna gałąź `origin/codex/chat-retry-timeout` — usunięcie po stronie właściciela.
-  - E2E wymaga Mailpita uruchamianego przez właściciela (`sudo` z kluczem FIDO); po #62-483 nie powtarzane.
-  - Plik środowiska: nazwy zmiennych bez myślników (dotenv rzuca `InvalidFileException` → migrator nie startuje → 502).
-  - 6 starych zadań Multi-AI w DT (id 386–391) — decyzja właściciela.
+  - Poza Git: `http/*` (może zawierać tokeny — nie czytać), `artifacts/chat-retry-*.png`, `.php-cs-fixer.dist.php`, zmiana `.gitignore` właściciela — nie commitować bez prośby.
+  - Błąd składni `.env` → migrator pada → kontener app kończy się → Nginx „host not found in upstream app”; `dev-start.sh` to wykrywa.
+  - Zmiana kluczy w `.env` wymaga `--force-recreate app`; bez klucza połączenie znika z listy nowej rozmowy.
+  - `sudo` wymaga klucza FIDO — polecenia z sudo uruchamia właściciel w zwykłym terminalu.

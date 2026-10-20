@@ -23,6 +23,9 @@ return function (ContainerBuilder $containerBuilder) {
         \App\Controller\AuthController::class => \DI\autowire()->constructorParameter(
             'environment',
             \DI\factory(fn (ContainerInterface $c) => $c->get('settings')['environment'] ?? 'prod'),
+        )->constructorParameter('clientIp', \DI\get(\App\Http\ClientIpResolver::class)),
+        \App\Http\ClientIpResolver::class => fn (ContainerInterface $c) => new \App\Http\ClientIpResolver(
+            $c->get('settings')['trusted_proxies'] ?? [],
         ),
         \App\Service\ModelCatalogInterface::class => \DI\autowire(\App\Service\ModelCatalogService::class),
         \App\Infrastructure\DataProtection\DataCipherInterface::class => function (ContainerInterface $c) {

@@ -36,6 +36,10 @@ return function (ContainerBuilder $containerBuilder) {
     ];
     $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
     $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);
+    $trustedProxies = $sensitiveValue('TRUSTED_PROXIES');
+    if ($trustedProxies !== '') {
+        $settings['trusted_proxies'] = array_values(array_filter(array_map('trim', explode(',', $trustedProxies))));
+    }
 
     $containerBuilder->addDefinitions(['settings' => $settings]);
 };

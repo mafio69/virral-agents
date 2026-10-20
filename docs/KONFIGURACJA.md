@@ -77,6 +77,25 @@ stylu pozostają pod `/ui/theme.css`.
 Zmiana konfiguracji Compose/PHP-FPM wymaga odtworzenia kontenera przez operatora.
 Nie zmieniano plików środowiska ani działających kontenerów.
 
+## Limit logowań za reverse proxy (`TRUSTED_PROXIES`)
+
+Limit logowań (5 nieudanych prób / 15 minut) liczy się osobno dla adresu IP i dla e-maila.
+Bez konfiguracji IP to `REMOTE_ADDR`, czyli bezpośredni nadawca żądania. Jeśli przed
+aplikacją stoi reverse proxy (np. Nginx na hoście), wszyscy użytkownicy mają adres proxy:
+pięć pomyłek jednej osoby blokuje logowanie wszystkim na 15 minut.
+
+- `TRUSTED_PROXIES` — adresy lub zakresy CIDR proxy, po przecinku, np. `172.16.0.0/12`
+  albo dokładny adres bramy sieci Docker. Domyślnie pusto: nagłówek `X-Forwarded-For`
+  jest ignorowany, więc nikt nie podszyje się pod inne IP.
+- Gdy żądanie przychodzi od zaufanego proxy, aplikacja czyta `X-Forwarded-For` od prawej
+  i bierze pierwszy adres spoza listy. Proxy musi dopisywać ten nagłówek
+  (Nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
+- Zmiana wymaga `--force-recreate app`, jak każda zmienna środowiska.
+
+Sprawdzenie bez konfiguracji serwera: 6 błędnych logowań z telefonu (dane komórkowe),
+potem poprawne logowanie innym kontem z komputera. Blokada na komputerze oznacza, że
+`TRUSTED_PROXIES` trzeba ustawić.
+
 ## Poczta testowa (dev)
 
 Projekt nie uruchamia własnej skrzynki (Mailpit usunięty 2026-10-20). Poczta w dev

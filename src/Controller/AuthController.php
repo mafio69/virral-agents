@@ -21,6 +21,7 @@ final class AuthController
         private readonly AuthService $authService,
         private readonly \App\Http\SessionTokenResolver $sessionTokens,
         private readonly string $environment = 'prod',
+        private readonly \App\Http\ClientIpResolver $clientIp = new \App\Http\ClientIpResolver(),
     ) {
     }
 
@@ -41,8 +42,7 @@ final class AuthController
         $data = (array)$request->getParsedBody();
         $input = $this->loginInputMapper->map($data);
 
-        $clientIp = $request->getServerParams()['REMOTE_ADDR'] ?? '';
-        $result = $this->authService->login($input, is_string($clientIp) ? $clientIp : '');
+        $result = $this->authService->login($input, $this->clientIp->resolve($request));
 
         return JsonResponder::respond($response, [
             'token' => $result->token,

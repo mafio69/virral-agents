@@ -154,4 +154,41 @@ final class LoginAttemptLimiterTest extends TestCase
         $service->login(new \App\Dto\Auth\LoginInput('fixture@example.invalid', 'incorrect-fixture', false), '192.0.2.1');
     }
 
+    public function testClientsBehindTrustedProxyAreLimitedSeparately(): void
+    {
+        $builder = new \DI\ContainerBuilder();
+        (require __DIR__.'/../src/dependencies.php')($builder);
+        $builder->addDefinitions([
+            PDO::class => $this->pdo,
+            \App\Infrastructure\DataProtection\DataCipherInterface::class => ProtectedDataFixture::cipher($this->pdo),
+            \App\Infrastructure\Mail\MailService::class => $this->createMock(\App\Infrastructure\Mail\MailService::class),
+            \Psr\Log\LoggerInterface::class => new \Psr\Log\NullLogger(),
+            'settings' => ['app_url' => 'https://fixture.example.invalid', 'trusted_proxies' => ['172.18.0.1']],
+        ]);
+        $controller = $builder->build()->get(\App\Controller\AuthController::class);
+        $attempt = function (string $client, string $email) use ($controller): void {
+            $request = (new \Slim\Psr7\Factory\ServerRequestFactory())
+                ->createServerRequest('POST', 'http://fixture.example/api/auth/login', ['REMOTE_ADDR' => '172.18.0.1'])
+                ->withHeader('X-Forwarded-For', $client)
+                ->withParsedBody(['email' => $email, 'password' => 'incorrect-fixture']);
+            $controller->login($request, new \Slim\Psr7\Response());
+        };
+        for ($i = 0; $i < 5; ++$i) {
+            try {
+                $attempt('203.0.113.7', 'fixture-'.$i.'@example.invalid');
+                self::fail('Unknown account must be rejected');
+            } catch (\App\Exception\UnauthorizedException) {
+                // Five failures from one client behind the shared proxy.
+            }
+        }
+        try {
+            $attempt('203.0.113.8', 'other@example.invalid');
+            self::fail('Unknown account must be rejected');
+        } catch (\App\Exception\UnauthorizedException) {
+            // Another client behind the same proxy is not locked out.
+        }
+        $this->expectException(LoginRateLimitException::class);
+        $attempt('203.0.113.7', 'fixture-next@example.invalid');
+    }
+
 }

@@ -26,6 +26,7 @@ services:
       MCP_SEARCH_URL: ${MCP_SEARCH_URL:-http://mcp-search:8000/mcp}
       MCP_SEARCH_TOKEN: ${MCP_SEARCH_TOKEN:-}
       MAIL_DSN: ${MAIL_DSN:-}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       PHP_IDE_CONFIG: serverName=slim-ovh-ai
     networks:
       - default

@@ -591,3 +591,13 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `MCP_SEARCH_URL` przekazywany z pliku środowiska (domyślnie jak dotąd), nowy `MCP_SEARCH_TOKEN` (Compose, `docker/php-fpm-env.conf`, `src/settings.php`); `McpSearchClient` wysyła `Authorization: Bearer` we wszystkich żądaniach.
 - 401/403 → nowy kod `unauthorized` z komunikatem „Sprawdź MCP_SEARCH_TOKEN” (czat, `/api/search/status`). `bin/check-mcp-search.php` wypisuje kod i etap błędu; token tylko z `export MCP_SEARCH_TOKEN`, nie z `.env`.
 - Testy w `McpSearchClientTest` (Bearer w każdym żądaniu, 401/403 bez wycieku tokenu). Dokumentacja: README, `docs/KONFIGURACJA.md`, `docs/MCP-USAGE.md`. Walidacja: formatter 0/51, PHP 217/217, UI 86/86.
+
+## 2026-10-21 — Gotowość do 1.0: uwagi z przeglądu wydania
+
+- Gałąź `fix/release-1.0-readiness` z `develop`, pięć commitów.
+- `0ac093e` (#62-495): nieoczekiwany wyjątek loguje miejsce (`plik:linia`), a dla PDO także SQLSTATE i kod sterownika; bez komunikatów, zapytań i danych. Jedyny ślad w logach to `PDOException` 2026-10-18 12:30:36 (tylko typ) — przyczyna niepotwierdzona, potrzebna próba na rzeczywistym modelu po deployu.
+- `3252616`: E2E przez zewnętrzny Mailpit `mail-trap.dom` (SMTP `:1025`, API `http://mail-trap.dom/api/v1`), nadpisywalne `E2E_SMTP_DSN` / `E2E_MAILBOX_URL`; test tylko czyta skrzynkę po unikalnym adresie. Pierwszy zielony przebieg E2E od usunięcia Mailpita: 4/4.
+- `baf9547`: formatter obejmuje całe `src/`, `bin/`, `tests/` i `public/index.php` (52 pliki przeformatowane, klamry + PSR-12).
+- `e2b51df`: klamry we wszystkich jednoinstrukcyjnych if/else w JS czatu, `landing.html` i `test-api.html` (137 miejsc); bez zmiany zachowania.
+- `dbe674c` (#62-503, część kodowa): `TRUSTED_PROXIES` (adresy/CIDR, domyślnie pusto) — za zaufanym proxy limit logowań liczy IP z `X-Forwarded-For` od prawej, bez możliwości podszycia się. Test na kontenerze produkcyjnym: dwóch klientów za jednym proxy blokowanych osobno. Opis w `docs/KONFIGURACJA.md`.
+- Walidacja: formatter 0/164, PHP 227/227 (1086 asercji), UI 86/86, E2E 4/4.

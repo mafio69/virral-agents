@@ -19,13 +19,14 @@ Szablon:
 
 ---
 
-## 2026-10-20 — OpenRouter, start dev/prod, ukryte połączenia, przepływ błędów
+## 2026-10-21 — Uwagi z przeglądu wydania 1.0
 
-- **Gałąź:** `develop` wypchnięty; nowsze od `982f1a8` commity czekają na PR do `master` i deploy właściciela (Optiplex).
-- **Kolejka:** DevBrain-Todo, lista „virralAI” (62), zadania jako `#62-<id>`. Zamknięte: 480–485, 505–510.
-- **Od czego zacząć:** potwierdzić z właścicielem wynik deployu (lista połączeń, OpenRouter, poczta), potem #62-486 (realistyczny User-Agent i Accept-Language w `config/app.php`).
+- **Gałąź:** `fix/release-1.0-readiness` scalona do `develop`; nowsze od `982f1a8` commity czekają na PR do `master` i deploy właściciela (Optiplex).
+- **Kolejka:** DevBrain-Todo, lista „virralAI” (62). #62-495 i #62-503 otwarte — czekają na sprawdzenie na produkcji (lista w `STATUS.md`).
+- **Od czego zacząć:** wynik deployu od właściciela; po zielonych sprawdzeniach tag `v1.0.0`. Potem #62-486.
 - **Pułapki:**
-  - Poza Git: `http/*` (może zawierać tokeny — nie czytać), `artifacts/chat-retry-*.png`, `.php-cs-fixer.dist.php`, zmiana `.gitignore` właściciela — nie commitować bez prośby.
-  - Błąd składni `.env` → migrator pada → kontener app kończy się → Nginx „host not found in upstream app”; `dev-start.sh` to wykrywa.
-  - Zmiana kluczy w `.env` wymaga `--force-recreate app`; bez klucza połączenie znika z listy nowej rozmowy.
+  - Poza Git: `http/*` (może zawierać tokeny — nie czytać), `artifacts/chat-retry-*.png`, `.php-cs-fixer.dist.php`, `bin/check-env-syntax.php`, zmiana `.gitignore` właściciela — nie commitować bez prośby.
+  - Formatter obejmuje teraz `bin/` — nowy plik w `bin/` musi być zgodny z PSR-12, inaczej `check-all` jest czerwone.
+  - E2E wysyła pocztę do `mail-trap.dom:1025` (wspólna skrzynka testowa), API `http://mail-trap.dom`.
+  - Opisy poleceń Bash i wyjaśnienia przed nimi — po polsku.
   - `sudo` wymaga klucza FIDO — polecenia z sudo uruchamia właściciel w zwykłym terminalu.

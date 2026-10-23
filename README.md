@@ -155,7 +155,7 @@ src/
   Service/         Auth, Chat, ChatReplyGenerator, Research*, ModelCatalog, LoginAttemptLimiter, Task
   Repository/      dostęp do SQLite przez ProtectedStore (szyfrowanie pól)
   Infrastructure/  AI (dostawcy), Search (MCP, fetch stron), DataProtection, Database, Mail, Http, Secrets
-bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php
+bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php, restoreDevPass.sh (dev: docs/DEV-ADMIN.md)
 config/app.php     jawne ustawienia (bez sekretów)
 docker/            Dockerfile, nginx, php-fpm-env.conf, start-app.sh
 tests/             PHPUnit, ui/ (node:test), e2e/ (Playwright), browser/ (routery atrap)

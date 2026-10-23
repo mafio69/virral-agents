@@ -1,44 +1,96 @@
-# GIT-FLOW.md — zasady pracy Git
+#mariusz/latitude
+# Preambuła – zasady współpracy
+
+## Role
+- Jestem zleceniodawcą. Wynająłem Cię od dostawcy na określony czas, więc jesteś wykonawcą, a nie stałym pracownikiem.
+- Rozmawiamy partnersko. Płacę za Twój czas, dlatego ostateczna decyzja należy do mnie.
+- Ty jesteś koderem. Trzymamy się swoich ról.
+
+## Sprzeciw i uwagi
+- Jeśli uznasz, że moja decyzja szkodzi projektowi, musisz mi o tym powiedzieć. To Twój obowiązek.
+- Masz pomysł na usprawnienie, inną mechanikę, bibliotekę lub rozwiązanie? Zgłoś go. Jestem otwarty na uwagi.
+- Po zgłoszeniu uwagi decyzja nadal należy do mnie.
+
+## Uczciwość i błędy
+- Mów wprost, gdy czegoś nie wiesz. Nie zgaduj i nie udawaj pewności.
+- Mów wprost, gdy popełnisz błąd. Nie rób z tego rytuału ani nie przepraszaj na siłę.
+- Ja też mogę czegoś nie wiedzieć albo popełnić błąd. To normalna część pracy i nie szkodzi, dopóki wyciągamy z niej wnioski.
+- Szukamy przyczyny błędu tylko po to, żeby rozwiązać problem i nie powtórzyć go w przyszłości. Nie szukamy winnych.
+- Gdy polecenie jest niejasne lub niekompletne, zapytaj przed działaniem. Nie zgaduj zakresu.
 
 ## Złota zasada
-
-Przed każdym commitem pełny zestaw testów wymagany przez repozytorium musi być zielony. Czerwone testy, linting, typecheck lub skaner bezpieczeństwa blokują commit.
+- Przed każdym commitem pełny zestaw testów wymagany przez repozytorium musi być zielony.
+- Czerwone testy, linting, typecheck lub skaner bezpieczeństwa blokują commit.
+- Jeśli czerwone jest coś niezwiązanego z zadaniem, zgłoś to mnie. Nie omijaj i nie wyłączaj kontroli.
+- Nie używaj --no-verify ani innych sposobów pomijania hooków.
 
 ## Start zadania
-
-1. Przeczytaj: `README.md`, `STATUS.md`, `GIT-FLOW.md`, `AGENTS.md`, `HANDOFF.md`.
-2. Zwykłe zadanie wykonuj na nowym branchu utworzonym z aktualnego `origin/develop`, potem scalasz i `push` tylko z `branch-a develop`!
-3. Praca bezpośrednio na `develop` jest dozwolona wyłącznie po wyraźnej zgodzie Mariusza albo dla zadania oznaczonego przez niego jako `fire`.
-4. Nie pracuj bezpośrednio na `master`.
+- Przeczytaj: README.md, STATUS.md, GIT-FLOW.md, AGENTS.md, HANDOFF.md.
+- Zwykłe zadanie wykonuj na nowym branchu utworzonym z aktualnego origin/develop.
+- Nie pracuj bezpośrednio na master ani develop.
+- Wyjątki dla develop: moja wyraźna zgoda albo zadanie oznaczone przeze mnie jako fire.
 
 ## W trakcie zadania
-
-1. Wykonuj tylko zakres zlecony przez Mariusza.
-2. Nie dodawaj zależności, nie aktualizuj pakietów i nie refaktoryzuj pobocznych elementów bez zgody.
-3. Nie odczytuj ani nie modyfikuj sekretów oraz nie analizuj dotenvx i skryptów środowiska — obowiązuje `AGENTS.md`.
-4. Testy i kontrole jakości uruchamiaj poleceniami opisanymi w `README.md` i `REPO.md`, zgodnie z zasadami `AGENTS.md`.
+- Wykonuj tylko zakres zlecony przez Mariusza.
+- Nie dodawaj zależności, nie aktualizuj pakietów i nie refaktoryzuj pobocznych elementów bez zgody.
+- Nie odczytuj ani nie modyfikuj sekretów. Nie analizuj dxrun, dotenvx ani skryptów środowiska. Obowiązuje AGENTS.md.
+- Testy i kontrole jakości uruchamiaj przez dxrun, jeśli polecenie wymaga środowiska.
+- Zauważysz problem poza zakresem? Zgłoś go w raporcie, nie naprawiaj na własną rękę.
 
 ## Commit
+- Commit wymaga mojej wyraźnej zgody, chyba że wprost napiszę, że w danym zadaniu agent commituje sam.
+- Nie zmieniaj git config user.name ani git config user.email.
+- Nie cofaj zmian przez git restore, git checkout --, git reset --hard, git clean -f ani podobne mechanizmy bez mojej zgody.
+- Nie commituj sekretów, plików .env ani kluczy.
 
-1. Przed commitem uruchom wymagane testy.
-2. Nie commituj przy błędach.
-3. Commit nie wymaga wyraźnej zgody Mariusza, o ile nie powie inaczej.
-4. Nie zmieniaj `git config user.name` ani `git config user.email`.
-5. Nie przywracaj plików bezpieczeństwa przez `git restore`, `git checkout --`, `git reset --hard` ani podobne mechanizmy.
-6. Podpisuj się pod commit wzór `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
-7. Po commit z końcem zadania robisz scalanie lokalnego branch do develop. Po udanym push usuwasz branch lokalny
+## Push, master, deploy
+- git push wymaga osobnej, wyraźnej zgody Mariusza w bieżącej rozmowie.
+- Nie używaj force push.
+- master przyjmuje zmiany wyłącznie przez PR z zielonymi wymaganymi kontrolami.
+- Deploy wymaga osobnej zgody Mariusza.
+- Po udanym wdrożeniu gałąź zadaniową można usunąć wyłącznie za zgodą.
 
-## Push i master
+## Koniec zadania
+- Podaj krótki raport: co zmieniono, jakie testy uruchomiono i z jakim wynikiem, co zostało otwarte.
+- Jeśli pliki istnieją i zmiana tego wymaga, zaktualizuj kolejno:
+1. HANDOFF.md – krótka pałeczka dla następnej sesji.
+2. CHANGELOG.md – trwała historia, append-only.
+3. STATUS.md – aktualny stan i następny priorytet.
 
-1. `git push` wymaga osobnej, wyraźnej zgody Mariusza w bieżącej rozmowie.
-2. PUSH tylko develop żadnych innych branchy nie robimy push
-3 `master` przyjmuje zmiany wyłącznie przez PR z zielonymi wymaganymi kontrolami i tylko na github się wykonuje.
-4  Deploy wymaga osobnej zgody Mariusza.
+## Diagram przepływu pracy
 
-## Dokumentacja po zadaniu
-
-Jeżeli istnieją i zmiana tego wymaga, aktualizuj kolejno:
-
-1. `HANDOFF.md` — krótka pałeczka dla następnej sesji.
-2. `CHANGELOG.md` — trwała historia, append-only.
-3. `STATUS.md` — aktualny stan i następny priorytet.
+```mermaid
+flowchart TD
+    A([Start zadania]) --> B[Przeczytaj README, STATUS, GIT-FLOW, AGENTS, HANDOFF]
+    B --> C{Zadanie fire lub zgoda na develop?}
+    C -- Nie --> D[Nowy branch z origin/develop]
+    C -- Tak --> E[Praca na develop]
+    D --> F[Praca w zleconym zakresie]
+    E --> F
+    F --> G{Problem poza zakresem?}
+    G -- Tak --> H[Zgłoś w raporcie, nie naprawiaj]
+    G -- Nie --> I
+    H --> I[Testy, lint, typecheck, skaner przez dxrun]
+    I --> J{Wszystko zielone?}
+    J -- Nie --> K[Napraw lub zgłoś Mariuszowi]
+    K --> I
+    J -- Tak --> L{Zgoda Mariusza na commit?}
+    L -- Nie --> M[Czekaj na zgodę]
+    M --> L
+    L -- Tak --> N[Commit]
+    N --> O{Zgoda na push?}
+    O -- Nie --> P[Czekaj na zgodę]
+    P --> O
+    O -- Tak --> Q[git push bez force]
+    Q --> R[PR do master z zielonymi kontrolami]
+    R --> S{Zgoda na deploy?}
+    S -- Tak --> T[Deploy]
+    S -- Nie --> U[Czekaj na zgodę]
+    U --> S
+    T --> V{Zgoda na usunięcie brancha?}
+    V -- Tak --> W[Usuń branch zadaniowy]
+    V -- Nie --> X[Zostaw branch]
+    W --> Y
+    X --> Y[Dokumentacja: HANDOFF, CHANGELOG, STATUS]
+    Y --> Z([Raport końcowy])
+```

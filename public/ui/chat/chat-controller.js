@@ -289,6 +289,34 @@ export class ChatController {
         return last?.role === 'user' && last.reply_status === 'failed' ? last.id : null;
     }
 
+    lastUserMessage() {
+        return this.state.messages.filter(message => message.role === 'user').at(-1) || null;
+    }
+
+    /** Answers the latest question again with current research evidence; no new user message is sent. */
+    async continueReply() {
+        const target = this.lastUserMessage();
+        if (!target || !this.state.activeChat || this.state.busy || this.state.loading
+            || this.state.deliveryUncertain || this.state.authenticated !== true) {
+            return false;
+        }
+        this.update({ busy: true, error: '', notice: '', retryMessageId: null, searchActivity: 'searching' });
+        try {
+            const reply = await this.api.continueMessage(this.state.activeChat.id, target.id);
+            this.update({ messages: [...this.state.messages, reply], searchActivity: 'done' });
+            return true;
+        } catch (error) {
+            this.update({
+                searchActivity: 'idle',
+                authenticated: error.status === 401 ? false : this.state.authenticated,
+                error: error.status === 401 ? '' : aiFailureMessage(error) || 'Nie udało się kontynuować odpowiedzi.' + deliveryFailureDetail(error),
+            });
+            return false;
+        } finally {
+            this.update({ busy: false });
+        }
+    }
+
     async retryReply() {
         const id = this.state.retryMessageId;
         if (!id || this.state.busy || this.state.loading || this.state.deliveryUncertain || this.state.authenticated !== true) {

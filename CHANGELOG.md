@@ -609,3 +609,11 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Nowe testy: `SettingsSearchEnvTest` (token z `MCP_AUTH_TOKEN` trafia do ustawień; stara nazwa jest ignorowana) i `EnvNamesConsistencyTest` (nazwy env identyczne w settings/php-fpm-env/Compose; `MCP_AUTH_TOKEN` obecna w całej ścieżce) — wykrywają dryf nazw, który spowodował tę awarię.
 - Do wykonania przez właściciela: `MCP_AUTH_TOKEN` w `.env`, `sudo docker compose up -d --force-recreate app`; rzeczywiste wyszukiwanie na serwerze szukaj do potwierdzenia po odtworzeniu.
 - Walidacja: composer check-all — formatter 0/167, PHP 232/232 (1100 asercji), UI 86/86.
+
+## 2026-10-24 — automatyczna kontynuacja odpowiedzi i kind wiadomości
+
+- Zgoda Allow na operację WWW zaproponowaną przez AI (search lub fetch, także Deny) natychmiast generuje odpowiedź na ostatnie pytanie przez nowy endpoint `POST /api/chats/{id}/messages/{messageId}/continue`; bez zapisywania sztucznej wiadomości „Kontynuuj poprzednie zadanie…". Przycisk Kontynuuj robi to samo, gdy w rozmowie jest pytanie; fallback z draftem pozostaje tylko przy braku pytania (wyszukiwanie zawczasu).
+- `chat_messages.kind` (`message`/`approval_request`/`continuation`, migracja idempotentna): prośby AI o zgodę zapisują się jako `approval_request` i renderują jako wydzielone chipy zamiast bąbli czatu; mechaniczne wiadomości asystenta nie trafiają do kontekstu modelu (`historyForModel`), instrukcje użytkownika zawsze.
+- Karty zgody w panelu źródeł skrócone do jednej linii opisu (bez ściany tekstu); komunikaty panelu i przycisku Kontynuuj skrócone.
+- Testy: `ResearchContinueTest` (continue bez nowej wiadomości użytkownika, czysty kontekst, walidacje ostatniego pytania/właściciela, instrukcja kontynuacji w kontekście) i UI (auto-odpowiedź po Allow/Deny operacji AI, brak auto-odpowiedzi przy ręcznym wyszukiwaniu).
+- Walidacja: composer check-all — formatter 0/168, PHP 236/236 (1119 asercji), UI 89/89; E2E 4/4.

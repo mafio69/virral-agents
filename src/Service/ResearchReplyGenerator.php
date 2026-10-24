@@ -25,8 +25,8 @@ final readonly class ResearchReplyGenerator implements ResearchReplyGeneratorInt
         if ($reply->webRequest !== null) {
             $state = $this->research->propose($userId, $chatId, $reply->webRequest, 'ai');
             $pending = array_filter($state['actions'], static fn (array $action): bool => $action['status'] === 'pending');
-            return new AiReply($pending !== [] ? 'Potrzebuję zgody na operację WWW. Dokładne zapytanie lub adres znajdziesz w panelu źródeł — wybierz Allow lub Deny.'
-                : 'Ta operacja WWW została wcześniej odrzucona. Nie wykonuję jej ponownie bez nowej prośby użytkownika.', search: ['status' => 'approval_required']);
+            return new AiReply($pending !== [] ? 'AI prosi o zgodę na operację WWW — panel źródeł.'
+                : 'AI powtórzyło odrzuconą operację WWW; nie wykonano jej.', search: ['status' => 'approval_required'], kind: 'approval_request');
         }
         $links = [];
         foreach ($evidence['sources'] as $source) {

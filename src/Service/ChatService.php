@@ -141,17 +141,7 @@ final readonly class ChatService
             $input = new AddChatMessageInput($input->chatId, $input->userId, $input->content, $images, research: $research);
             array_pop($history);
         }
-        $messageHistory = [];
-        foreach ($history as $msg) {
-            $messageHistory[] = [
-                'role' => $msg['role'],
-                // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
-                'content' => match (true) {
-                    $msg['role'] === 'assistant' && !empty($msg['images']) => $msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.',
-                    default => $this->modelContent($msg['content'], $msg['images'] ?? []),
-                },
-            ];
-        }
+        $messageHistory = $this->historyForModel($history);
 
         // Add user message to history for AI
         $messageHistory[] = [
@@ -164,6 +154,7 @@ final readonly class ChatService
             'user',
             $input->content,
             $images,
+            $input->kind,
         );
 
         $userMessage = [
@@ -171,6 +162,7 @@ final readonly class ChatService
             'chat_id' => $input->chatId,
             'role' => 'user',
             'content' => $input->content,
+            'kind' => $input->kind,
             'created_at' => $retrySource['created_at'] ?? date('Y-m-d H:i:s'),
         ];
 
@@ -186,7 +178,7 @@ final readonly class ChatService
             $reply = $input->research ? $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId)
                 : $this->replyGenerator->generate($client, $messageHistory, $apiModel, $input->search);
             $aiContent = $reply->text;
-            $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $aiContent, $reply->images);
+            $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $aiContent, $reply->images, $reply->kind);
             $this->chatRepository->finishReply($userMessageId, true);
         } catch (\Throwable $e) {
             $this->chatRepository->finishReply($userMessageId, false);
@@ -199,6 +191,7 @@ final readonly class ChatService
             'chat_id' => $input->chatId,
             'role' => 'assistant',
             'content' => $aiContent,
+            'kind' => $reply->kind,
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
@@ -215,6 +208,84 @@ final readonly class ChatService
     public function retryMessage(\App\Dto\Chat\RetryMessageInput $input): array
     {
         return $this->addMessage(new AddChatMessageInput($input->chatId, $input->userId, ''), $input->messageId);
+    }
+
+    /** Answers the latest real question again with the current research evidence; no new user message is saved. */
+    public function continueMessage(\App\Dto\Chat\RetryMessageInput $input): array
+    {
+        $chat = $this->chatRepository->findById($input->chatId);
+
+        if (!$chat) {
+            throw new NotFoundException('Chat not found');
+        }
+
+        if ((int)$chat['user_id'] !== $input->userId) {
+            throw new NotFoundException('Chat not found');
+        }
+
+        $history = $this->chatRepository->findMessagesByChatId($input->chatId);
+        $targetIndex = null;
+        foreach ($history as $index => $message) {
+            if ($message['role'] !== 'user') {
+                continue;
+            }
+            $targetIndex = (int)$message['id'] === $input->messageId ? $index : null;
+        }
+        if ($targetIndex === null) {
+            throw new ValidationException('Kontynuować można wyłącznie ostatnie pytanie.');
+        }
+
+        $selector = $this->resolveModel($chat['model'] ?? null);
+        $registered = $this->usesRegistry($selector) ? $this->modelRegistry->resolve($selector) : null;
+        $client = $registered !== null ? $this->modelRegistry->clientFor($registered) : $this->ovhAiClient;
+        $apiModel = $registered?->idModel ?? $selector;
+        $this->research->evidence($input->userId, $input->chatId);
+        $messageHistory = $this->historyForModel(array_slice($history, 0, $targetIndex + 1));
+
+        try {
+            $reply = $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId);
+            $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
+        } catch (\Throwable $e) {
+            $this->logger->error('AI continue failed', ['chat_id' => $input->chatId, 'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error']);
+            throw $e;
+        }
+
+        $assistantMessage = [
+            'id' => $aiMessageId,
+            'chat_id' => $input->chatId,
+            'role' => 'assistant',
+            'content' => $reply->text,
+            'kind' => $reply->kind,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+        if ($reply->images !== []) {
+            $assistantMessage['images'] = $reply->images;
+        }
+        if ($reply->search !== null) {
+            $assistantMessage['search'] = $reply->search;
+        }
+        return $assistantMessage;
+    }
+
+    /** @param list<array{id: int, role: string, content: string, kind?: string, images?: list<string>}> $messages */
+    private function historyForModel(array $messages): array
+    {
+        $history = [];
+        foreach ($messages as $msg) {
+            // Mechanical assistant notices never reach the model; user instructions always do.
+            if ($msg['role'] === 'assistant' && ($msg['kind'] ?? 'message') !== 'message') {
+                continue;
+            }
+            $history[] = [
+                'role' => $msg['role'],
+                // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
+                'content' => match (true) {
+                    $msg['role'] === 'assistant' && !empty($msg['images']) => $msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.',
+                    default => $this->modelContent($msg['content'], $msg['images'] ?? []),
+                },
+            ];
+        }
+        return $history;
     }
 
     private function resolveModel(?string $model): string

@@ -346,6 +346,48 @@ test('a web operation requested by AI in a reply opens the consent view once', a
     pending = true;
     assert.equal(await panel.refreshAfterReply(), true);
     assert.equal(notices.length, 1);
-    assert.match(notices[0][0], /Allow lub Deny/);
+    assert.match(notices[0][0], /panelu źródeł/);
     assert.equal(notices[0][1], false);
+});
+
+test('an allowed AI search answers the pending question automatically', async () => {
+    const action = { id: 'ai-1', request: { kind: 'search', query: 'Public query' }, origin: 'ai', status: 'pending' };
+    let agents = 0;
+    const notices = [];
+    const panel = fixture({ research: async operation => state([], operation === 'state' ? [action] : []) }, {
+        onAgent: () => { agents++; },
+        onNotice: (...args) => notices.push(args),
+    });
+    await panel.setScope(0);
+    await panel.decide(action, true);
+    assert.equal(agents, 1);
+    assert.equal(notices.length, 0);
+});
+
+test('a denied AI operation also answers automatically', async () => {
+    const action = { id: 'ai-1', request: { kind: 'search', query: 'Public query' }, origin: 'ai', status: 'pending' };
+    const seen = [];
+    const panel = fixture({ research: async operation => state([], operation === 'state' ? [action] : [{ ...action, status: 'denied' }]) }, {
+        onAgent: allow => { seen.push(allow); },
+    });
+    await panel.setScope(0);
+    await panel.decide(action, false);
+    assert.deepEqual(seen, [false]);
+});
+
+test('a manual search allow never dispatches an automatic answer', async () => {
+    const action = { id: 'u-1', request: { kind: 'search', query: 'Public query' }, origin: 'user', status: 'pending' };
+    let agents = 0;
+    const notices = [];
+    const panel = fixture({ research: async operation => ({
+        ...state([], operation === 'state' ? [action] : [{ ...action, status: 'done' }]),
+        results: operation === 'state' ? [] : [{ id: 'r1', url: 'https://example.org/r1', title: 'R1', snippet: '' }],
+    }) }, {
+        onAgent: () => { agents++; },
+        onNotice: (...args) => notices.push(args),
+    });
+    await panel.setScope(0);
+    await panel.decide(action, true);
+    assert.equal(agents, 0);
+    assert.match(notices.at(-1)[0], /Wyniki zaznaczone domyślnie/);
 });

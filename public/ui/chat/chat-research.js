@@ -165,7 +165,7 @@ export class ResearchPanel {
     async refreshAfterReply() {
         const ready = await this.refresh();
         if (ready && this.state.actions.some(action => action.status === 'pending')) {
-            this.onNotice('AI prosi o zgodę na operację WWW. Sprawdź dokładne zapytanie i wybierz Allow lub Deny.');
+            this.onNotice('AI prosi o zgodę — szczegóły w panelu źródeł.');
         }
         return ready;
     }
@@ -233,11 +233,18 @@ export class ResearchPanel {
         if (this.resume && !waiting) {
             this.resume = false;
             await this.onResume();
-        } else if (action.origin === 'ai' && action.request.kind === 'fetch' && !waiting) {
+            return;
+        }
+        // A decision on an AI-requested operation answers the pending question automatically.
+        if (action.origin === 'ai' && !waiting && !failed) {
             await this.onAgent(allow);
-        } else if (allow && action.request.kind === 'search' && !failed) {
-            this.onNotice(this.state.results.length ? 'Wyniki są domyślnie zaznaczone do limitu 20 źródeł. Odznacz niepotrzebne i kliknij „Kontynuuj z wybranymi stronami”.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
-        } else if (!allow) {
+            return;
+        }
+        if (allow && action.request.kind === 'search' && !failed) {
+            this.onNotice(this.state.results.length ? 'Wyniki zaznaczone domyślnie (limit 20). Odznacz niepotrzebne.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
+            return;
+        }
+        if (!allow) {
             this.onNotice('Odmowa zapisana. Operacja WWW nie została wykonana.');
         }
     }
@@ -305,7 +312,7 @@ export class ResearchPanel {
             if (!this.continueControl) {
                 this.body.append(button);
             }
-            this.body.append(node('p', 'Kliknięcie pobierze treść zaznaczonych stron i przekaże ją wybranemu dostawcy AI. Bez dodatkowego potwierdzania pobrań. Odznaczone strony zostaną pominięte.'));
+            this.body.append(node('p', 'Kliknięcie pobiera zaznaczone strony i przekazuje je AI.'));
             this.updateButton();
         }
         const pending = this.state.actions.filter(action => action.status === 'pending' && !(this.continuing && action.request.kind === 'fetch' && this.state.sources.some(source => source.url === action.request.url)));
@@ -315,8 +322,8 @@ export class ResearchPanel {
             card.append(node('strong', `${action.origin === 'ai' ? 'AI prosi o zgodę' : 'Zgoda'}: ${request.kind === 'search' ? 'wyszukanie WWW' : 'pobranie strony'}`));
             card.append(node('p', request.query || request.url, 'research-address'));
             card.append(node('p', request.kind === 'search'
-                ? 'Zapytanie trafi do MCP → SearXNG, awaryjnie Perplexity. Wyniki pojawią się tutaj; dopiero zaznaczone źródła przekażesz AI.'
-                : 'Ten adres otrzyma żądanie GET bez Twoich cookies. Pobrany tekst może trafić do wybranego dostawcy AI po wysłaniu polecenia. Każde przekierowanie wymaga nowej zgody.'));
+                ? 'Zapytanie trafi do wyszukiwarki; wyniki pojawią się tutaj.'
+                : 'Jedno żądanie GET bez Twoich cookies.'));
             for (const [allow, label] of [[true, 'Allow — zezwól'], [false, 'Deny — odmów']]) {
                 const button = node('button', label, 'btn btn-sm'); button.type = 'button'; button.disabled = this.busy;
                 button.addEventListener('click', () => this.decide(action, allow)); card.append(button);

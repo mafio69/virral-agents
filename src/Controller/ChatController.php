@@ -68,6 +68,15 @@ final readonly class ChatController
         return JsonResponder::respond($response, $result, 201);
     }
 
+    public function continueMessage(ServerRequestInterface $request, ResponseInterface $response, int $id, int $messageId): ResponseInterface
+    {
+        $userId = (int)$request->getAttribute('userId');
+        $input = (new \App\Mapper\Chat\RetryMessageInputMapper())->map($id, $messageId, $userId);
+        $result = $this->chatService->continueMessage($input);
+
+        return JsonResponder::respond($response, $result, 201);
+    }
+
     public function listConnections(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         return JsonResponder::respond($response, $this->modelCatalog->getConnections());

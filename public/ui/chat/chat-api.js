@@ -133,6 +133,14 @@ export class ChatApi {
         return messages;
     }
 
+    async continueMessage(chatId, messageId) {
+        const reply = await this.request('POST', '/chats/' + this.chatId(chatId) + '/messages/' + this.chatId(messageId) + '/continue', {});
+        if (!reply || reply.role !== 'assistant' || !Number.isInteger(reply.id) || typeof reply.content !== 'string') {
+            throw new ChatApiError('Nieprawidłowa odpowiedź kontynuacji.', 0, 'invalid_app_response');
+        }
+        return reply;
+    }
+
     chatId(id) {
         if (!Number.isInteger(id) || id <= 0) {
             throw new ChatApiError('Nieprawidłowa rozmowa.');

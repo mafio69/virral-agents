@@ -50,7 +50,8 @@ final class ResearchAgentTest extends TestCase
         $client->method('generateWebReply')->willReturn(new AiReply('', webRequest: ['kind' => 'search', 'query' => 'Public query']));
         $reply = (new ResearchReplyGenerator($research, $this->createMock(ChatReplyGeneratorInterface::class)))->generate($client, [['role' => 'user', 'content' => 'Question']], 'fixture', 1, 4);
         self::assertSame('approval_required', $reply->search['status']);
-        self::assertStringContainsString('Allow', $reply->text);
+        self::assertSame('approval_request', $reply->kind);
+        self::assertStringContainsString('panel źródeł', $reply->text);
     }
 
     public function testOnlyLoadedEvidenceIsCitedAndDeniedPageIsNeverClaimedAsRead(): void

@@ -21,6 +21,10 @@ final readonly class AddChatMessageInputMapper
         if (!is_bool($data['research'] ?? false)) {
             throw new ValidationException('Nieprawidłowy tryb badania.');
         }
-        return new AddChatMessageInput($chatId, $userId, trim($content), $images, \App\Dto\Chat\SearchOptions::fromInput($data['search'] ?? []), $data['research'] ?? false);
+        $kind = $data['kind'] ?? 'message';
+        if (!is_string($kind) || !in_array($kind, ['message', 'continuation'], true)) {
+            throw new ValidationException('Nieprawidłowy rodzaj wiadomości.');
+        }
+        return new AddChatMessageInput($chatId, $userId, trim($content), $images, \App\Dto\Chat\SearchOptions::fromInput($data['search'] ?? []), $data['research'] ?? false, $kind);
     }
 }

@@ -223,24 +223,30 @@ export class ResearchPanel {
             return;
         }
         const failed = this.state.actions.find(item => item.id === action.id)?.status === 'failed';
-        if (failed) {
-            this.onNotice('Operacja WWW nie powiodła się. Sprawdź stan poniżej; ponowienie wymaga nowej zgody.', true);
-            if (action.request.kind !== 'fetch') {
-                return;
-            }
-        }
         const waiting = this.state.actions.some(item => ['pending', 'running'].includes(item.status));
+        if (failed && action.request.kind === 'search') {
+            this.onNotice('Wyszukiwanie nie powiodło się. Sprawdź stan poniżej; ponowienie wymaga nowej zgody.', true);
+            return;
+        }
         if (this.resume && !waiting) {
             this.resume = false;
             await this.onResume();
             return;
         }
-        // A decision on an AI-requested operation answers the pending question automatically.
-        if (action.origin === 'ai' && !waiting && !failed) {
+        // A decision on an AI-requested operation answers the pending question automatically,
+        // also when one fetch failed: the answer is built from the remaining sources.
+        if (action.origin === 'ai' && !waiting) {
+            if (failed) {
+                this.onNotice('Nie udało się pobrać strony. Odpowiedź powstanie z pozostałych źródeł.');
+            }
             await this.onAgent(allow);
             return;
         }
-        if (allow && action.request.kind === 'search' && !failed) {
+        if (failed) {
+            this.onNotice('Nie udało się pobrać strony. Ponowienie pobrania wymaga nowej zgody.');
+            return;
+        }
+        if (allow && action.request.kind === 'search') {
             this.onNotice(this.state.results.length ? 'Wyniki zaznaczone domyślnie (limit 20). Odznacz niepotrzebne.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
             return;
         }

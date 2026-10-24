@@ -57,7 +57,23 @@ test('failed approved search reports failure even if previous search has results
     await panel.setScope(0);
     await panel.decide(action, true);
     assert.equal(notices.at(-1)[1], true);
-    assert.match(notices.at(-1)[0], /nie powiodła/);
+    assert.match(notices.at(-1)[0], /nie powiodło/);
+});
+
+test('a failed AI fetch answers from remaining sources without a red flash', async () => {
+    const action = { id: 'ai-1', request: { kind: 'fetch', url: 'https://example.org/one' }, origin: 'ai', status: 'pending' };
+    let agents = 0;
+    const notices = [];
+    const panel = fixture({ research: async operation => state([], operation === 'state' ? [action] : [{ ...action, status: 'failed' }]) }, {
+        onAgent: () => { agents++; },
+        onNotice: (...args) => notices.push(args),
+    });
+    await panel.setScope(0);
+    await panel.decide(action, true);
+    assert.equal(agents, 1);
+    assert.equal(notices.length, 1);
+    assert.ok(!notices[0][1]);
+    assert.match(notices[0][0], /pozostałych źródeł/);
 });
 
 test('Fetch all requires confirmation and approves only the displayed selected fetches', async () => {

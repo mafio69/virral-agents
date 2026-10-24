@@ -10,8 +10,8 @@ require __DIR__.'/../vendor/autoload.php';
 $options = getopt('', ['url:', 'query:', 'approve-search']);
 $url = $options['url'] ?? 'http://127.0.0.1:8890/mcp';
 $query = $options['query'] ?? null;
-// The token comes only from the process environment (export MCP_SEARCH_TOKEN), never from .env.
-$envToken = getenv('MCP_SEARCH_TOKEN');
+// The token comes only from the process environment (export MCP_AUTH_TOKEN), never from .env.
+$envToken = getenv('MCP_AUTH_TOKEN');
 $token = is_string($envToken) ? $envToken : '';
 
 function isValidUrl(mixed $url): bool
@@ -51,7 +51,7 @@ if (!$urlValid || !$queryValid) {
     exit(2);
 }
 if (!$tokenSafe) {
-    fwrite(STDERR, "MCP_SEARCH_TOKEN nie zostanie wysłany jawnym tekstem: użyj https albo adresu lokalnego (127.0.0.1, localhost).\n");
+    fwrite(STDERR, "MCP_AUTH_TOKEN nie zostanie wysłany jawnym tekstem: użyj https albo adresu lokalnego (127.0.0.1, localhost).\n");
     exit(2);
 }
 $client = new McpSearchClient($url, token: $token);

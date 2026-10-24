@@ -601,3 +601,11 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `e2b51df`: klamry we wszystkich jednoinstrukcyjnych if/else w JS czatu, `landing.html` i `test-api.html` (137 miejsc); bez zmiany zachowania.
 - `dbe674c` (#62-503, część kodowa): `TRUSTED_PROXIES` (adresy/CIDR, domyślnie pusto) — za zaufanym proxy limit logowań liczy IP z `X-Forwarded-For` od prawej, bez możliwości podszycia się. Test na kontenerze produkcyjnym: dwóch klientów za jednym proxy blokowanych osobno. Opis w `docs/KONFIGURACJA.md`.
 - Walidacja: formatter 0/164, PHP 227/227 (1086 asercji), UI 86/86, E2E 4/4.
+
+## 2026-10-24 — MCP_AUTH_TOKEN: zgodna nazwa tokenu z serwerem szukaj
+
+- Przyczyna awarii wyszukiwania od restartu serwera `szukaj` (2026-10-23): aplikacja oczekiwała `MCP_SEARCH_TOKEN`, a jedyna skonfigurowana nazwa to `MCP_AUTH_TOKEN` (serwera). `${VAR:-}` daje pustkę bez błędu, więc żądania MCP szły bez `Authorization: Bearer` i były odrzucane; UI pokazywał `http_error`, bo serwer odrzuca statusem innym niż 401/403. `docker-compose.yml` poprawił właściciel.
+- Zmiana nazwy w aplikacji bez aliasu wstecz: `docker/php-fpm-env.conf`, `src/settings.php`, `bin/check-mcp-search.php`, komunikat `unauthorized` w `ChatReplyGenerator`, dokumentacja (README, KONFIGURACJA, MCP-USAGE). Historia CHANGELOG bez zmian.
+- Nowe testy: `SettingsSearchEnvTest` (token z `MCP_AUTH_TOKEN` trafia do ustawień; stara nazwa jest ignorowana) i `EnvNamesConsistencyTest` (nazwy env identyczne w settings/php-fpm-env/Compose; `MCP_AUTH_TOKEN` obecna w całej ścieżce) — wykrywają dryf nazw, który spowodował tę awarię.
+- Do wykonania przez właściciela: `MCP_AUTH_TOKEN` w `.env`, `sudo docker compose up -d --force-recreate app`; rzeczywiste wyszukiwanie na serwerze szukaj do potwierdzenia po odtworzeniu.
+- Walidacja: composer check-all — formatter 0/167, PHP 232/232 (1100 asercji), UI 86/86.

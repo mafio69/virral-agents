@@ -32,7 +32,7 @@ return function (ContainerBuilder $containerBuilder) {
     // Host-only installations can explicitly set MCP_SEARCH_URL to the host endpoint.
     $settings['search'] = [
         'mcp_url' => $sensitiveValue('MCP_SEARCH_URL', 'http://mcp-search:8000/mcp'),
-        'mcp_token' => $sensitiveValue('MCP_SEARCH_TOKEN', ''),
+        'mcp_token' => $sensitiveValue('MCP_AUTH_TOKEN', ''),
     ];
     $settings['ovh_ai']['token'] = $sensitiveValue('OVH_AI_ENDPOINTS_ACCESS_TOKEN');
     $settings['mail']['dsn'] = $sensitiveValue('MAIL_DSN', $settings['mail']['dsn']);

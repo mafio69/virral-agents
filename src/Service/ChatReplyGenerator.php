@@ -33,7 +33,7 @@ final readonly class ChatReplyGenerator implements ChatReplyGeneratorInterface
                 'connection_failed' => 'Aplikacja nie może połączyć się z serwerem MCP.',
                 'timeout' => 'Upłynął czas oczekiwania na MCP.',
                 'http_error' => 'Serwer MCP zwrócił błąd HTTP.',
-                'unauthorized' => 'Serwer MCP odrzucił uwierzytelnienie. Sprawdź MCP_SEARCH_TOKEN.',
+                'unauthorized' => 'Serwer MCP odrzucił uwierzytelnienie. Sprawdź MCP_AUTH_TOKEN.',
                 'tool_error', 'provider_response' => 'MCP nie zwróciło poprawnego wyniku wyszukiwarki.',
                 'protocol_error' => 'Odpowiedź serwera nie jest zgodna z oczekiwanym protokołem MCP.',
                 'missing_configuration' => 'Brakuje konfiguracji klienta MCP.',

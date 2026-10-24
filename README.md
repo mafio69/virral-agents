@@ -27,7 +27,7 @@ rozmowie kończy się czytelnym błędem braku konfiguracji.
 | Anthropic (Claude) | `ANTHROPIC_API_KEY` | czat (Messages API), obrazy wejściowe | `docs/AI_PROVIDERS.md` |
 | Google Gemini | `GEMINI_KEY` | czat, obrazy wejściowe, generowanie obrazów | `docs/AI_PROVIDERS.md` |
 | OpenRouter | `OPENROUTER_API_KEY`, opcjonalnie `OPENROUTER_MODELS` | setki modeli wielu firm przez jedno konto | [niżej](#podłączenie-openrouter), `docs/AI_PROVIDERS.md` |
-| Wyszukiwarka MCP (SearXNG) | `MCP_SEARCH_URL` (np. `http://szukaj.dom/mcp`, domyślnie `http://mcp-search:8000/mcp`), `MCP_SEARCH_TOKEN` (Bearer, gdy serwer go wymaga) | wyszukiwanie WWW i badanie źródeł | `docs/MCP-USAGE.md`, `docs/instrukcja-integracji-mcp-search.md` |
+| Wyszukiwarka MCP (SearXNG) | `MCP_SEARCH_URL` (np. `http://szukaj.dom/mcp`, domyślnie `http://mcp-search:8000/mcp`), `MCP_AUTH_TOKEN` (Bearer, gdy serwer go wymaga) | wyszukiwanie WWW i badanie źródeł | `docs/MCP-USAGE.md`, `docs/instrukcja-integracji-mcp-search.md` |
 | Poczta SMTP | `MAIL_DSN` | potwierdzenie rejestracji | `docs/KONFIGURACJA.md` |
 
 Klucze szyfrowania (`USER_DATA_KEY`, `DB_HASH`) są wymagane zawsze — `docs/OCHRONA_DANYCH.md`.

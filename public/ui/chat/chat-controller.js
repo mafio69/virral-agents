@@ -89,8 +89,10 @@ export class ChatController {
                 return false;
             }
             const models = items.filter(item => typeof item.id === 'string' && item.id !== '');
+            // Self-updating aliases keep the default model usable; catalog order starts with deprecated names.
+            const defaultModel = models.find(item => /-flash-latest$/.test(item.id))?.id || models[0]?.id || '';
             const selected = forHistory ? this.state.activeChat?.model
-                : models.find(item => item.id === remembered)?.id || models[0]?.id || '';
+                : models.find(item => item.id === remembered)?.id || defaultModel;
             this.update({ models, selectedModel: selected || '', modelsLoading: false,
                 notice: models.length ? models.every(item => item.configured === false) ? 'Katalog pobrany. Aby rozmawiać, skonfiguruj dostęp do wybranego dostawcy.' : '' : 'To połączenie nie ma skonfigurowanych modeli.' });
             if (!forHistory && selected) {

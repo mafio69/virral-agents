@@ -55,6 +55,18 @@ test('Gemini is the default while an explicit saved provider choice is preserved
     }
 });
 
+test('a self-updating flash-latest alias is the default model over deprecated catalog order', async () => {
+    const controller = new ChatController(fixture({
+        listModels: async () => [
+            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+            { id: 'gemini-flash-latest', name: 'Gemini Flash' },
+            { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite' },
+        ],
+    }), () => {}, { read: () => ({ connection: '', models: {} }), save: () => {} });
+    await controller.load();
+    assert.equal(controller.state.selectedModel, 'gemini-flash-latest');
+});
+
 test('blank messages do not create a conversation', async () => {
     let calls = 0;
     const controller = new ChatController(fixture({

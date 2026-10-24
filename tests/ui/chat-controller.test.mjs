@@ -67,6 +67,15 @@ test('a self-updating flash-latest alias is the default model over deprecated ca
     assert.equal(controller.state.selectedModel, 'gemini-flash-latest');
 });
 
+test('an automatic default model is never saved into preferences', async () => {
+    const saved = [];
+    const controller = new ChatController(fixture(), () => {},
+        { read: () => ({ connection: '', models: {} }), save: (connection, model) => saved.push([connection, model]) });
+    await controller.load();
+    assert.equal(controller.state.selectedModel, 'fixture-model');
+    assert.deepEqual(saved, []);
+});
+
 test('blank messages do not create a conversation', async () => {
     let calls = 0;
     const controller = new ChatController(fixture({

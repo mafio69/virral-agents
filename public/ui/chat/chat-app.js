@@ -1,7 +1,7 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
 import { ChatApi } from './chat-api.js?v=20261024-continue';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261024-flashlatest';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261024-noautosave';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
 import { ResearchModal } from './chat-research-modal.js?v=20261018-chat-retry';
 import { ResearchPanel, continueResearch } from './chat-research.js?v=20261024-continue';

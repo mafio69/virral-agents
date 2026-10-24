@@ -95,7 +95,9 @@ export class ChatController {
                 : models.find(item => item.id === remembered)?.id || defaultModel;
             this.update({ models, selectedModel: selected || '', modelsLoading: false,
                 notice: models.length ? models.every(item => item.configured === false) ? 'Katalog pobrany. Aby rozmawiać, skonfiguruj dostęp do wybranego dostawcy.' : '' : 'To połączenie nie ma skonfigurowanych modeli.' });
-            if (!forHistory && selected) {
+            // Only an explicit user choice is remembered; auto-defaults (e.g. a deprecated
+            // catalog entry) must never overwrite a working preference.
+            if (!forHistory && remembered && selected === remembered) {
                 this.preferences.save(connection, selected);
             }
             return true;

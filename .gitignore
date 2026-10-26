@@ -6,6 +6,7 @@ var/
 .pi/
 .opencode/plugins/
 docs/Prace_rozwojowe/
+/docs/img.png
 /var/database/
 /var/logs/
 /.idea/

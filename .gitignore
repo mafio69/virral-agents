@@ -5,6 +5,7 @@ secret/
 var/
 .pi/
 .opencode/plugins/
+docs/Prace_rozwojowe/
 /var/database/
 /var/logs/
 /.idea/

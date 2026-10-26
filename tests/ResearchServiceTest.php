@@ -35,24 +35,18 @@ final class ResearchServiceTest extends ChatServiceTestCase
         $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'First public query']);
         self::assertSame([], $state['results']);
         $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
-        $firstId = $state['results'][0]['id'];
         $service->select($this->userId, 0, $state['results'][3]['id'], false);
-        foreach (array_slice($state['results'], 0, 3) as $source) {
-            $service->select($this->userId, 0, $source['id'], true);
-        }
+        self::assertCount(3, $service->state($this->userId, 0)['sources']);
         $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Next public query']);
         $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
         $service->select($this->userId, 0, $state['results'][2]['id'], false);
-        foreach (array_slice($state['results'], 0, 2) as $source) {
-            $service->select($this->userId, 0, $source['id'], true);
-        }
-        $state = $service->select($this->userId, 0, $firstId, true);
-        self::assertCount(5, $state['sources']);
+        $state = $service->state($this->userId, 0);
+        self::assertCount(2, $state['sources']);
         self::assertCount(3, $state['results']);
-        self::assertCount(5, $this->service($search, $fetcher)->state($this->userId, 0)['sources']);
+        self::assertSame('https://example.org/next1', $state['sources'][0]['url']);
         $chat = $this->chatRepository->create($this->userId, 'Fixture research');
         $service->adoptDraft($this->userId, $chat);
-        self::assertCount(5, $service->state($this->userId, $chat)['sources']);
+        self::assertCount(2, $service->state($this->userId, $chat)['sources']);
         self::assertSame([], $service->state($this->userId, 0)['sources']);
         $stored = $this->pdo->query('SELECT payload FROM research_workspaces')->fetchColumn();
         self::assertStringNotContainsString('example.org', $stored);
@@ -169,7 +163,7 @@ final class ResearchServiceTest extends ChatServiceTestCase
         $this->expectException(\App\Exception\NotFoundException::class);
         $service->propose($this->userId + 1, $chat, ['kind' => 'search', 'query' => 'Public']);
     }
-    public function testNewSearchResultsAreSelectedWithoutFetchingAndManualExclusionSurvivesRepeat(): void
+    public function testNewSearchResultsAreSelectedWithoutFetchingAndNextSearchStartsWithCleanSlate(): void
     {
         $search = $this->createMock(SearchClientInterface::class);
         $search->method('search')->willReturn($this->results('page', 3));
@@ -184,33 +178,47 @@ final class ResearchServiceTest extends ChatServiceTestCase
         self::assertSame(['unread', 'unread', 'unread'], array_column(array_column($state['sources'], 'page'), 'status'));
         self::assertCount(0, $this->pending($state));
         $excluded = $state['results'][0]['id'];
-        $service->select($this->userId, 0, $excluded, false);
-        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Repeat query']);
-        $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        $state = $service->select($this->userId, 0, $excluded, false);
         self::assertCount(2, $state['sources']);
         self::assertFalse($state['results'][0]['selected']);
-        self::assertCount(2, $this->service($search, $fetch)->state($this->userId, 0)['sources']);
-        self::assertCount(3, $service->select($this->userId, 0, $excluded, true)['sources']);
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Repeat query']);
+        $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        self::assertCount(3, $state['sources']);
+        self::assertTrue($state['results'][0]['selected']);
     }
 
-    public function testAutomaticSelectionRespectsTwentySourceLimitAcrossSearches(): void
+    public function testAutomaticSelectionRespectsTwentySourceLimitAndReplacesOnNextSearch(): void
     {
         $search = $this->createMock(SearchClientInterface::class);
         $search->method('search')->willReturnOnConsecutiveCalls(
-            $this->results('first', 10),
-            $this->results('second', 10),
-            $this->results('third', 10)
+            $this->results('first', 25),
+            $this->results('second', 10)
         );
         $fetch = $this->createMock(WebPageFetcherInterface::class);
         $fetch->expects(self::never())->method('fetch');
         $service = $this->service($search, $fetch);
-        foreach (['First', 'Second', 'Third'] as $query) {
-            $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => $query]);
-            $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
-        }
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'First']);
+        $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
         self::assertCount(20, $state['sources']);
-        self::assertSame(array_fill(0, 10, false), array_column($state['results'], 'selected'));
         self::assertSame('https://example.org/first1', $state['sources'][0]['url']);
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'Second']);
+        $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        self::assertCount(10, $state['sources']);
+        self::assertSame('https://example.org/second1', $state['sources'][0]['url']);
     }
 
+    public function testClearRemovesResultsSourcesExclusionsAndPendingActions(): void
+    {
+        $search = $this->createMock(SearchClientInterface::class);
+        $search->method('search')->willReturn($this->results('page', 3));
+        $fetch = $this->createMock(WebPageFetcherInterface::class);
+        $service = $this->service($search, $fetch);
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => 'First query']);
+        $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        $service->prepare($this->userId, 0);
+        $cleared = $service->clear($this->userId, 0);
+        self::assertSame([], $cleared['results']);
+        self::assertSame([], $cleared['sources']);
+        self::assertSame([], $cleared['actions']);
+    }
 }

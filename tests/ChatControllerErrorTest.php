@@ -49,6 +49,58 @@ final class ChatControllerErrorTest extends TestCase
         self::assertSame(['error' => 'Badanie źródeł jest niedostępne.'], $this->data($response));
     }
 
+    public function testUnexpectedExceptionReturnsFriendlyApologyWithoutDebugDetailsAndLogsContext(): void
+    {
+        $chatService = $this->createMock(\App\Service\ChatService::class);
+        $failure = new \RuntimeException('Sensitive SQL or internal debug trace');
+        $chatService->method('getUserChats')->willThrowException($failure);
+
+        $logged = [];
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('error')->willReturnCallback(
+            static function (string $message, array $context) use (&$logged): void {
+                $logged = ['message' => $message, 'context' => $context];
+            }
+        );
+
+        $auth = $this->createMock(\App\Service\AuthService::class);
+        $auth->method('validateToken')->willReturn(7);
+        $controller = new ChatController(
+            new \App\Mapper\Chat\CreateChatInputMapper(),
+            new \App\Mapper\Chat\AddChatMessageInputMapper(),
+            $chatService,
+            $this->createMock(ModelCatalogService::class)
+        );
+        $app = AppFactory::create(container: new \DI\Container([
+            ChatController::class => $controller,
+            \App\Service\SessionAuthenticatorInterface::class => $auth,
+            LoggerInterface::class => $logger,
+            'settings' => ['displayErrorDetails' => false],
+        ]));
+        (require __DIR__.'/../src/routes.php')($app);
+        (require __DIR__.'/../src/middleware.php')($app);
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('GET', 'http://fixture.example/api/chats')
+            ->withCookieParams(['token' => 'fixture-session']);
+
+        $response = $app->handle($request);
+        $payload = $this->data($response);
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertSame(
+            ['error' => 'Przepraszamy, wystąpił nieoczekiwany problem. Pracujemy nad jego jak najszybszym usunięciem.'],
+            $payload
+        );
+        self::assertStringNotContainsString('Sensitive SQL', (string)$response->getBody());
+        self::assertStringNotContainsString('RuntimeException', (string)$response->getBody());
+        self::assertSame('Application operation failed', $logged['message']);
+        self::assertSame(\RuntimeException::class, $logged['context']['type']);
+        self::assertSame(basename($failure->getFile()).':'.$failure->getLine(), $logged['context']['origin']);
+        self::assertSame($failure->getLine(), $logged['context']['line']);
+        self::assertSame('GET', $logged['context']['method']);
+        self::assertSame('/api/chats', $logged['context']['path']);
+    }
+
     private function request(string $method, string $path, string $session = ''): ResponseInterface
     {
         $legacy = new class () implements ChatModelRegistryInterface {

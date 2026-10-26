@@ -601,3 +601,39 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - `e2b51df`: klamry we wszystkich jednoinstrukcyjnych if/else w JS czatu, `landing.html` i `test-api.html` (137 miejsc); bez zmiany zachowania.
 - `dbe674c` (#62-503, część kodowa): `TRUSTED_PROXIES` (adresy/CIDR, domyślnie pusto) — za zaufanym proxy limit logowań liczy IP z `X-Forwarded-For` od prawej, bez możliwości podszycia się. Test na kontenerze produkcyjnym: dwóch klientów za jednym proxy blokowanych osobno. Opis w `docs/KONFIGURACJA.md`.
 - Walidacja: formatter 0/164, PHP 227/227 (1086 asercji), UI 86/86, E2E 4/4.
+
+## 2026-10-24 — MCP_AUTH_TOKEN: zgodna nazwa tokenu z serwerem szukaj
+
+- Przyczyna awarii wyszukiwania od restartu serwera `szukaj` (2026-10-23): aplikacja oczekiwała `MCP_SEARCH_TOKEN`, a jedyna skonfigurowana nazwa to `MCP_AUTH_TOKEN` (serwera). `${VAR:-}` daje pustkę bez błędu, więc żądania MCP szły bez `Authorization: Bearer` i były odrzucane; UI pokazywał `http_error`, bo serwer odrzuca statusem innym niż 401/403. `docker-compose.yml` poprawił właściciel.
+- Zmiana nazwy w aplikacji bez aliasu wstecz: `docker/php-fpm-env.conf`, `src/settings.php`, `bin/check-mcp-search.php`, komunikat `unauthorized` w `ChatReplyGenerator`, dokumentacja (README, KONFIGURACJA, MCP-USAGE). Historia CHANGELOG bez zmian.
+- Nowe testy: `SettingsSearchEnvTest` (token z `MCP_AUTH_TOKEN` trafia do ustawień; stara nazwa jest ignorowana) i `EnvNamesConsistencyTest` (nazwy env identyczne w settings/php-fpm-env/Compose; `MCP_AUTH_TOKEN` obecna w całej ścieżce) — wykrywają dryf nazw, który spowodował tę awarię.
+- Do wykonania przez właściciela: `MCP_AUTH_TOKEN` w `.env`, `sudo docker compose up -d --force-recreate app`; rzeczywiste wyszukiwanie na serwerze szukaj do potwierdzenia po odtworzeniu.
+- Walidacja: composer check-all — formatter 0/167, PHP 232/232 (1100 asercji), UI 86/86.
+
+## 2026-10-24 — automatyczna kontynuacja odpowiedzi i kind wiadomości
+
+- Zgoda Allow na operację WWW zaproponowaną przez AI (search lub fetch, także Deny) natychmiast generuje odpowiedź na ostatnie pytanie przez nowy endpoint `POST /api/chats/{id}/messages/{messageId}/continue`; bez zapisywania sztucznej wiadomości „Kontynuuj poprzednie zadanie…". Przycisk Kontynuuj robi to samo, gdy w rozmowie jest pytanie; fallback z draftem pozostaje tylko przy braku pytania (wyszukiwanie zawczasu).
+- `chat_messages.kind` (`message`/`approval_request`/`continuation`, migracja idempotentna): prośby AI o zgodę zapisują się jako `approval_request` i renderują jako wydzielone chipy zamiast bąbli czatu; mechaniczne wiadomości asystenta nie trafiają do kontekstu modelu (`historyForModel`), instrukcje użytkownika zawsze.
+- Karty zgody w panelu źródeł skrócone do jednej linii opisu (bez ściany tekstu); komunikaty panelu i przycisku Kontynuuj skrócone.
+- Testy: `ResearchContinueTest` (continue bez nowej wiadomości użytkownika, czysty kontekst, walidacje ostatniego pytania/właściciela, instrukcja kontynuacji w kontekście) i UI (auto-odpowiedź po Allow/Deny operacji AI, brak auto-odpowiedzi przy ręcznym wyszukiwaniu).
+- Walidacja: composer check-all — formatter 0/168, PHP 236/236 (1119 asercji), UI 89/89; E2E 4/4.
+
+## 2026-10-25 — Przygotowanie wydania v1.0.0: obsługa błędów, logowanie kontekstu, E2E logowania i dokumentacja
+
+- Gałąź `release/v1.0.0` z `develop`.
+- Uzupełniono dokumentację o zmiany z 2026-10-24: endpoint `POST /api/chats/{id}/messages/{messageId}/continue` w `README.md` i `docs/MCP-USAGE.md`, opis `MCP_AUTH_TOKEN`, `TRUSTED_PROXIES` i automatycznej kontynuacji z `chat_messages.kind` w `REPO.md`, aktualizacja `STATUS.md` i `HANDOFF.md` z pełną listą testów manualnych wymaganych do wydania `v1.0.0`.
+- Ujednolicono przyjazne komunikaty błędów dla użytkownika (z przeprosinami i informacją o jak najszybszym usunięciu problemu, bez ujawniania technicznych szczegółów debugowania, kodów `HTTP 5xx`, `[ERROR 503]` ani nazw zmiennych środowiskowych): `src/middleware.php`, `public/error-pages/503.html`, `src/Service/ChatReplyGenerator.php`, `public/ui/landing.html`, `public/ui/chat/chat-api.js`, `public/ui/chat/chat-controller.js`.
+- Rozszerzono logowanie kontekstu diagnostycznego przez `Mariusz\Logger\DualLogger` (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `connection`, `reason`, `stage`, `sqlstate`, `driver_code`) w miejscach przechwytywania wyjątków: `src/middleware.php`, `public/index.php`, `src/Service/AuthService.php`, `src/Service/ChatService.php`, `src/Service/ModelCatalogService.php`, `src/Service/ChatReplyGenerator.php`.
+- Dodano izolację wyszukiwania na pojedynczą wymianę zdań oraz ręczne czyszczenie wyników i źródeł (`DELETE /api/research`, `ResearchService::clear()`, przyciski „Wyczyść wyniki” w sekcji bocznej i „Usuń wszystkie” w modalu wyników): każde zatwierdzone wyszukiwanie zapisuje wyniki do czystego stanu, po wygenerowaniu odpowiedzi ze źródeł `ResearchReplyGenerator` automatycznie czyści stan badania, a obecność zebranych źródeł/decyzji w danej turze wymusza wygenerowanie odpowiedzi bez ponownego wywołania narzędzi WWW.
+- Dodano test E2E logowania w `tests/e2e/flows.spec.mjs` (logowanie z nieistniejącym e-mailem → 401, z potwierdzonym e-mailem i błędnym hasłem → 401, z poprawnymi danymi → 200 i otwarcie pulpitu) oraz testy jednostkowe (`ChatControllerErrorTest`, `ApplicationFailureLogTest`, `SearchDiagnosticsTest`, `ResearchServiceTest`, `ResearchAgentTest`, `chat-controller.test.mjs`, `chat-research.test.mjs`).
+- Walidacja: `composer check-all` — formatter 0/168, PHP 238/238 (1142 asercje), UI 93/93; `npm run test:e2e` — 5/5; `composer validate --strict --no-check-publish` oraz `composer check-platform-reqs` poprawne.
+
+## 2026-10-26 — Poprawki z przeglądu PR #10 (CodeRabbit / GitGuardian)
+
+- Usunięto zahardkodowane hasło z `bin/restore-dev-user.php` i `docs/DEV-ADMIN.md`; skrypt odczytuje `DEV_ADMIN_PASSWORD` (min. 10 znaków) z lokalnego środowiska (wspieranego też przez `bin/restoreDevPass.sh`) i nie wypisuje hasła na `STDOUT`.
+- W `docs/KONFIGURACJA.md`, `README.md` i `REPO.md` zmieniono przykład zdalnego adresu `MCP_SEARCH_URL` na `https://szukaj.dom/mcp` i dopisano wymóg TLS dla zdalnych endpointów korzystających z `MCP_AUTH_TOKEN`.
+- W `src/Service/ChatReplyGenerator.php` rozróżniono błąd `missing_configuration` od chwilowej niedostępności wyszukiwania WWW (test w `tests/SearchDiagnosticsTest.php`).
+- W `src/Service/ChatService.php` wydzielono wspólne metody pomocnicze (`resolveClient`, `logReplyFailure`, `assistantPayload`) używane przez `addMessage` i `continueMessage`.
+- W `tests/SettingsSearchEnvTest.php` dodano pełny snapshot i przywracanie stanu `$_ENV`, `$_SERVER` i `putenv` wokół `Dotenv::safeLoad()`.
+- W `GIT-FLOW.md` przeniesiono na diagramie Mermaid krok aktualizacji dokumentacji przed `Commit`, a w `HANDOFF.md` i `STATUS.md` uzgodniono opis potwierdzonych testów przeglądarkowych i pozostałych kontroli przed tagiem `v1.0.0`.
+- Walidacja: `composer check-all` — formatter 0/168, PHP 239/239 (1148 asercji), UI 93/93.

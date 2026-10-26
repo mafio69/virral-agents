@@ -50,7 +50,8 @@ final class ResearchAgentTest extends TestCase
         $client->method('generateWebReply')->willReturn(new AiReply('', webRequest: ['kind' => 'search', 'query' => 'Public query']));
         $reply = (new ResearchReplyGenerator($research, $this->createMock(ChatReplyGeneratorInterface::class)))->generate($client, [['role' => 'user', 'content' => 'Question']], 'fixture', 1, 4);
         self::assertSame('approval_required', $reply->search['status']);
-        self::assertStringContainsString('Allow', $reply->text);
+        self::assertSame('approval_request', $reply->kind);
+        self::assertStringContainsString('panel źródeł', $reply->text);
     }
 
     public function testOnlyLoadedEvidenceIsCitedAndDeniedPageIsNeverClaimedAsRead(): void
@@ -60,13 +61,16 @@ final class ResearchAgentTest extends TestCase
             ['url' => 'https://example.org/read', 'status' => 'loaded', 'text' => 'Fetched fixture', 'truncated' => true],
             ['url' => 'https://example.org/denied', 'status' => 'denied', 'text' => '', 'truncated' => false],
         ], 'decisions' => []]);
+        $research->expects(self::once())->method('clear')->with(1, 1)->willReturn(['results' => [], 'sources' => [], 'actions' => []]);
         $client = $this->createMock(WebToolClientInterface::class);
-        $client->expects(self::once())->method('generateWebReply')->willReturnCallback(static function (array $messages): AiReply {
+        $client->expects(self::never())->method('generateWebReply');
+        $plain = $this->createMock(ChatReplyGeneratorInterface::class);
+        $plain->expects(self::once())->method('generate')->willReturnCallback(static function ($aiClient, array $messages): AiReply {
             self::assertStringContainsString('Fetched fixture', $messages[2]['content']);
             self::assertStringContainsString('niezaufane', $messages[0]['content']);
             return new AiReply('Fixture synthesis');
         });
-        $reply = (new ResearchReplyGenerator($research, $this->createMock(ChatReplyGeneratorInterface::class)))->generate($client, [['role' => 'user', 'content' => 'Question']], 'fixture', 1, 1);
+        $reply = (new ResearchReplyGenerator($research, $plain))->generate($client, [['role' => 'user', 'content' => 'Question']], 'fixture', 1, 1);
         self::assertStringContainsString('https://example.org/read', $reply->text);
         self::assertStringNotContainsString('https://example.org/denied', $reply->text);
         self::assertStringContainsString('skrócona', $reply->text);

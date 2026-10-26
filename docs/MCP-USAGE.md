@@ -6,12 +6,10 @@ W widoku czatu „Szukaj stron…” działa niezależnie od wiadomości i model
 Każde wyszukanie pokazuje dokładne zapytanie i osobne Allow / Deny. Zatwierdzone
 zapytanie trafia do MCP → SearXNG, awaryjnie Perplexity; maksymalnie 10 wyników.
 
-1. Wyniki otwierają się w osobnym modalu poza układem czatu. Wyniki udanego wyszukiwania są domyślnie zaznaczone i trafiają na listę źródeł,
-   do łącznego limitu 20. Odznacz niepotrzebne strony. Kolejne wyszukiwanie nie
-   usuwa wcześniejszego wyboru ani nie zaznacza ponownie ręcznie wykluczonych URL
-   (pamiętanych jest ostatnich 80 wykluczeń). Zaznaczenie samo niczego nie pobiera.
+1. Wyniki otwierają się w osobnym modalu poza układem czatu. Wyniki udanego wyszukiwania są domyślnie zaznaczone i trafiają na czystą listę źródeł bieżącej wymiany zdań,
+   do limitu 20. Odznacz niepotrzebne strony lub wyczyść listę przyciskiem **„Usuń wszystkie”** (w modalu) / **„Wyczyść wyniki”** (w panelu bocznym). Zaznaczenie samo niczego nie pobiera.
 2. Lista i decyzje są szyfrowane, oddzielne dla użytkownika i rozmowy. Przed pierwszą
-   wiadomością lista jest szkicem przenoszonym do nowej rozmowy. Zamknięcie modalu nie usuwa danych. Po odświeżeniu otwórz tę samą rozmowę; boczna lista „Wyniki i źródła” przywołuje modal i zapisane źródła. Pobrane teksty również pozostają w szyfrowanym magazynie serwera; nie zapisujemy ich w jawnym localStorage.
+   wiadomością lista jest szkicem przenoszonym do nowej rozmowy. Zamknięcie modalu przed wysłaniem odpowiedzi nie usuwa danych. Po wygenerowaniu odpowiedzi przez AI stan badania jest automatycznie czyszczony, aby kolejne pytanie w rozmowie zaczynało z czystą kartą.
 3. Kliknij jedyny przycisk **„Kontynuuj”** w stopce modalu. Okno się zamknie, a przycisk pozostanie zablokowany do końca pobierania i odpowiedzi AI. Ten jawny klik zatwierdza pobranie
    zaznaczonej listy i przekazanie treści wybranemu dostawcy AI, bez dodatkowych
    pytań o fetch. Odznaczone adresy, nowe wyniki i inne oczekujące prośby nie są
@@ -40,12 +38,14 @@ Model dostaje instrukcję, że nie są to treści przeczytanej strony.
 
 API chronione istniejącą sesją:
 - `GET /api/research?chat_id=0` — szkic; identyfikator rozmowy zamiast 0 wybiera jej listę.
+- `DELETE /api/research?chat_id=0` — wyczyszczenie wyników, wybranych źródeł i nierozstrzygniętych decyzji.
 - `POST /api/research/actions?chat_id=0` — `{request:{kind:"search",query}}`
   lub `{request:{kind:"fetch",url}}`; tworzy oczekującą prośbę.
 - `POST /api/research/decisions?chat_id=0` — `{id,allow:true|false}`; decyzja jednorazowa.
 - `PUT /api/research/sources?chat_id=0` — `{id,selected:true|false}`.
 - `POST /api/research/prepare?chat_id=0` — `{}`; przygotowuje zgody, nie pobiera.
 - `POST /api/chats/{id}/messages` z `research:true` — opracowanie wybranych źródeł.
+- `POST /api/chats/{id}/messages/{messageId}/continue` — kontynuacja odpowiedzi na ostatnie pytanie użytkownika po decyzji Allow/Deny lub pobraniu źródeł (bez tworzenia sztucznej wiadomości użytkownika).
 
 Prośba AI kończy bieżącą odpowiedź komunikatem zgody. Kontynuacja jest nową turą
 z rzeczywistymi źródłami i decyzjami; nie odtwarzamy surowych tool calls ani nie
@@ -63,7 +63,7 @@ Backend aplikacji domyślnie używa `http://mcp-search:8000/mcp`, ponieważ jest
 uruchamiany w Dockerze. Przy uruchomieniu PHP bez Dockera operator ustawia
 `MCP_SEARCH_URL=http://127.0.0.1:8890/mcp`. Samodzielny skrypt diagnostyczny
 poniżej zachowuje domyślny adres hosta.
-Compose przekazuje `MCP_SEARCH_URL` z pliku środowiska (domyślnie `http://mcp-search:8000/mcp`) oraz `MCP_SEARCH_TOKEN`. Serwer `http://szukaj.dom/mcp` wymaga tokenu Bearer (bez niego 401 → kod `unauthorized`). Diagnostyka z tokenem: `export MCP_SEARCH_TOKEN=…; php bin/check-mcp-search.php --url=http://szukaj.dom/mcp`. Wcześniej: Compose ustawiał `MCP_SEARCH_URL=http://mcp-search:8000/mcp`, przekazuje tę zmienną
+Compose przekazuje `MCP_SEARCH_URL` z pliku środowiska (domyślnie `http://mcp-search:8000/mcp`) oraz `MCP_AUTH_TOKEN`. Serwer `http://szukaj.dom/mcp` wymaga tokenu Bearer (bez niego 401 → kod `unauthorized`). Diagnostyka z tokenem: `export MCP_AUTH_TOKEN=…; php bin/check-mcp-search.php --url=http://szukaj.dom/mcp`. Wcześniej: Compose ustawiał `MCP_SEARCH_URL=http://mcp-search:8000/mcp`, przekazuje tę zmienną
 do FPM i dołącza `app` do istniejącej zewnętrznej sieci `ai`.
 Sieć oraz serwis `mcp-search` muszą być uruchomione przez operatora.
 Po zmianie Compose należy odtworzyć usługę aplikacji, aby zastosować sieć i zmienną;

@@ -71,9 +71,9 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 |---|---|---|
 | Konfiguracja | jawne ustawienia w `config/app.php`, sekrety tylko ze środowiska procesu (`src/settings.php`) | nie przenosić kluczy do `config/app.php`; zmiana Compose/FPM wymaga odtworzenia kontenerów przez operatora |
 | Nazwy kluczy | `OPEN_AI_KEY`, `GEMINI_KEY`, `ANTHROPIC_API_KEY`, `ZAI_API_KEY`, `OVH_AI_ENDPOINTS_ACCESS_TOKEN`, `OPENROUTER_API_KEY` | nazwy wybrane przez właściciela; nie „poprawiać” na `OPENAI_API_KEY` itp. |
-| Sieć MCP | aplikacja w sieciach `default` i zewnętrznej `ai`; `MCP_SEARCH_URL=http://mcp-search:8000/mcp` | brak sieci `ai` = `search.status: unavailable` (DNS); PHP na hoście potrzebuje `http://127.0.0.1:8890/mcp` |
+| Sieć MCP | aplikacja w sieciach `default` i zewnętrznej `ai`; `MCP_SEARCH_URL` (domyślnie `http://mcp-search:8000/mcp`), opcjonalnie `MCP_AUTH_TOKEN` (Bearer) | brak sieci `ai` = `search.status: unavailable` (DNS); brak/zły token = `unauthorized`; PHP na hoście potrzebuje `http://127.0.0.1:8890/mcp` |
 | Podgląd UI | otwierać `http://localhost:8181/chat` | `file:///…/chat.html` nie działa (brak API); po zmianie JS podbić `?v=` w importach, bo przeglądarka trzyma cache modułów |
-| Reverse proxy | limit logowań liczy `REMOTE_ADDR` | `X-Forwarded-For` celowo ignorowany; za proxy trzeba skonfigurować zaufany peer po stronie serwera WWW |
+| Reverse proxy | limit logowań liczy `REMOTE_ADDR`, a dla zaufanych peerów z `TRUSTED_PROXIES` adres klienta z `X-Forwarded-For` od prawej | bez `TRUSTED_PROXIES` nagłówek `X-Forwarded-For` jest ignorowany; ustaw adresy/CIDR zaufanego reverse proxy w środowisku |
 | Szyfrowanie | szyfrowane są wybrane pola, nie cały plik SQLite | metadane (czasy, ID, liczba wiadomości) pozostają jawne; dostawca AI widzi treść rozmowy |
 | Git | gałęzie z `develop`, push tylko `develop`, `master` tylko przez PR | patrz `GIT-FLOW.md`; nie scalać lokalnie do `master` |
 | Testy UI | `node --test --test-isolation=none` | w ograniczonym środowisku agenta izolacja procesów zawodzi |
@@ -103,7 +103,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
   timeout wywołania/odczytu 45 s. Nie otrzymuje kluczy dostawców AI.
 - Domyślny tryb WWW to ASK. Zgoda dotyczy jednego jawnego zapytania i nie przechodzi
   na kolejną wiadomość. Wyszukiwanie jest oddzielne od wiadomości; checkboxy zbierają źródła. Fetch wymaga jawnej zgody: „Kontynuuj z wybranymi stronami” zatwierdza pobranie zaznaczonej listy bez dodatkowych pytań; ręczne akcje zachowują Allow/Deny.
-- `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp`.
+- `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp` (przekazywany z pliku środowiska). `MCP_AUTH_TOKEN` przekazuje opcjonalny token Bearer do serwera MCP (np. `https://szukaj.dom/mcp`; zdalne endpointy z tokenem wymagają TLS, a status 401/403 jest mapowany na `unauthorized`).
   PHP uruchomione na hoście wymaga jawnego `http://127.0.0.1:8890/mcp`.
   Samodzielny skrypt diagnostyczny nadal domyślnie używa adresu hosta.
   Wymagana wspólna sieć Docker `ai`; działające kontenery trzeba do niej podłączyć.
@@ -123,7 +123,7 @@ Aktualizuj `REPO.md` w tym samym commicie, gdy zmienia się architektura, urucha
 - `ResearchRepositoryInterface` i szyfrowana tabela `research_workspaces` przechowują wyniki, koszyk oraz decyzje per użytkownik/rozmowa; scope 0 jest szkicem przenoszonym przy utworzeniu czatu.
 - `PublicWebPageFetcher` sprawdza publiczny IPv4 i przypina połączenie do niego; obsługuje HTML/tekst bez cookies i JS. Śledzi maks. 3 przekierowania (także na inny host): każdy hop przechodzi `PublicWebUrl::normalize`, świeże DNS i kontrolę publicznego IPv4; https→http (`insecure_redirect`), pętla (`redirect_loop`), czwarty hop (`too_many_redirects`) i brak/zły `Location` (`redirect`) kończą fetch. Jeden limit 15 s na cały łańcuch. Limit 1 MiB / 16 tys. znaków na stronę; 20 źródeł / 100 tys. znaków kontekstu.
 - `WebToolClientInterface` daje natywne prośby AI o search/fetch; wywołanie tworzy oczekującą decyzję, nigdy zgodę. Modele generujące obrazy Gemini nie otrzymują tools.
-- `chat-research.js` zbiera źródła między wyszukiwaniami; checkbox nie oznacza zgody na fetch. Szczegóły API i testów w `docs/MCP-USAGE.md`.
+- `chat-research.js` obsługuje pojedyncze wyszukiwanie na jedną wymianę zdań (nowe wyszukiwanie zapisuje wyniki do czystego stanu, a wygenerowanie odpowiedzi automatycznie czyści stan badania); checkbox nie oznacza zgody na fetch. Szczegóły API i testów w `docs/MCP-USAGE.md`.
 
 ### Licencja i walidacja Composer
 
@@ -134,7 +134,7 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `LoginAttemptLimiterInterface` jest wymaganą zależnością `AuthService`; implementacja używa `LoginAttemptRepositoryInterface` i wspólnej tabeli `login_attempts` w SQLite.
 - Limit 5 nieudanych prób w ruchomym oknie 900 s, osobno dla e-maila i IP. Rezerwacja w transakcji `BEGIN IMMEDIATE` poprzedza sprawdzenie hasła; udana próba zwalnia tylko własny wpis. Zablokowane próby nie przedłużają okna. HTTP 429 zawiera `Retry-After` i `Cache-Control: no-store`.
 - Identyfikatory to HMAC z klucza indeksowania danych użytkownika i osobnymi prefiksami; nie zapisujemy jawnych adresów ani haseł. E-mail limitera jest przycinany i sprowadzany do małych liter; nie zmienia to reguł wyszukiwania kont. IP jest normalizowany binarnie (w tym IPv6).
-- Kontroler przekazuje wyłącznie `REMOTE_ADDR`. Przy reverse proxy operator musi zapewnić prawidłowy peer po stronie serwera WWW; nagłówki klienta nie obchodzą limitu. Brak poprawnego IP trafia do wspólnego koszyka.
+- Kontroler rozwiązuje adres klienta z `REMOTE_ADDR`, a gdy peer należy do `TRUSTED_PROXIES` (adresy/CIDR, domyślnie pusto) — z `X-Forwarded-For` od prawej (pierwszy adres spoza zaufanych proxy). Bez `TRUSTED_PROXIES` nagłówki klienta są ignorowane. Brak poprawnego IP trafia do wspólnego koszyka.
 - Przeterminowane wpisy są usuwane przy rezerwacji kolejnej próby; bez kolejnych logowań mogą pozostać w bazie. Rejestracja wymaga 10 znaków Unicode; starsze hasła nadal pozwalają się logować.
 
 ### Obowiązkowe potwierdzanie e-maila
@@ -163,16 +163,17 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 
 ### Jawna kontynuacja badania
 
-- Nowe wyniki wyszukiwania są wybierane w ResearchService do limitu 20 źródeł, bez automatycznego fetch. Ostatnich 80 ręcznych wykluczeń przechowuje szyfrowany workspace; ponowne zaznaczenie usuwa wykluczenie.
-- ResearchPanel pokazuje „Kontynuuj z wybranymi stronami”. Kliknięcie zapisuje listę zatwierdzonych URL, przygotowuje i zatwierdza fetch dla tej listy, następnie wysyła polecenie w trybie badania. Nie wymaga kolejnego potwierdzania fetch; nie obejmuje nowych ani odznaczonych adresów.
-- Własny draft zostaje zachowany, pusty otrzymuje polecenie kontynuacji lub opracowania. Zmiana rozmowy i niepewna odpowiedź API zatrzymują operację. Błąd pojedynczej strony pozwala użyć pozostałych treści. Blokady sesji, modelu i powtórnego wysłania pozostają aktywne.
+- Nowe wyniki wyszukiwania są wybierane w ResearchService do limitu 20 źródeł, bez automatycznego fetch. Każde nowe wyszukiwanie zapisuje wyniki do czystego stanu (`results`/`sources`/`excluded`/`actions`), a po wygenerowaniu odpowiedzi z badanymi źródłami stan badania jest automatycznie czyszczony dla kolejnego pytania (`ResearchService::clear()` / `DELETE /api/research`). Dostępne są też ręczne przyciski czyszczenia w sekcji źródeł (`#research-clear-side`) i w modalu (`#research-clear-modal`).
+- Decyzja Allow dla wyszukania WWW (także zaproponowanego przez AI) zostawia wyniki do wyboru i pobrania przyciskiem „Kontynuuj”; decyzja Deny lub pojedynczy fetch oraz przycisk „Kontynuuj” w modalu (po pobraniu zaznaczonych stron) kontynuują odpowiedź na ostatnie pytanie użytkownika przez `POST /api/chats/{id}/messages/{messageId}/continue` — bez dopisywania sztucznej wiadomości użytkownika. Gdy dla bieżącego pytania zebrano już źródła lub decyzje WWW, model generuje odpowiedź bez ponownego wywoływania narzędzi WWW. Fallback z draftem w `POST /api/chats/{id}/messages` służy do nowego zadania lub wyszukiwania zawczasu.
+- `chat_messages.kind` (`message` / `approval_request` / `continuation`): prośby AI o zgodę zapisują się jako `approval_request` i renderują jako osobne chipy; mechaniczne wiadomości asystenta są pomijane w `historyForModel`, natomiast instrukcje użytkownika zawsze trafiają do kontekstu.
+- Własny draft w polu czatu zostaje zachowany. Zmiana rozmowy i niepewna odpowiedź API zatrzymują operację. Błąd pojedynczej strony pozwala użyć pozostałych treści. Blokady sesji, modelu i powtórnego wysłania pozostają aktywne.
 
 - Stan `researchContinuation` blokuje edycję/wysyłkę i wybór modelu przez cały ciąg fetch → żądanie AI. ResearchPanel pokazuje odpowiedni etap na przycisku i zachowuje disabled/aria-busy po renderowaniu. Blokada kończy się po zakończeniu operacji (również błędem); nie oznacza potwierdzenia odpowiedzi dostawcy.
 
 ### Modal wyników i magazyn źródeł
 
 - `chat-research-modal.js` zarządza natywnym dialogiem umieszczonym poza `#app`, przywołaniem z bocznej listy i przywracaniem fokusu. `chat-research.js` renderuje wyniki i aktualizuje pojedynczy przycisk w stopce dialogu; źródła nie zajmują wysokości formularza czatu.
-- Zamknięcie modalu nie czyści magazynu. Wyniki ostatniego wyszukania, wybrane źródła i pobrane teksty są w szyfrowanym `research_workspaces`, nie w jawnym localStorage. Powrót do rozmowy po reload odtwarza jej magazyn; niewybrane wyniki kolejnych wyszukiwań nie stanowią historii wszystkich wyszukań.
+- Zamknięcie modalu przed wysłaniem odpowiedzi nie czyści magazynu. Wyniki bieżącego wyszukania, wybrane źródła i pobrane teksty na czas trwania tury są w szyfrowanym `research_workspaces`, nie w jawnym localStorage. Po wygenerowaniu odpowiedzi magazyn rozmowy jest automatycznie czyszczony dla kolejnego pytania (można go też wyczyścić ręcznie przyciskiem „Wyczyść wyniki” / „Usuń wszystkie”).
 - Kliknięcie „Kontynuuj” zamyka dialog na czas fetch i AI. Kontekst backendu zawiera tytuły, adresy, statusy, snippet z wyszukiwarki (≤ 400 znaków, także przy `failed`/`denied`), kod przyczyny przy `failed`, teksty i informację o skróceniu; teksty już pobrane są używane ponownie. Obowiązują dotychczasowe limity 20 źródeł / 100 tys. znaków.
 
 

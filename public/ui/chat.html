@@ -207,6 +207,7 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 .prose h1,.prose h3,.prose h4,.prose h5,.prose h6{line-height:1.35}
 .prose hr{border:0;border-top:1px solid var(--line);margin:1em 0}
 .pending-reply{color:var(--muted);font-size:13px}
+.msg-chip{align-self:center;max-width:86%;margin:0;padding:3px 14px;border:1px dashed var(--line);border-radius:999px;background:var(--field);color:var(--faint);font-size:12px;text-align:center}
 .select:has(select:disabled){opacity:.65}
 #chat-status{flex-wrap:wrap;text-align:center}
 
@@ -229,7 +230,7 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 </style>
 <link rel="stylesheet" href="/ui/theme.css">
 <link rel="stylesheet" href="/ui/chat/chat-search-dog.css?v=20261016-sniffing">
-<link rel="stylesheet" href="/ui/chat/chat-research.css?v=20261018-chat-retry">
+<link rel="stylesheet" href="/ui/chat/chat-research.css?v=20261025-clear">
 </head>
 <body>
 
@@ -267,6 +268,7 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 
     <section class="research-shelf" aria-label="Źródła rozmowy">
       <button type="button" id="research-open-side" class="btn btn-wide" aria-haspopup="dialog">Wyniki i źródła <span id="research-count">0</span></button>
+      <button type="button" id="research-clear-side" class="btn btn-sm research-clear-side" disabled>Wyczyść wyniki</button>
       <ul id="research-source-list"></ul>
     </section>
 
@@ -397,6 +399,6 @@ echo "Cześć";
 
 <script src="/ui/lib/marked.umd.js"></script>
 <script src="/ui/lib/purify.min.js"></script>
-<script type="module" src="/ui/chat/chat-app.js?v=20261018-chat-retry"></script>
+<script type="module" src="/ui/chat/chat-app.js?v=20261025-clear"></script>
 </body>
 </html>

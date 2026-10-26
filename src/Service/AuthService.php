@@ -47,10 +47,16 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         try {
             $this->mailService->send($input->email, 'Potwierdź rejestrację', $body);
             $confirmationSent = true;
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             // Konto jest już zapisane. Błąd SMTP nie oznacza nieudanej rejestracji.
             // Nie zapisujemy adresu, linku aktywacyjnego ani wyjątku transportu w logach.
-            $this->logger->warning('Registration confirmation delivery failed');
+            $this->logger->warning('Registration confirmation delivery failed', [
+                'user_id' => $userId,
+                'type' => get_class($e),
+                'origin' => basename($e->getFile()).':'.$e->getLine(),
+                'line' => $e->getLine(),
+                'code' => $e->getCode(),
+            ]);
         }
         $this->logger->info('User registered');
         return $confirmationSent;

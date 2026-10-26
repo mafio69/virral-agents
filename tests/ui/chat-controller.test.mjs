@@ -55,6 +55,27 @@ test('Gemini is the default while an explicit saved provider choice is preserved
     }
 });
 
+test('a self-updating flash-latest alias is the default model over deprecated catalog order', async () => {
+    const controller = new ChatController(fixture({
+        listModels: async () => [
+            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+            { id: 'gemini-flash-latest', name: 'Gemini Flash' },
+            { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite' },
+        ],
+    }), () => {}, { read: () => ({ connection: '', models: {} }), save: () => {} });
+    await controller.load();
+    assert.equal(controller.state.selectedModel, 'gemini-flash-latest');
+});
+
+test('an automatic default model is never saved into preferences', async () => {
+    const saved = [];
+    const controller = new ChatController(fixture(), () => {},
+        { read: () => ({ connection: '', models: {} }), save: (connection, model) => saved.push([connection, model]) });
+    await controller.load();
+    assert.equal(controller.state.selectedModel, 'fixture-model');
+    assert.deepEqual(saved, []);
+});
+
 test('blank messages do not create a conversation', async () => {
     let calls = 0;
     const controller = new ChatController(fixture({
@@ -114,6 +135,15 @@ test('an unreachable application and an unexpected reply are reported differentl
         assert.equal(await controller.send(), false);
         assert.match(controller.state.error, new RegExp(detail.replace('.', '\\.')));
     }
+
+    const serverErrorController = new ChatController(fixture({
+        sendMessage: async () => { throw new ChatApiError('Failure', 500); },
+    }));
+    await serverErrorController.load();
+    serverErrorController.setDraft('Cześć');
+    assert.equal(await serverErrorController.send(), false);
+    assert.match(serverErrorController.state.error, /Przepraszamy, wystąpił chwilowy problem/);
+    assert.doesNotMatch(serverErrorController.state.error, /HTTP 500/);
 });
 
 test('a saved user message after an AI failure is recovered without an automatic retry', async () => {

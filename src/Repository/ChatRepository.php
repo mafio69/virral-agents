@@ -47,7 +47,7 @@ final readonly class ChatRepository
         return $result ? $this->store->decrypt('chats', $result) : null;
     }
 
-    public function addMessage(int $chatId, string $role, string $content, array $images = []): int
+    public function addMessage(int $chatId, string $role, string $content, array $images = [], string $kind = 'message'): int
     {
         $transaction = $images !== [];
         if ($transaction) {
@@ -55,7 +55,7 @@ final readonly class ChatRepository
         }
         try {
             $id = $this->store->insert('chat_messages', [
-                'chat_id' => $chatId, 'role' => $role, 'content' => $content, 'created_at' => date('Y-m-d H:i:s'),
+                'chat_id' => $chatId, 'role' => $role, 'content' => $content, 'kind' => $kind, 'created_at' => date('Y-m-d H:i:s'),
             ]);
             if ($images !== []) {
                 $this->store->insert('chat_message_images', ['message_id' => $id, 'data_url' => $images[0]]);
@@ -77,7 +77,7 @@ final readonly class ChatRepository
         // Rolling upgrade: existing conversations remain usable before the CLI migration.
         $attempts = $this->hasReplyAttempts();
         $stmt = $this->pdo->prepare(
-            'SELECT m.id, m.chat_id, m.role, m.content, m.created_at, i.data_url, '
+            'SELECT m.id, m.chat_id, m.role, m.content, m.kind, m.created_at, i.data_url, '
             .($attempts ? 'a.status' : 'NULL').' AS reply_status FROM chat_messages m '
             .($attempts ? 'LEFT JOIN chat_reply_attempts a ON a.message_id = m.id ' : '')
             .'LEFT JOIN chat_message_images i ON i.message_id = m.id WHERE m.chat_id = :chat_id ORDER BY m.id ASC'

@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     chat_id INTEGER NOT NULL,
     role TEXT NOT NULL,
     content TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'message',
     created_at TEXT NOT NULL,
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
 );
@@ -140,6 +141,7 @@ SQL;
         $this->addColumnIfNotExists('users', 'email_verification_token', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'email_confirmed_at', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('chats', 'model', "TEXT DEFAULT '".\App\Infrastructure\AI\OvhModelDefaults::MODEL."'");
+        $this->addColumnIfNotExists('chat_messages', 'kind', "TEXT NOT NULL DEFAULT 'message'");
     }
 
     private function addColumnIfNotExists(string $table, string $column, string $definition): void

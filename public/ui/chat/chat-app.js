@@ -1,10 +1,10 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261018-chat-retry';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261018-chat-retry';
+import { ChatApi } from './chat-api.js?v=20261025-clear';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261025-clear';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchModal } from './chat-research-modal.js?v=20261018-chat-retry';
-import { ResearchPanel, continueResearch } from './chat-research.js?v=20261019-fetch-reasons';
+import { ResearchModal } from './chat-research-modal.js?v=20261025-clear';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261025-clear';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 
@@ -22,6 +22,10 @@ const connection = byId('chat-connection');
 const researchModal = new ResearchModal({
     dialog: byId('research-dialog'), openButtons: [byId('research-open'), byId('research-open-side')],
     closeButton: byId('research-close'), count: byId('research-count'), sourceList: byId('research-source-list'),
+    clearButton: byId('research-clear-side'),
+    onClear: () => {
+        void researchPanel?.clear();
+    },
 });
 const status = byId('chat-status'), mobile = matchMedia('(max-width: 860px)');
 const markdown = new MarkdownRenderer();
@@ -60,6 +64,9 @@ function autosize() {
 }
 
 function messageNode(message) {
+    if (message.kind && message.kind !== 'message') {
+        return element('p', 'msg-chip', message.content);
+    }
     const assistant = message.role === 'assistant';
     const article = element('article', 'msg ' + (assistant ? 'ai' : 'user'));
     const body = element('div', 'body');
@@ -107,7 +114,11 @@ function render(state) {
     if (input.value !== state.draft) { input.value = state.draft; autosize(); }
     send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);
     researchPanel?.setScope(state.authenticated === true ? currentId || 0 : null);
-    if (researchPanel) { researchPanel.updateButton(); researchPanel.search.disabled ||= preparingImage || state.busy || state.loading; }
+    if (researchPanel) {
+        researchPanel.updateButton();
+        researchPanel.search.disabled ||= preparingImage || state.busy || state.loading;
+        byId('research-clear-side').disabled = preparingImage || researchContinuation || researchBusy || state.busy || state.loading || !researchPanel.hasContent();
+    }
     searchDog.update(state.authenticated === true ? researchBusy ? researchActivity : state.searchActivity !== 'idle' ? state.searchActivity : researchActivity : 'idle');
     const supportsImages = controller.canAttachImage();
     byId('attach-image').disabled = blocked || state.deliveryUncertain || !supportsImages;
@@ -309,12 +320,24 @@ researchPanel = new ResearchPanel(controller.api, {
     canContinue: () => !preparingImage && !controller.state.busy && !controller.state.loading
         && controller.state.authenticated === true && !controller.state.modelsLoading
         && !controller.state.deliveryUncertain && Boolean(controller.state.activeChat || controller.state.selectedModel),
-    onContinue: () => continueResearch(controller, () => { byId('research-mode').checked = true; }, sendDraft),
+    onContinue: async () => {
+        const last = controller.state.messages.at(-1);
+        const waitingForContinuation = !controller.state.draft.trim()
+            && controller.state.messages.some(message => message.role === 'user')
+            && (!last || last.role === 'user' || last.kind === 'approval_request');
+        if (waitingForContinuation) {
+            await controller.continueReply();
+            await researchPanel.refreshAfterReply();
+        } else {
+            await continueResearch(controller, () => { byId('research-mode').checked = true; }, sendDraft);
+        }
+    },
     onResume: () => sendDraft(),
-    onAgent: async allow => {
-        if (controller.state.draft.trim()) { controller.update({ notice: 'Decyzja zapisana. Wyślij polecenie, aby kontynuować badanie.' }); return; }
-        controller.setDraft(allow ? 'Kontynuuj poprzednie zadanie na podstawie zaakceptowanych źródeł.' : 'Kontynuuj poprzednie zadanie, respektując odmowę WWW.');
-        await sendDraft();
+    onAgent: async () => {
+        if (!await controller.continueReply()) {
+            controller.update({ notice: 'Decyzja zapisana. Użyj Kontynuuj, aby ponowić odpowiedź.' });
+        }
+        await researchPanel.refreshAfterReply();
     },
 });
 render(controller.state);

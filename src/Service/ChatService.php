@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\AI\AiReply;
 use App\Dto\Chat\AddChatMessageInput;
 use App\Dto\Chat\ChatResult;
 use App\Dto\Chat\CreateChatInput;
 use App\Exception\NotFoundException;
 use App\Exception\ValidationException;
+use App\Infrastructure\AI\AiClientInterface;
 use App\Infrastructure\AI\OvhAiClient;
 use App\Infrastructure\AI\ChatModelRegistryInterface;
 use App\Exception\AiConnectionException;
@@ -124,12 +126,9 @@ final readonly class ChatService
             // Retry never reuses a search consent. Existing research evidence is retained.
             $input = new AddChatMessageInput($input->chatId, $input->userId, $retrySource['content'], $retrySource['images'] ?? []);
         }
-        $selector = $this->resolveModel($chat['model'] ?? null);
-        $registered = $this->usesRegistry($selector) ? $this->modelRegistry->resolve($selector) : null;
-        $client = $registered !== null ? $this->modelRegistry->clientFor($registered) : $this->ovhAiClient;
-        $apiModel = $registered?->idModel ?? $selector;
+        [$selector, $client, $apiModel] = $this->resolveClient($chat);
         $images = $this->imageValidator->validate($input->images);
-        if ($images !== [] && !$this->modelCatalog->supportsImages($this->resolveModel($chat['model'] ?? null))) {
+        if ($images !== [] && !$this->modelCatalog->supportsImages($selector)) {
             throw new ValidationException('Wybrany model nie obsługuje obrazów. Rozpocznij rozmowę z modelem tekst i obrazy.');
         }
         if ($input->research) {
@@ -141,17 +140,7 @@ final readonly class ChatService
             $input = new AddChatMessageInput($input->chatId, $input->userId, $input->content, $images, research: $research);
             array_pop($history);
         }
-        $messageHistory = [];
-        foreach ($history as $msg) {
-            $messageHistory[] = [
-                'role' => $msg['role'],
-                // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
-                'content' => match (true) {
-                    $msg['role'] === 'assistant' && !empty($msg['images']) => $msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.',
-                    default => $this->modelContent($msg['content'], $msg['images'] ?? []),
-                },
-            ];
-        }
+        $messageHistory = $this->historyForModel($history);
 
         // Add user message to history for AI
         $messageHistory[] = [
@@ -164,6 +153,7 @@ final readonly class ChatService
             'user',
             $input->content,
             $images,
+            $input->kind,
         );
 
         $userMessage = [
@@ -171,6 +161,7 @@ final readonly class ChatService
             'chat_id' => $input->chatId,
             'role' => 'user',
             'content' => $input->content,
+            'kind' => $input->kind,
             'created_at' => $retrySource['created_at'] ?? date('Y-m-d H:i:s'),
         ];
 
@@ -185,36 +176,130 @@ final readonly class ChatService
         try {
             $reply = $input->research ? $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId)
                 : $this->replyGenerator->generate($client, $messageHistory, $apiModel, $input->search);
-            $aiContent = $reply->text;
-            $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $aiContent, $reply->images);
+            $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
             $this->chatRepository->finishReply($userMessageId, true);
         } catch (\Throwable $e) {
             $this->chatRepository->finishReply($userMessageId, false);
-            $this->logger->error('AI call failed', ['chat_id' => $input->chatId, 'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error']);
+            $this->logReplyFailure('AI call failed', $e, $input->chatId, $input->userId, $selector);
             throw $e;
         }
 
+        return [$userMessage, $this->assistantPayload($aiMessageId, $input->chatId, $reply)];
+    }
+
+    public function retryMessage(\App\Dto\Chat\RetryMessageInput $input): array
+    {
+        return $this->addMessage(new AddChatMessageInput($input->chatId, $input->userId, ''), $input->messageId);
+    }
+
+    /** Answers the latest real question again with the current research evidence; no new user message is saved. */
+    public function continueMessage(\App\Dto\Chat\RetryMessageInput $input): array
+    {
+        $chat = $this->chatRepository->findById($input->chatId);
+
+        if (!$chat) {
+            throw new NotFoundException('Chat not found');
+        }
+
+        if ((int)$chat['user_id'] !== $input->userId) {
+            throw new NotFoundException('Chat not found');
+        }
+
+        $history = $this->chatRepository->findMessagesByChatId($input->chatId);
+        $targetIndex = null;
+        foreach ($history as $index => $message) {
+            if ($message['role'] !== 'user') {
+                continue;
+            }
+            $targetIndex = (int)$message['id'] === $input->messageId ? $index : null;
+        }
+        if ($targetIndex === null) {
+            throw new ValidationException('Kontynuować można wyłącznie ostatnie pytanie.');
+        }
+
+        [$selector, $client, $apiModel] = $this->resolveClient($chat);
+        $this->research->evidence($input->userId, $input->chatId);
+        $messageHistory = $this->historyForModel(array_slice($history, 0, $targetIndex + 1));
+
+        try {
+            $reply = $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId);
+            $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
+        } catch (\Throwable $e) {
+            $this->logReplyFailure('AI continue failed', $e, $input->chatId, $input->userId, $selector);
+            throw $e;
+        }
+
+        return $this->assistantPayload($aiMessageId, $input->chatId, $reply);
+    }
+
+    /**
+     * @param array<string, mixed> $chat
+     * @return array{0: string, 1: AiClientInterface, 2: string}
+     */
+    private function resolveClient(array $chat): array
+    {
+        $selector = $this->resolveModel($chat['model'] ?? null);
+        $registered = $this->usesRegistry($selector) ? $this->modelRegistry->resolve($selector) : null;
+        $client = $registered !== null ? $this->modelRegistry->clientFor($registered) : $this->ovhAiClient;
+        $apiModel = $registered?->idModel ?? $selector;
+
+        return [$selector, $client, $apiModel];
+    }
+
+    private function logReplyFailure(string $message, \Throwable $e, int $chatId, int $userId, string $selector): void
+    {
+        $this->logger->error($message, [
+            'chat_id' => $chatId,
+            'user_id' => $userId,
+            'model' => $selector,
+            'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error',
+            'type' => get_class($e),
+            'origin' => basename($e->getFile()).':'.$e->getLine(),
+            'line' => $e->getLine(),
+            'code' => $e->getCode(),
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function assistantPayload(int $id, int $chatId, AiReply $reply): array
+    {
         $assistantMessage = [
-            'id' => $aiMessageId,
-            'chat_id' => $input->chatId,
+            'id' => $id,
+            'chat_id' => $chatId,
             'role' => 'assistant',
-            'content' => $aiContent,
+            'content' => $reply->text,
+            'kind' => $reply->kind,
             'created_at' => date('Y-m-d H:i:s'),
         ];
-
-        // Return both messages
         if ($reply->images !== []) {
             $assistantMessage['images'] = $reply->images;
         }
         if ($reply->search !== null) {
             $assistantMessage['search'] = $reply->search;
         }
-        return [$userMessage, $assistantMessage];
+
+        return $assistantMessage;
     }
 
-    public function retryMessage(\App\Dto\Chat\RetryMessageInput $input): array
+    /** @param list<array{id: int, role: string, content: string, kind?: string, images?: list<string>}> $messages */
+    private function historyForModel(array $messages): array
     {
-        return $this->addMessage(new AddChatMessageInput($input->chatId, $input->userId, ''), $input->messageId);
+        $history = [];
+        foreach ($messages as $msg) {
+            // Mechanical assistant notices never reach the model; user instructions always do.
+            if ($msg['role'] === 'assistant' && ($msg['kind'] ?? 'message') !== 'message') {
+                continue;
+            }
+            $history[] = [
+                'role' => $msg['role'],
+                // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
+                'content' => match (true) {
+                    $msg['role'] === 'assistant' && !empty($msg['images']) => $msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.',
+                    default => $this->modelContent($msg['content'], $msg['images'] ?? []),
+                },
+            ];
+        }
+        return $history;
     }
 
     private function resolveModel(?string $model): string

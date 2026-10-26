@@ -62,6 +62,17 @@ export class ResearchPanel {
     }
 
     canSearch() { return this.scope !== null && this.ready && !this.busy && !this.continuing && this.query.value.trim() !== '' && new TextEncoder().encode(this.query.value.trim()).length <= 1000; }
+    hasContent() {
+        return Boolean(this.state.results.length || this.state.sources.length || this.state.actions.length);
+    }
+    async clear() {
+        if (!this.ready || this.busy || this.continuing || this.scope === null || !this.hasContent()) {
+            return false;
+        }
+        this.bulkApproval = null;
+        this.resume = false;
+        return await this.run('clear');
+    }
     updateButton() {
         this.search.disabled = !this.canSearch();
         this.query.disabled = this.scope === null || this.busy;
@@ -165,7 +176,7 @@ export class ResearchPanel {
     async refreshAfterReply() {
         const ready = await this.refresh();
         if (ready && this.state.actions.some(action => action.status === 'pending')) {
-            this.onNotice('AI prosi o zgodę na operację WWW. Sprawdź dokładne zapytanie i wybierz Allow lub Deny.');
+            this.onNotice('AI prosi o zgodę — szczegóły w panelu źródeł.');
         }
         return ready;
     }
@@ -223,21 +234,35 @@ export class ResearchPanel {
             return;
         }
         const failed = this.state.actions.find(item => item.id === action.id)?.status === 'failed';
-        if (failed) {
-            this.onNotice('Operacja WWW nie powiodła się. Sprawdź stan poniżej; ponowienie wymaga nowej zgody.', true);
-            if (action.request.kind !== 'fetch') {
-                return;
-            }
-        }
         const waiting = this.state.actions.some(item => ['pending', 'running'].includes(item.status));
+        if (failed && action.request.kind === 'search') {
+            this.onNotice('Wyszukiwanie nie powiodło się. Sprawdź stan poniżej; ponowienie wymaga nowej zgody.', true);
+            return;
+        }
         if (this.resume && !waiting) {
             this.resume = false;
             await this.onResume();
-        } else if (action.origin === 'ai' && action.request.kind === 'fetch' && !waiting) {
+            return;
+        }
+        // A decision on an AI-requested operation answers the pending question automatically
+        // once no selected sources remain unread; search results wait for explicit Continue.
+        const hasUnread = this.state.sources.some(source => source.page?.status === 'unread');
+        if (action.origin === 'ai' && !waiting && !hasUnread) {
+            if (failed) {
+                this.onNotice('Nie udało się pobrać strony. Odpowiedź powstanie z pozostałych źródeł.');
+            }
             await this.onAgent(allow);
-        } else if (allow && action.request.kind === 'search' && !failed) {
-            this.onNotice(this.state.results.length ? 'Wyniki są domyślnie zaznaczone do limitu 20 źródeł. Odznacz niepotrzebne i kliknij „Kontynuuj z wybranymi stronami”.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
-        } else if (!allow) {
+            return;
+        }
+        if (failed) {
+            this.onNotice('Nie udało się pobrać strony. Ponowienie pobrania wymaga nowej zgody.');
+            return;
+        }
+        if (allow && action.request.kind === 'search') {
+            this.onNotice(this.state.results.length ? 'Wyniki zaznaczone domyślnie (limit 20). Odznacz niepotrzebne.' : 'Brak użytecznych wyników. Sprawdź stan operacji poniżej.');
+            return;
+        }
+        if (!allow) {
             this.onNotice('Odmowa zapisana. Operacja WWW nie została wykonana.');
         }
     }
@@ -292,6 +317,14 @@ export class ResearchPanel {
         refresh.type = 'button'; refresh.disabled = this.busy || this.scope === null;
         refresh.addEventListener('click', () => this.refresh());
         this.body.append(refresh);
+        const clear = node('button', 'Usuń wszystkie', 'btn btn-sm');
+        clear.type = 'button';
+        clear.id = 'research-clear-modal';
+        clear.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.hasContent();
+        clear.addEventListener('click', () => {
+            void this.clear();
+        });
+        this.body.append(clear);
         if (!this.ready) {
             this.body.append(node('p', this.busy ? 'Wczytywanie źródeł…' : 'Zaloguj się, aby zbierać źródła.'));
         }
@@ -305,7 +338,7 @@ export class ResearchPanel {
             if (!this.continueControl) {
                 this.body.append(button);
             }
-            this.body.append(node('p', 'Kliknięcie pobierze treść zaznaczonych stron i przekaże ją wybranemu dostawcy AI. Bez dodatkowego potwierdzania pobrań. Odznaczone strony zostaną pominięte.'));
+            this.body.append(node('p', 'Kliknięcie pobiera zaznaczone strony i przekazuje je AI.'));
             this.updateButton();
         }
         const pending = this.state.actions.filter(action => action.status === 'pending' && !(this.continuing && action.request.kind === 'fetch' && this.state.sources.some(source => source.url === action.request.url)));
@@ -315,8 +348,8 @@ export class ResearchPanel {
             card.append(node('strong', `${action.origin === 'ai' ? 'AI prosi o zgodę' : 'Zgoda'}: ${request.kind === 'search' ? 'wyszukanie WWW' : 'pobranie strony'}`));
             card.append(node('p', request.query || request.url, 'research-address'));
             card.append(node('p', request.kind === 'search'
-                ? 'Zapytanie trafi do MCP → SearXNG, awaryjnie Perplexity. Wyniki pojawią się tutaj; dopiero zaznaczone źródła przekażesz AI.'
-                : 'Ten adres otrzyma żądanie GET bez Twoich cookies. Pobrany tekst może trafić do wybranego dostawcy AI po wysłaniu polecenia. Każde przekierowanie wymaga nowej zgody.'));
+                ? 'Zapytanie trafi do wyszukiwarki; wyniki pojawią się tutaj.'
+                : 'Jedno żądanie GET bez Twoich cookies.'));
             for (const [allow, label] of [[true, 'Allow — zezwól'], [false, 'Deny — odmów']]) {
                 const button = node('button', label, 'btn btn-sm'); button.type = 'button'; button.disabled = this.busy;
                 button.addEventListener('click', () => this.decide(action, allow)); card.append(button);

@@ -13,6 +13,7 @@ final readonly class AddChatMessageInput
         public array $images = [],
         public SearchOptions $search = new SearchOptions(),
         public bool $research = false,
+        public string $kind = 'message',
     ) {
     }
 }

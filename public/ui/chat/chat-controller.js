@@ -1,9 +1,9 @@
-import { aiFailureMessage } from './chat-api.js?v=20261018-chat-retry';
+import { aiFailureMessage } from './chat-api.js?v=20261025-clear';
 import { isInlineImage } from './chat-images.js?v=20261013-6';
 
 function deliveryFailureDetail(error) {
     if (error.status) {
-        return ` HTTP ${error.status}.`;
+        return ' Przepraszamy, wystąpił chwilowy problem po naszej stronie — pracujemy nad jego jak najszybszym usunięciem.';
     }
     if (error.reason === 'invalid_app_response') {
         return ' Aplikacja zwróciła odpowiedź w nieoczekiwanym formacie.';
@@ -89,11 +89,15 @@ export class ChatController {
                 return false;
             }
             const models = items.filter(item => typeof item.id === 'string' && item.id !== '');
+            // Self-updating aliases keep the default model usable; catalog order starts with deprecated names.
+            const defaultModel = models.find(item => /-flash-latest$/.test(item.id))?.id || models[0]?.id || '';
             const selected = forHistory ? this.state.activeChat?.model
-                : models.find(item => item.id === remembered)?.id || models[0]?.id || '';
+                : models.find(item => item.id === remembered)?.id || defaultModel;
             this.update({ models, selectedModel: selected || '', modelsLoading: false,
                 notice: models.length ? models.every(item => item.configured === false) ? 'Katalog pobrany. Aby rozmawiać, skonfiguruj dostęp do wybranego dostawcy.' : '' : 'To połączenie nie ma skonfigurowanych modeli.' });
-            if (!forHistory && selected) {
+            // Only an explicit user choice is remembered; auto-defaults (e.g. a deprecated
+            // catalog entry) must never overwrite a working preference.
+            if (!forHistory && remembered && selected === remembered) {
                 this.preferences.save(connection, selected);
             }
             return true;
@@ -287,6 +291,34 @@ export class ChatController {
     retryableMessage(messages) {
         const last = messages.at(-1);
         return last?.role === 'user' && last.reply_status === 'failed' ? last.id : null;
+    }
+
+    lastUserMessage() {
+        return this.state.messages.filter(message => message.role === 'user').at(-1) || null;
+    }
+
+    /** Answers the latest question again with current research evidence; no new user message is sent. */
+    async continueReply() {
+        const target = this.lastUserMessage();
+        if (!target || !this.state.activeChat || this.state.busy || this.state.loading
+            || this.state.deliveryUncertain || this.state.authenticated !== true) {
+            return false;
+        }
+        this.update({ busy: true, error: '', notice: '', retryMessageId: null, searchActivity: 'searching' });
+        try {
+            const reply = await this.api.continueMessage(this.state.activeChat.id, target.id);
+            this.update({ messages: [...this.state.messages, reply], searchActivity: 'done' });
+            return true;
+        } catch (error) {
+            this.update({
+                searchActivity: 'idle',
+                authenticated: error.status === 401 ? false : this.state.authenticated,
+                error: error.status === 401 ? '' : aiFailureMessage(error) || 'Nie udało się kontynuować odpowiedzi.' + deliveryFailureDetail(error),
+            });
+            return false;
+        } finally {
+            this.update({ busy: false });
+        }
     }
 
     async retryReply() {

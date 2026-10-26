@@ -1,10 +1,13 @@
 /** Presentation only: durable source data stays in the encrypted server workspace. */
 export class ResearchModal {
-    constructor({ dialog, openButtons, closeButton, count, sourceList }) {
-        Object.assign(this, { dialog, openButtons, closeButton, count, sourceList });
+    constructor({ dialog, openButtons, closeButton, count, sourceList, clearButton = null, onClear = () => {} }) {
+        Object.assign(this, { dialog, openButtons, closeButton, count, sourceList, clearButton, onClear });
         this.opener = null;
         openButtons.forEach(button => button.addEventListener('click', () => this.open(button)));
         closeButton.addEventListener('click', () => this.close());
+        clearButton?.addEventListener('click', () => {
+            this.onClear();
+        });
         dialog.addEventListener('click', event => { if (event.target === dialog) {
             const bounds = dialog.getBoundingClientRect();
             if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
@@ -28,6 +31,9 @@ export class ResearchModal {
         this.sourceList.replaceChildren();
         const selected = new Set(state.sources.map(source => source.id));
         const sources = [...state.sources, ...state.results.filter(source => !selected.has(source.id))];
+        if (this.clearButton) {
+            this.clearButton.disabled = sources.length === 0 && (!state.actions || state.actions.length === 0);
+        }
         for (const source of sources) {
             const item = document.createElement('li');
             const button = document.createElement('button');

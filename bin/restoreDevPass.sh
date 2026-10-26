@@ -10,4 +10,9 @@ if [[ "${APP_ENV:-dev}" == prod ]]; then
     exit 1
 fi
 
-exec sudo docker compose -f docker-compose.yml exec -T app php bin/restore-dev-user.php
+env_args=()
+if [[ -n "${DEV_ADMIN_PASSWORD:-}" ]]; then
+    env_args=(-e DEV_ADMIN_PASSWORD)
+fi
+
+exec sudo docker compose -f docker-compose.yml exec -T "${env_args[@]}" app php bin/restore-dev-user.php

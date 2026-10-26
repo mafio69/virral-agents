@@ -19,17 +19,16 @@ Szablon:
 
 ---
 
-## 2026-10-25 — Przygotowanie wydania v1.0.0
+## 2026-10-26 — Poprawki z przeglądu PR #10 (wydanie v1.0.0)
 
-- **Gałąź:** `develop` (po scaleniu `release/v1.0.0`). Automatyczna walidacja 100% zielona (`composer check-all`: formatter 0/168, PHP 238/238 — 1142 asercje, UI 93/93; `npm run test:e2e`: 5/5) oraz testy manualne potwierdzone przez właściciela.
+- **Gałąź:** `develop` (otwarty PR #10 `develop` → `master`). Automatyczna walidacja 100% zielona (`composer check-all`: formatter 0/168, PHP 239/239 — 1148 asercji, UI 93/93; `npm run test:e2e`: 5/5). Potwierdzono testy manualne czatu i badania źródeł w przeglądarce; przed oznaczeniem tagu `v1.0.0` obowiązują pozostałe weryfikacje środowiskowe/produkcyjne z `STATUS.md`.
 - **Zrobione w tej sesji:**
-  - Zsynchronizowano dokumentację (`README.md`, `REPO.md`, `docs/MCP-USAGE.md`, `STATUS.md`, `CHANGELOG.md`) ze stanem kodu (`MCP_AUTH_TOKEN`, `/continue`, `chat_messages.kind`, `TRUSTED_PROXIES`, `DELETE /api/research`).
-  - Ujednolicono przyjazne komunikaty błędów dla użytkownika (brak surowych kodów `HTTP 5xx`, `[ERROR 503]` i wewnętrznych nazw konfiguracji) oraz rozszerzono logowanie kontekstu diagnostycznego w `DualLogger` (`src/middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`).
-  - Dodano czyszczenie wyników i źródeł badania (`DELETE /api/research`, przyciski `#research-clear-side` w sekcji źródeł i `#research-clear-modal` w modalu) oraz izolację jednego wyszukiwania na jedną wymianę zdań (nowe wyszukiwanie zapisuje wyniki do czystego stanu, a wygenerowanie odpowiedzi automatycznie czyści stan badania i wyłącza ponowne wywołanie narzędzi WWW w tej samej turze).
-  - Dodano test E2E logowania z błędnymi i poprawnymi danymi (`tests/e2e/flows.spec.mjs`) oraz testy jednostkowe obsługi błędów i czyszczenia źródeł (`ChatControllerErrorTest`, `ApplicationFailureLogTest`, `SearchDiagnosticsTest`, `ResearchServiceTest`, `ResearchAgentTest`, `chat-controller.test.mjs`, `chat-research.test.mjs`).
-- **Od czego zacząć:** utworzenie PR `develop` → `master` na GitHubie (po zielonym CI), deploy na serwer produkcyjny (Optiplex) i oznaczenie tagu `v1.0.0`.
+  - Usunięto zahardkodowane hasło z `bin/restore-dev-user.php` i `docs/DEV-ADMIN.md`; skrypt wczytuje teraz `DEV_ADMIN_PASSWORD` (min. 10 znaków) z lokalnego środowiska bez wypisywania hasła na `STDOUT`.
+  - Zaktualizowano przykład zdalnego adresu `MCP_SEARCH_URL` w `docs/KONFIGURACJA.md`, `README.md` i `REPO.md` na `https://szukaj.dom/mcp` z wymogiem TLS dla zdalnych endpointów z `MCP_AUTH_TOKEN`.
+  - W `ChatReplyGenerator` rozróżniono brak konfiguracji wyszukiwania (`missing_configuration`) od chwilowej awarii; w `ChatService` wydzielono wspólne metody pomocnicze dla `addMessage()` i `continueMessage()`; w `SettingsSearchEnvTest` dodano pełny snapshot i przywracanie `$_ENV`/`$_SERVER`/`putenv`; w `GIT-FLOW.md` przeniesiono krok dokumentacji przed `Commit`.
+- **Od czego zacząć:** weryfikacja PR #10 na GitHubie (w GitGuardian oznaczenie historycznego commitu `68d938a` jako testowego lub decyzja właściciela), merge `develop` → `master`, deploy na Optiplex i pozostałe kontrole z `STATUS.md` przed tagiem `v1.0.0`.
 - **Pułapki:**
-  - Lokalna modyfikacja `GIT-FLOW.md` oraz nieśledzone `.opencode/plugins/` i `var/` — nie commitować bez wyraźnej decyzji właściciela.
-  - Formatter obejmuje `bin/` — nowe/zmieniane skrypty w `bin/` muszą trzymać PSR-12.
+  - Nieśledzone `.opencode/plugins/` i `var/` — nie commitować.
+  - Formatter obejmuje `bin/` — skrypty w `bin/` muszą trzymać PSR-12.
   - E2E wysyła pocztę do `mail-trap.dom:1025`, API `http://mail-trap.dom`.
-  - Opisy poleceń Bash po polsku; `sudo` wymaga klucza FIDO — polecenia z `sudo` uruchamia właściciel w swoim terminalu.
+  - Opisy poleceń Bash po polsku; `sudo` uruchamia właściciel w swoim terminalu; podpis commitów: `Co-Authored-By: Gemini <noreply@google.com>`.

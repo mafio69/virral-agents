@@ -32,8 +32,11 @@ final readonly class ChatReplyGenerator implements ChatReplyGeneratorInterface
                 'model' => $model,
                 'origin' => basename($error->getFile()).':'.$error->getLine(),
             ]);
+            $message = $error->reason === 'missing_configuration'
+                ? 'Wyszukiwanie WWW nie jest skonfigurowane w tej instalacji. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie.'
+                : 'Przepraszamy, wyszukiwanie WWW jest chwilowo niedostępne z powodu problemu technicznego. Pracujemy nad jego jak najszybszym usunięciem. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie. Kolejna próba wymaga ponownej zgody.';
             return new AiReply(
-                'Przepraszamy, wyszukiwanie WWW jest chwilowo niedostępne z powodu problemu technicznego. Pracujemy nad jego jak najszybszym usunięciem. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie. Kolejna próba wymaga ponownej zgody.',
+                $message,
                 search: ['status' => 'unavailable', 'reason' => $error->reason, 'stage' => $error->stage]
             );
         } finally {

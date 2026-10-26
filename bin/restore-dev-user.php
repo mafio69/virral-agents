@@ -9,7 +9,6 @@ if (PHP_SAPI !== 'cli') {
 }
 
 const DEV_ADMIN_EMAIL = 'admin@mafio.pl';
-const DEV_ADMIN_PASSWORD = 'admin4567-=';
 
 try {
     require dirname(__DIR__).'/vendor/autoload.php';
@@ -23,12 +22,25 @@ try {
         exit(1);
     }
 
+    $password = '';
+    foreach ([getenv('DEV_ADMIN_PASSWORD'), $_ENV['DEV_ADMIN_PASSWORD'] ?? null, $_SERVER['DEV_ADMIN_PASSWORD'] ?? null] as $candidate) {
+        if (is_string($candidate) && trim($candidate) !== '' && !str_starts_with($candidate, 'encrypted:')) {
+            $password = $candidate;
+            break;
+        }
+    }
+    if (strlen($password) < 10) {
+        fwrite(STDERR, "Ustaw DEV_ADMIN_PASSWORD (minimum 10 znaków) w lokalnym środowisku przed uruchomieniem skryptu.\n");
+        exit(1);
+    }
+
     $pdo = $container->get(PDO::class);
     $cipher = $container->get(\App\Infrastructure\DataProtection\DataCipherInterface::class);
     (new \App\Infrastructure\DataProtection\DataProtectionMigration($pdo, $cipher))->assertReady();
     $users = $container->get(\App\Repository\UserRepository::class);
 
-    $hash = password_hash(DEV_ADMIN_PASSWORD, PASSWORD_DEFAULT);
+    $hash = password_hash($password, PASSWORD_DEFAULT);
+    unset($password);
     $pdo->beginTransaction();
     $user = $users->findByEmail(DEV_ADMIN_EMAIL);
     if ($user === null) {
@@ -47,7 +59,7 @@ try {
     $pdo->exec('DELETE FROM login_attempts');
     $pdo->commit();
 
-    fwrite(STDOUT, $action.' '.DEV_ADMIN_EMAIL.". Hasło startowe: ".DEV_ADMIN_PASSWORD.". Zmień je natychmiast po zalogowaniu.\n");
+    fwrite(STDOUT, $action.' '.DEV_ADMIN_EMAIL.". Sesje i blokady logowania wyczyszczone. Zmień hasło po zalogowaniu.\n");
 } catch (Throwable $error) {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();

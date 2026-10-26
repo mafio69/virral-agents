@@ -9,9 +9,9 @@
 
 ---
 
-**Ostatnia aktualizacja:** 2026-10-25
-**Gałąź:** `develop` (po scaleniu `release/v1.0.0`); gotowe do PR `develop` → `master` i tagu `v1.0.0`.
-**Ostatnia pełna walidacja (2026-10-25):** `composer check-all` — formatter 0/168, PHP 238/238 (1142 asercje), UI 93/93; Composer strict/platform-reqs OK; E2E 5/5; testy manualne w przeglądarce potwierdzone przez właściciela.
+**Ostatnia aktualizacja:** 2026-10-26
+**Gałąź:** `develop` (otwarty PR #10 `develop` → `master`).
+**Ostatnia pełna walidacja (2026-10-26):** `composer check-all` — formatter 0/168, PHP 239/239 (1148 asercji), UI 93/93; Composer strict/platform-reqs OK; E2E 5/5; testy manualne czatu i badania źródeł w przeglądarce potwierdzone przez właściciela.
 
 ## Gotowe (w develop / release/v1.0.0)
 

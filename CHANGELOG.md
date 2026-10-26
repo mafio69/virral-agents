@@ -627,3 +627,13 @@ K3 zamknięte na poziomie zgodności kodu i przekazanych testów serwera; K1 ma 
 - Dodano izolację wyszukiwania na pojedynczą wymianę zdań oraz ręczne czyszczenie wyników i źródeł (`DELETE /api/research`, `ResearchService::clear()`, przyciski „Wyczyść wyniki” w sekcji bocznej i „Usuń wszystkie” w modalu wyników): każde zatwierdzone wyszukiwanie zapisuje wyniki do czystego stanu, po wygenerowaniu odpowiedzi ze źródeł `ResearchReplyGenerator` automatycznie czyści stan badania, a obecność zebranych źródeł/decyzji w danej turze wymusza wygenerowanie odpowiedzi bez ponownego wywołania narzędzi WWW.
 - Dodano test E2E logowania w `tests/e2e/flows.spec.mjs` (logowanie z nieistniejącym e-mailem → 401, z potwierdzonym e-mailem i błędnym hasłem → 401, z poprawnymi danymi → 200 i otwarcie pulpitu) oraz testy jednostkowe (`ChatControllerErrorTest`, `ApplicationFailureLogTest`, `SearchDiagnosticsTest`, `ResearchServiceTest`, `ResearchAgentTest`, `chat-controller.test.mjs`, `chat-research.test.mjs`).
 - Walidacja: `composer check-all` — formatter 0/168, PHP 238/238 (1142 asercje), UI 93/93; `npm run test:e2e` — 5/5; `composer validate --strict --no-check-publish` oraz `composer check-platform-reqs` poprawne.
+
+## 2026-10-26 — Poprawki z przeglądu PR #10 (CodeRabbit / GitGuardian)
+
+- Usunięto zahardkodowane hasło z `bin/restore-dev-user.php` i `docs/DEV-ADMIN.md`; skrypt odczytuje `DEV_ADMIN_PASSWORD` (min. 10 znaków) z lokalnego środowiska (wspieranego też przez `bin/restoreDevPass.sh`) i nie wypisuje hasła na `STDOUT`.
+- W `docs/KONFIGURACJA.md`, `README.md` i `REPO.md` zmieniono przykład zdalnego adresu `MCP_SEARCH_URL` na `https://szukaj.dom/mcp` i dopisano wymóg TLS dla zdalnych endpointów korzystających z `MCP_AUTH_TOKEN`.
+- W `src/Service/ChatReplyGenerator.php` rozróżniono błąd `missing_configuration` od chwilowej niedostępności wyszukiwania WWW (test w `tests/SearchDiagnosticsTest.php`).
+- W `src/Service/ChatService.php` wydzielono wspólne metody pomocnicze (`resolveClient`, `logReplyFailure`, `assistantPayload`) używane przez `addMessage` i `continueMessage`.
+- W `tests/SettingsSearchEnvTest.php` dodano pełny snapshot i przywracanie stanu `$_ENV`, `$_SERVER` i `putenv` wokół `Dotenv::safeLoad()`.
+- W `GIT-FLOW.md` przeniesiono na diagramie Mermaid krok aktualizacji dokumentacji przed `Commit`, a w `HANDOFF.md` i `STATUS.md` uzgodniono opis potwierdzonych testów przeglądarkowych i pozostałych kontroli przed tagiem `v1.0.0`.
+- Walidacja: `composer check-all` — formatter 0/168, PHP 239/239 (1148 asercji), UI 93/93.

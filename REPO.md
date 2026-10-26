@@ -103,7 +103,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
   timeout wywołania/odczytu 45 s. Nie otrzymuje kluczy dostawców AI.
 - Domyślny tryb WWW to ASK. Zgoda dotyczy jednego jawnego zapytania i nie przechodzi
   na kolejną wiadomość. Wyszukiwanie jest oddzielne od wiadomości; checkboxy zbierają źródła. Fetch wymaga jawnej zgody: „Kontynuuj z wybranymi stronami” zatwierdza pobranie zaznaczonej listy bez dodatkowych pytań; ręczne akcje zachowują Allow/Deny.
-- `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp` (przekazywany z pliku środowiska). `MCP_AUTH_TOKEN` przekazuje opcjonalny token Bearer do serwera MCP (np. `http://szukaj.dom/mcp`; status 401/403 mapowany na `unauthorized`).
+- `MCP_SEARCH_URL`: aplikacja/Compose/FPM domyślnie używają `http://mcp-search:8000/mcp` (przekazywany z pliku środowiska). `MCP_AUTH_TOKEN` przekazuje opcjonalny token Bearer do serwera MCP (np. `https://szukaj.dom/mcp`; zdalne endpointy z tokenem wymagają TLS, a status 401/403 jest mapowany na `unauthorized`).
   PHP uruchomione na hoście wymaga jawnego `http://127.0.0.1:8890/mcp`.
   Samodzielny skrypt diagnostyczny nadal domyślnie używa adresu hosta.
   Wymagana wspólna sieć Docker `ai`; działające kontenery trzeba do niej podłączyć.

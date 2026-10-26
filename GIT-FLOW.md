@@ -1,4 +1,3 @@
-#mariusz/latitude
 # Preambuła – zasady współpracy
 
 ## Role
@@ -38,17 +37,20 @@
 - Zauważysz problem poza zakresem? Zgłoś go w raporcie, nie naprawiaj na własną rękę.
 
 ## Commit
-- Commit wymaga mojej wyraźnej zgody, chyba że wprost napiszę, że w danym zadaniu agent commituje sam.
+- Agent commituje sam.
 - Nie zmieniaj git config user.name ani git config user.email.
 - Nie cofaj zmian przez git restore, git checkout --, git reset --hard, git clean -f ani podobne mechanizmy bez mojej zgody.
-- Nie commituj sekretów, plików .env ani kluczy.
+- Nie commituj sekretów, plików .env ani kluczy. Pilnujcie tych sekretów potem jest masa roboty jak wyjdzie na github
+- Obowiązek podpisywania się w każdym commicie nazwą swojego modelu AI (spójny format w repozytoriach), np.:
+    - dla Gemini: `Co-Authored-By: Gemini <noreply@google.com>`
+    - dla Claude: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
 
 ## Push, master, deploy
 - git push wymaga osobnej, wyraźnej zgody Mariusza w bieżącej rozmowie.
-- Nie używaj force push.
-- master przyjmuje zmiany wyłącznie przez PR z zielonymi wymaganymi kontrolami.
+- Nie używaj force push!
+- Master przyjmuje zmiany wyłącznie przez PR z zielonymi wymaganymi kontrolami.
 - Deploy wymaga osobnej zgody Mariusza.
-- Po udanym wdrożeniu gałąź zadaniową można usunąć wyłącznie za zgodą.
+- Po udanym wdrożeniu gałąź zadaniową można usunąć.
 
 ## Koniec zadania
 - Podaj krótki raport: co zmieniono, jakie testy uruchomiono i z jakim wynikiem, co zostało otwarte.
@@ -74,7 +76,8 @@ flowchart TD
     I --> J{Wszystko zielone?}
     J -- Nie --> K[Napraw lub zgłoś Mariuszowi]
     K --> I
-    J -- Tak --> L{Zgoda Mariusza na commit?}
+    J -- Tak --> Y[Dokumentacja: HANDOFF, CHANGELOG, STATUS]
+    Y --> L{Zgoda Mariusza na commit?}
     L -- Nie --> M[Czekaj na zgodę]
     M --> L
     L -- Tak --> N[Commit]
@@ -90,7 +93,6 @@ flowchart TD
     T --> V{Zgoda na usunięcie brancha?}
     V -- Tak --> W[Usuń branch zadaniowy]
     V -- Nie --> X[Zostaw branch]
-    W --> Y
-    X --> Y[Dokumentacja: HANDOFF, CHANGELOG, STATUS]
-    Y --> Z([Raport końcowy])
+    W --> Z([Raport końcowy])
+    X --> Z
 ```

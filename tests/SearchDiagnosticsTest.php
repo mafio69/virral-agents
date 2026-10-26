@@ -45,6 +45,23 @@ final class SearchDiagnosticsTest extends TestCase
         self::assertStringNotContainsString('Public fixture query', $reply->text);
     }
 
+    public function testMissingSearchConfigurationReturnsConfigurationSpecificMessage(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('warning')->with(
+            'MCP search failed',
+            self::callback(static fn (array $context): bool => $context['reason'] === 'missing_configuration' && $context['stage'] === 'definition')
+        );
+        $model = $this->createMock(AiClientInterface::class);
+        $model->expects(self::never())->method('generate');
+        $reply = (new ChatReplyGenerator(null, $logger))->generate($model, [], 'fixture', new SearchOptions('mcp', 1, 'Public fixture query', true));
+        self::assertSame(['status' => 'unavailable', 'reason' => 'missing_configuration', 'stage' => 'definition'], $reply->search);
+        self::assertSame(
+            'Wyszukiwanie WWW nie jest skonfigurowane w tej instalacji. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie.',
+            $reply->text
+        );
+    }
+
     public function testStreamTransportDnsFailureIsClassifiedWithoutExposingTransportText(): void
     {
         $failure = new ConnectException('php_network_getaddresses: getaddrinfo failed; fixture-private-diagnostic', new Request('POST', 'http://mcp.example/mcp'));

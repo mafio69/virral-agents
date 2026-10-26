@@ -12,26 +12,39 @@ final class SettingsSearchEnvTest extends TestCase
     /** @var array<string, array{getenv: string|false, env: ?string, server: ?string}> */
     private array $saved = [];
 
+    /** @var array<string, mixed> */
+    private array $initialEnv = [];
+
+    /** @var array<string, mixed> */
+    private array $initialServer = [];
+
+    protected function setUp(): void
+    {
+        $this->initialEnv = $_ENV;
+        $this->initialServer = $_SERVER;
+    }
+
     protected function tearDown(): void
     {
-        foreach ($this->saved as $name => $original) {
-            if ($original['getenv'] === false) {
-                putenv($name);
-            } else {
-                putenv($name.'='.$original['getenv']);
+        try {
+            foreach (array_keys($_ENV + $_SERVER) as $name) {
+                $key = (string) $name;
+                if (!array_key_exists($key, $this->saved) && !array_key_exists($key, $this->initialEnv) && !array_key_exists($key, $this->initialServer)) {
+                    putenv($key);
+                }
             }
-            if ($original['env'] === null) {
-                unset($_ENV[$name]);
-            } else {
-                $_ENV[$name] = $original['env'];
+            foreach ($this->saved as $name => $original) {
+                if ($original['getenv'] === false) {
+                    putenv($name);
+                } else {
+                    putenv($name.'='.$original['getenv']);
+                }
             }
-            if ($original['server'] === null) {
-                unset($_SERVER[$name]);
-            } else {
-                $_SERVER[$name] = $original['server'];
-            }
+        } finally {
+            $_ENV = $this->initialEnv;
+            $_SERVER = $this->initialServer;
+            $this->saved = [];
         }
-        $this->saved = [];
     }
 
     public function testMcpAuthTokenReachesSearchSettings(): void
@@ -55,6 +68,14 @@ final class SettingsSearchEnvTest extends TestCase
 
     private function setEnv(string $name, string $value): void
     {
+        $this->snapshotName($name);
+        putenv($name.'='.$value);
+        $_ENV[$name] = $value;
+        $_SERVER[$name] = $value;
+    }
+
+    private function snapshotName(string $name): void
+    {
         if (!array_key_exists($name, $this->saved)) {
             $original = getenv($name);
             $this->saved[$name] = [
@@ -63,15 +84,22 @@ final class SettingsSearchEnvTest extends TestCase
                 'server' => isset($_SERVER[$name]) ? (string) $_SERVER[$name] : null,
             ];
         }
-        putenv($name.'='.$value);
-        $_ENV[$name] = $value;
-        $_SERVER[$name] = $value;
     }
 
     private function loadSettings(): array
     {
+        $beforeKeys = array_fill_keys(array_map('strval', array_keys($_ENV + $_SERVER)), true);
         $builder = new ContainerBuilder();
-        (require dirname(__DIR__).'/src/settings.php')($builder);
+        try {
+            (require dirname(__DIR__).'/src/settings.php')($builder);
+        } finally {
+            foreach (array_keys($_ENV + $_SERVER) as $name) {
+                $key = (string) $name;
+                if (!isset($beforeKeys[$key]) && !array_key_exists($key, $this->saved)) {
+                    $this->saved[$key] = ['getenv' => false, 'env' => null, 'server' => null];
+                }
+            }
+        }
 
         return $builder->build()->get('settings');
     }

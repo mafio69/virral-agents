@@ -20,7 +20,7 @@ src/settings.php pobiera tylko:
 - ANTHROPIC_API_KEY — bezpośrednie Anthropic Messages API.
 - GEMINI_KEY — bezpośrednie Google Gemini API.
 - OPENROUTER_API_KEY — OpenRouter (Chat Completions); opcjonalnie OPENROUTER_MODELS — identyfikatory modeli po przecinku, np. `anthropic/claude-sonnet-4.5,google/gemini-2.5-flash`. Bez tej listy widoczny jest cały katalog tekstowy.
-- MCP_SEARCH_URL — adres serwera wyszukiwarki MCP, np. `http://szukaj.dom/mcp` (domyślnie `http://mcp-search:8000/mcp` w sieci Docker `ai`); MCP_AUTH_TOKEN — token Bearer, gdy serwer zwraca 401. Kod `unauthorized` oznacza brak lub zły token.
+- MCP_SEARCH_URL — adres serwera wyszukiwarki MCP, np. `https://szukaj.dom/mcp` (domyślnie `http://mcp-search:8000/mcp` w sieci Docker `ai`); MCP_AUTH_TOKEN — token Bearer, gdy serwer zwraca 401. Zdalne endpointy korzystające z `MCP_AUTH_TOKEN` muszą używać TLS (`https://`). Kod `unauthorized` oznacza brak lub zły token.
 - MAIL_DSN — transport poczty, jeśli zawiera poświadczenia lub prywatny adres. Gdy go nie ma, używana jest lokalna wartość z konfiguracji PHP.
 
 HTTP i migrator CLI wczytują lokalny plik środowiska przez wspólne src/settings.php.

@@ -30,6 +30,7 @@ final readonly class ChatService
         private readonly ResearchServiceInterface $research,
         private readonly ResearchReplyGeneratorInterface $researchReply,
         private readonly ?\App\Observability\LangfuseTrace $langfuse = null,
+        private readonly ?\App\Repository\ChatUsageRepository $chatUsageRepository = null,
     ) {
     }
 
@@ -179,6 +180,16 @@ final readonly class ChatService
             $reply = $input->research ? $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId)
                 : $this->replyGenerator->generate($client, $messageHistory, $apiModel, $input->search);
             $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
+            if ($reply->usage !== null) {
+                $promptTokens = (int) ($reply->usage['prompt_tokens'] ?? $reply->usage['input_tokens'] ?? 0);
+                $completionTokens = (int) ($reply->usage['completion_tokens'] ?? $reply->usage['output_tokens'] ?? 0);
+                $this->chatUsageRepository?->save($aiMessageId, $apiModel, $promptTokens, $completionTokens);
+            }
+            if ($reply->usage !== null) {
+                $promptTokens = (int) ($reply->usage['prompt_tokens'] ?? $reply->usage['input_tokens'] ?? 0);
+                $completionTokens = (int) ($reply->usage['completion_tokens'] ?? $reply->usage['output_tokens'] ?? 0);
+                $this->chatUsageRepository?->save($aiMessageId, $apiModel, $promptTokens, $completionTokens);
+            }
             $this->chatRepository->finishReply($userMessageId, true);
         } catch (\Throwable $e) {
             $this->chatRepository->finishReply($userMessageId, false);
@@ -240,6 +251,11 @@ final readonly class ChatService
         try {
             $reply = $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId);
             $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
+            if ($reply->usage !== null) {
+                $promptTokens = (int) ($reply->usage['prompt_tokens'] ?? $reply->usage['input_tokens'] ?? 0);
+                $completionTokens = (int) ($reply->usage['completion_tokens'] ?? $reply->usage['output_tokens'] ?? 0);
+                $this->chatUsageRepository?->save($aiMessageId, $apiModel, $promptTokens, $completionTokens);
+            }
         } catch (\Throwable $e) {
             $this->logReplyFailure('AI continue failed', $e, $input->chatId, $input->userId, $selector);
             throw $e;

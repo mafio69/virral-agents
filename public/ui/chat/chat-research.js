@@ -62,6 +62,17 @@ export class ResearchPanel {
     }
 
     canSearch() { return this.scope !== null && this.ready && !this.busy && !this.continuing && this.query.value.trim() !== '' && new TextEncoder().encode(this.query.value.trim()).length <= 1000; }
+    hasContent() {
+        return Boolean(this.state.results.length || this.state.sources.length || this.state.actions.length);
+    }
+    async clear() {
+        if (!this.ready || this.busy || this.continuing || this.scope === null || !this.hasContent()) {
+            return false;
+        }
+        this.bulkApproval = null;
+        this.resume = false;
+        return await this.run('clear');
+    }
     updateButton() {
         this.search.disabled = !this.canSearch();
         this.query.disabled = this.scope === null || this.busy;
@@ -233,9 +244,10 @@ export class ResearchPanel {
             await this.onResume();
             return;
         }
-        // A decision on an AI-requested operation answers the pending question automatically,
-        // also when one fetch failed: the answer is built from the remaining sources.
-        if (action.origin === 'ai' && !waiting) {
+        // A decision on an AI-requested operation answers the pending question automatically
+        // once no selected sources remain unread; search results wait for explicit Continue.
+        const hasUnread = this.state.sources.some(source => source.page?.status === 'unread');
+        if (action.origin === 'ai' && !waiting && !hasUnread) {
             if (failed) {
                 this.onNotice('Nie udało się pobrać strony. Odpowiedź powstanie z pozostałych źródeł.');
             }
@@ -305,6 +317,14 @@ export class ResearchPanel {
         refresh.type = 'button'; refresh.disabled = this.busy || this.scope === null;
         refresh.addEventListener('click', () => this.refresh());
         this.body.append(refresh);
+        const clear = node('button', 'Usuń wszystkie', 'btn btn-sm');
+        clear.type = 'button';
+        clear.id = 'research-clear-modal';
+        clear.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.hasContent();
+        clear.addEventListener('click', () => {
+            void this.clear();
+        });
+        this.body.append(clear);
         if (!this.ready) {
             this.body.append(node('p', this.busy ? 'Wczytywanie źródeł…' : 'Zaloguj się, aby zbierać źródła.'));
         }

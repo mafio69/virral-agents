@@ -62,6 +62,10 @@ final class ChatServiceFixture
             {
                 throw new \LogicException('Research fixture not configured');
             }
+            public function clear(int $userId, int $chatId): array
+            {
+                return [];
+            }
             public function evidence(int $userId, int $chatId): array
             {
                 throw new \LogicException('Research fixture not configured');

@@ -253,7 +253,7 @@ async function register() {
         : 'Konto utworzone. Sprawdź email, aby potwierdzić rejestrację.', 'success');
     } else {
       show(el, r.status === 422 ? r.data.error || 'Sprawdź email i hasło.'
-        : 'Rejestracja jest niedostępna z powodu błędu serwera.', 'error');
+        : 'Przepraszamy, wystąpił chwilowy problem po naszej stronie. Pracujemy nad jego jak najszybszym usunięciem — spróbuj ponownie za chwilę.', 'error');
     }
   } catch {
     show(el, 'Nie udało się połączyć z aplikacją. Konto mogło zostać zapisane — nie wysyłaj formularza wielokrotnie.', 'error');
@@ -287,7 +287,7 @@ async function login() {
         : r.status === 403 && r.data?.code === 'email_confirmation_required' ? 'Potwierdź adres email przed zalogowaniem. Sprawdź wiadomość z linkiem potwierdzającym.'
         : r.status === 422 ? 'Sprawdź email i hasło.'
         : r.status === 429 ? 'Zbyt wiele prób logowania. Spróbuj ponownie ' + retryWaitText(r.retryAfter) + '.'
-        : 'Logowanie jest niedostępne z powodu błędu serwera.', 'error');
+        : 'Przepraszamy, wystąpił chwilowy problem po naszej stronie. Pracujemy nad jego jak najszybszym usunięciem — spróbuj ponownie za chwilę.', 'error');
     }
   } catch {
     show(el, 'Nie udało się połączyć z aplikacją.', 'error');

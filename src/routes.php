@@ -64,6 +64,7 @@ return function (App $app) {
             // Research and diagnostics
             $group->get('/search/status', [ChatController::class, 'searchStatus']);
             $group->get('/research', [ChatController::class, 'researchState']);
+            $group->delete('/research', [ChatController::class, 'researchClear']);
             $group->post('/research/actions', [ChatController::class, 'researchPropose']);
             $group->post('/research/decisions', [ChatController::class, 'researchDecide']);
             $group->put('/research/sources', [ChatController::class, 'researchSelect']);

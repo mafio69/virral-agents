@@ -1,6 +1,6 @@
-# Virral Agents
+# Virral Agents (v1.0.0)
 
-Prywatny czat AI z wieloma dostawcami, zatwierdzanym dostępem do WWW i szyfrowaną historią.
+Prywatny czat AI z wieloma dostawcami, zatwierdzanym dostępem do WWW (tryb ASK) i szyfrowaną historią.
 Backend: Slim 4, PHP 8.4, SQLite; frontend: statyczne moduły ES bez bundlera. Licencja MIT.
 
 ## Po co to repozytorium
@@ -78,12 +78,13 @@ wpis w `CHANGELOG.md`, stan w `STATUS.md`, przekazanie w `HANDOFF.md`.
 
 ## Funkcjonalności
 
-- **Konto** — rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób, sesja w cookie HttpOnly (lub Bearer), wylogowanie unieważniające sesję.
-- **Czat AI** — OVH AI Endpoints, Z.ai (GLM), OpenAI, Anthropic, Google Gemini i OpenRouter; wybór połączenia i modelu przy nowej rozmowie, analiza obrazów wejściowych, generowanie obrazów Gemini, Markdown oczyszczany przez DOMPurify.
-- **Wyszukiwanie WWW (ASK)** — zapytanie do serwera MCP (`web_search`, SearXNG) wyłącznie po jawnej zgodzie dla konkretnego zapytania.
-- **Badanie źródeł** — wybór wyników checkboxami, szyfrowany koszyk źródeł per rozmowa, pobranie zaznaczonych stron i opracowanie ich treści przez model.
-- **Ochrona danych** — szyfrowanie treści wiadomości, tytułów, obrazów, e-maili i zadań (XChaCha20-Poly1305), hashe tokenów sesji.
-- **Zadania** — prosty CRUD.
+- **Konto i bezpieczeństwo logowania** — rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (5 nieudanych prób / 15 min osobno na e-mail i IP, obsługa `TRUSTED_PROXIES` za reverse proxy), sesja w cookie HttpOnly (lub Bearer), wylogowanie unieważniające sesję po stronie serwera.
+- **Czat AI** — OVH AI Endpoints, Z.ai (GLM), OpenAI, Anthropic, Google Gemini i OpenRouter; wybór połączenia i modelu przy nowej rozmowie, analiza obrazów wejściowych (PNG/JPEG/WebP), generowanie obrazów Gemini, ponawianie nieudanej odpowiedzi (`Ponów`), Markdown oczyszczany przez DOMPurify.
+- **Wyszukiwanie WWW (ASK)** — zapytanie do serwera MCP (`web_search`, SearXNG z awaryjnym Perplexity) wyłącznie po jawnej zgodzie użytkownika (`Allow` / `Deny`) dla konkretnego zapytania — zarówno przy ręcznym wyszukiwaniu, jak i gdy o wyszukanie prosi model AI.
+- **Badanie źródeł** — wybór wyników checkboxami w oknie źródeł (do 20 stron), pobranie zaznaczonych stron jednym kliknięciem **„Kontynuuj”** przez bezpieczny fetcher (publiczne IPv4, ochrona SSRF, maks. 3 przekierowania, bez cookies i JS) i opracowanie ich treści przez model (`/continue`). Każda wymiana zdań ma własne, izolowane badanie — po wygenerowaniu odpowiedzi stan źródeł jest automatycznie czyszczony dla kolejnego pytania, a użytkownik może też wyczyścić wyniki ręcznie (**„Wyczyść wyniki”** w panelu bocznym lub **„Usuń wszystkie”** w oknie wyników).
+- **Ochrona danych** — szyfrowanie treści wiadomości, tytułów, obrazów, stanu badania, e-maili i zadań (XChaCha20-Poly1305 z powiązaniem kontekstu rekordu i właściciela), HMAC e-maili i IP, hashe tokenów sesji.
+- **Przyjazna obsługa błędów i diagnostyka** — użytkownik zawsze otrzymuje czytelny komunikat po polsku bez wycieku szczegółów technicznych, natomiast pełny kontekst diagnostyczny (`plik:linia`, kody błędów, SQLSTATE) trafia do logów (`Mariusz\Logger\DualLogger`).
+- **Zadania** — prosty CRUD zadań użytkownika.
 
 ## Wymagania
 
@@ -132,8 +133,10 @@ Wszystkie pod `/api`. Trasy oznaczone 🔒 wymagają sesji.
 | GET 🔒 | `/chats/{id}` | Rozmowa z wiadomościami |
 | POST 🔒 | `/chats/{id}/messages` | Wiadomość i odpowiedź AI (opcjonalnie wyszukanie lub tryb badania) |
 | POST 🔒 | `/chats/{id}/messages/{messageId}/retry` | Ponowienie odpowiedzi na ostatnią wiadomość bez odpowiedzi |
+| POST 🔒 | `/chats/{id}/messages/{messageId}/continue` | Kontynuacja odpowiedzi na pytanie po decyzji o źródłach WWW |
 | GET 🔒 | `/search/status` | Diagnostyka połączenia MCP (bez wyszukiwania) |
 | GET 🔒 | `/research` | Stan koszyka źródeł rozmowy |
+| DELETE 🔒 | `/research` | Wyczyszczenie wyników i wybranych źródeł rozmowy |
 | POST 🔒 | `/research/actions` | Propozycja operacji WWW (wyszukanie/fetch) |
 | POST 🔒 | `/research/decisions` | Decyzja Allow/Deny dla propozycji |
 | PUT 🔒 | `/research/sources` | Wybór źródeł |

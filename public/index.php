@@ -35,7 +35,13 @@ try {
             break;
         }
     }
-    $logger->critical('Database readiness unavailable', ['stage' => $initializationStage]);
+    $logger->critical('Database readiness unavailable', [
+        'stage' => $initializationStage,
+        'type' => get_class($error),
+        'origin' => basename($error->getFile()).':'.$error->getLine(),
+        'line' => $error->getLine(),
+        'code' => $error->getCode(),
+    ]);
     http_response_code(503);
     header('X-App-Error: '.$initializationStage);
     header('Cache-Control: no-store');

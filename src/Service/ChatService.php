@@ -182,7 +182,16 @@ final readonly class ChatService
             $this->chatRepository->finishReply($userMessageId, true);
         } catch (\Throwable $e) {
             $this->chatRepository->finishReply($userMessageId, false);
-            $this->logger->error('AI call failed', ['chat_id' => $input->chatId, 'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error']);
+            $this->logger->error('AI call failed', [
+                'chat_id' => $input->chatId,
+                'user_id' => $input->userId,
+                'model' => $selector,
+                'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error',
+                'type' => get_class($e),
+                'origin' => basename($e->getFile()).':'.$e->getLine(),
+                'line' => $e->getLine(),
+                'code' => $e->getCode(),
+            ]);
             throw $e;
         }
 
@@ -246,7 +255,16 @@ final readonly class ChatService
             $reply = $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId);
             $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
         } catch (\Throwable $e) {
-            $this->logger->error('AI continue failed', ['chat_id' => $input->chatId, 'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error']);
+            $this->logger->error('AI continue failed', [
+                'chat_id' => $input->chatId,
+                'user_id' => $input->userId,
+                'model' => $selector,
+                'reason' => $e instanceof AiConnectionException ? $e->reason : 'internal_error',
+                'type' => get_class($e),
+                'origin' => basename($e->getFile()).':'.$e->getLine(),
+                'line' => $e->getLine(),
+                'code' => $e->getCode(),
+            ]);
             throw $e;
         }
 

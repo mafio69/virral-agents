@@ -101,6 +101,36 @@ test('account: registration, local SMTP, confirmation, login, reload and logout'
     expect((await page.request.get('/api/chats')).status()).toBe(401);
 });
 
+test('login: invalid email and invalid password fail safely, valid credentials sign in', async ({ page }) => {
+    await page.goto('/#login');
+    await expect(page.locator('#login-form')).toBeVisible();
+
+    await page.locator('#login-email').fill(`wrong-${Date.now()}@example.invalid`);
+    await page.locator('#login-password').fill(password);
+    await page.locator('#login-password').press('Enter');
+    await expect(page.locator('#login-result')).toHaveText('Nieprawidłowy email lub hasło.');
+    await expect(page.locator('#dashboard-view')).toBeHidden();
+    expect((await page.request.get('/api/auth/me')).status()).toBe(401);
+
+    await page.locator('#login-email').fill(email);
+    await page.locator('#login-password').fill('Wrong-E2E-password-99');
+    await page.locator('#login-password').press('Enter');
+    await expect(page.locator('#login-result')).toHaveText('Nieprawidłowy email lub hasło.');
+    await expect(page.locator('#dashboard-view')).toBeHidden();
+    expect((await page.request.get('/api/auth/me')).status()).toBe(401);
+
+    await page.locator('#login-email').fill(email);
+    await page.locator('#login-password').fill(password);
+    await page.locator('#login-password').press('Enter');
+    await expect(page.locator('#dashboard-view')).toBeVisible();
+    await expect(page.locator('#auth-indicator')).toHaveText('Zalogowano');
+    await expect(page.locator('#user-email')).toHaveText(email);
+    expect((await page.request.get('/api/auth/me')).status()).toBe(200);
+
+    await page.getByRole('link', { name: 'Wyloguj się' }).click();
+    await expect(page.locator('#auth-indicator')).toHaveText('Niezalogowany');
+});
+
 test('chat: native provider transport, one submission and saved history', async ({ page }) => {
     await openChat(page);
     await page.locator('#research-mode').uncheck();
@@ -132,14 +162,19 @@ test('research: ASK denial, selection, partial fetch failure, synthesis and relo
     await expect(page.locator('#thread')).not.toContainText('Treść E2E a2');
     const after = await counters(request);
     expect(after.fetch.slice(before.fetch.length)).toEqual(['https://example.org/a1', 'https://example.org/a3', 'https://example.org/a4']);
-    await page.reload();
-    await page.locator('#chat-list .chat-item').first().click();
-    await page.locator('#research-open-side').click();
-    await expect(page.locator('#research-summary')).toContainText('(3/20)');
-    await expect(page.locator('#research-body')).toContainText('Treść pobrana i zachowana');
-    await page.keyboard.press('Escape');
+    await expect(page.locator('#research-count')).toHaveText('0');
+    await expect(page.locator('#research-clear-side')).toBeDisabled();
     await search(page, 'drugie E2E');
-    await expect(page.locator('#research-summary')).toContainText('(5/20)');
+    await expect(page.locator('#research-summary')).toContainText('(2/20)');
+    await page.locator('#research-continue').click();
+    await expect(page.locator('#research-dialog')).not.toBeVisible();
+    await expect(page.locator('#thread')).toContainText('Opracowanie E2E: Treść E2E b1, Treść E2E b2');
+    await expect(page.locator('#research-count')).toHaveText('0');
+    await search(page, 'drugie E2E');
+    await expect(page.locator('#research-count')).toHaveText('2');
+    await page.locator('#research-clear-modal').click();
+    await expect(page.locator('#research-count')).toHaveText('0');
+    await expect(page.locator('#research-summary')).toContainText('(0/20)');
     await page.screenshot({ path: fileURLToPath(new URL('./runtime/research-e2e.png', import.meta.url)), fullPage: true });
 });
 

@@ -11,6 +11,7 @@ interface ResearchServiceInterface
     public function decide(int $userId, int $chatId, string $actionId, bool $allow): array;
     public function select(int $userId, int $chatId, string $sourceId, bool $selected): array;
     public function prepare(int $userId, int $chatId): array;
+    public function clear(int $userId, int $chatId): array;
     public function evidence(int $userId, int $chatId): array;
     public function adoptDraft(int $userId, int $chatId): void;
 }

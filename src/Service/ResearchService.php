@@ -93,6 +93,22 @@ final readonly class ResearchService implements ResearchServiceInterface
         return $this->publicState($state);
     }
 
+    public function clear(int $userId, int $chatId): array
+    {
+        $this->authorize($userId, $chatId);
+        $state = $this->store->change($userId, $chatId, static function (array $state): array {
+            $state['results'] = [];
+            $state['sources'] = [];
+            $state['excluded'] = [];
+            $state['actions'] = array_filter(
+                $state['actions'] ?? [],
+                static fn (array $action): bool => ($action['status'] ?? '') === 'running'
+            );
+            return $state;
+        });
+        return $this->publicState($state);
+    }
+
     public function decide(int $userId, int $chatId, string $actionId, bool $allow): array
     {
         $this->authorize($userId, $chatId);
@@ -151,6 +167,9 @@ final readonly class ResearchService implements ResearchServiceInterface
             }
             if ($request['kind'] === 'search' && $result !== null) {
                 $state['results'] = [];
+                $state['sources'] = [];
+                $state['excluded'] = [];
+                $state['actions'] = [$actionId => $state['actions'][$actionId]];
                 foreach ($result['results'] as $entry) {
                     try {
                         $url = PublicWebUrl::normalize($entry['url']);
@@ -164,9 +183,7 @@ final readonly class ResearchService implements ResearchServiceInterface
                     if (count($state['sources']) >= 20) {
                         break;
                     }
-                    if (!isset($state['sources'][$id]) && !isset($state['excluded'][$id])) {
-                        $state['sources'][$id] = $source + ['page' => ['status' => 'unread']];
-                    }
+                    $state['sources'][$id] = $source + ['page' => ['status' => 'unread']];
                 }
                 $state['results'] = array_values($state['results']);
             } elseif ($request['kind'] === 'fetch') {

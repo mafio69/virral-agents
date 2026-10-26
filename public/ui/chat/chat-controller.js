@@ -1,9 +1,9 @@
-import { aiFailureMessage } from './chat-api.js?v=20261018-chat-retry';
+import { aiFailureMessage } from './chat-api.js?v=20261025-clear';
 import { isInlineImage } from './chat-images.js?v=20261013-6';
 
 function deliveryFailureDetail(error) {
     if (error.status) {
-        return ` HTTP ${error.status}.`;
+        return ' Przepraszamy, wystąpił chwilowy problem po naszej stronie — pracujemy nad jego jak najszybszym usunięciem.';
     }
     if (error.reason === 'invalid_app_response') {
         return ' Aplikacja zwróciła odpowiedź w nieoczekiwanym formacie.';

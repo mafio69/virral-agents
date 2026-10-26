@@ -37,7 +37,7 @@ final class ApplicationFailureLogTest extends TestCase
 
         $this->failWith(new \RuntimeException('fixture-secret-value'), $logger);
 
-        self::assertSame(['type', 'origin'], array_keys($logger->records[0]['context']));
+        self::assertSame(['type', 'origin', 'line', 'code', 'method', 'path'], array_keys($logger->records[0]['context']));
         self::assertStringNotContainsString('fixture-secret-value', json_encode($logger->records, JSON_THROW_ON_ERROR));
     }
 

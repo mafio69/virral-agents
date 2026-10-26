@@ -26,20 +26,16 @@ final readonly class ChatReplyGenerator implements ChatReplyGeneratorInterface
         try {
             $result = ($this->searchClient ?? throw new SearchException('missing_configuration', 'definition'))->search($search->query, 5);
         } catch (SearchException $error) {
-            $this->logger?->warning('MCP search failed', ['reason' => $error->reason, 'stage' => $error->stage]);
-            $detail = match ($error->reason) {
-                'dns_failed' => 'Aplikacja nie rozpoznaje nazwy serwera MCP. Sprawdź wspólną sieć kontenerów.',
-                'connection_refused' => 'Serwer MCP odmawia połączenia. Sprawdź adres, port i uruchomienie usługi.',
-                'connection_failed' => 'Aplikacja nie może połączyć się z serwerem MCP.',
-                'timeout' => 'Upłynął czas oczekiwania na MCP.',
-                'http_error' => 'Serwer MCP zwrócił błąd HTTP.',
-                'unauthorized' => 'Serwer MCP odrzucił uwierzytelnienie. Sprawdź MCP_AUTH_TOKEN.',
-                'tool_error', 'provider_response' => 'MCP nie zwróciło poprawnego wyniku wyszukiwarki.',
-                'protocol_error' => 'Odpowiedź serwera nie jest zgodna z oczekiwanym protokołem MCP.',
-                'missing_configuration' => 'Brakuje konfiguracji klienta MCP.',
-                default => 'Wyszukiwanie WWW jest chwilowo niedostępne.',
-            };
-            return new AiReply($detail.' Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie. Kolejna próba wymaga ponownej zgody.', search: ['status' => 'unavailable', 'reason' => $error->reason, 'stage' => $error->stage]);
+            $this->logger?->warning('MCP search failed', [
+                'reason' => $error->reason,
+                'stage' => $error->stage,
+                'model' => $model,
+                'origin' => basename($error->getFile()).':'.$error->getLine(),
+            ]);
+            return new AiReply(
+                'Przepraszamy, wyszukiwanie WWW jest chwilowo niedostępne z powodu problemu technicznego. Pracujemy nad jego jak najszybszym usunięciem. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie. Kolejna próba wymaga ponownej zgody.',
+                search: ['status' => 'unavailable', 'reason' => $error->reason, 'stage' => $error->stage]
+            );
         } finally {
             $this->searchClient?->close();
         }

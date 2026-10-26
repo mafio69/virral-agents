@@ -24,16 +24,24 @@ final class SearchDiagnosticsTest extends TestCase
 {
     public function testUnavailableReplyPreservesSafeReasonAndStageAndLogsNoQuery(): void
     {
+        $exception = new SearchException('dns_failed', 'initialize');
         $search = $this->createMock(SearchClientInterface::class);
-        $search->expects(self::once())->method('search')->willThrowException(new SearchException('dns_failed', 'initialize'));
+        $search->expects(self::once())->method('search')->willThrowException($exception);
         $search->expects(self::once())->method('close');
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects(self::once())->method('warning')->with('MCP search failed', ['reason' => 'dns_failed', 'stage' => 'initialize']);
+        $logger->expects(self::once())->method('warning')->with('MCP search failed', [
+            'reason' => 'dns_failed',
+            'stage' => 'initialize',
+            'model' => 'fixture',
+            'origin' => basename($exception->getFile()).':'.$exception->getLine(),
+        ]);
         $model = $this->createMock(AiClientInterface::class);
         $model->expects(self::never())->method('generate');
         $reply = (new ChatReplyGenerator($search, $logger))->generate($model, [], 'fixture', new SearchOptions('mcp', 1, 'Public fixture query', true));
         self::assertSame(['status' => 'unavailable', 'reason' => 'dns_failed', 'stage' => 'initialize'], $reply->search);
-        self::assertStringContainsString('nazwy serwera MCP', $reply->text);
+        self::assertStringContainsString('Przepraszamy, wyszukiwanie WWW jest chwilowo niedostępne', $reply->text);
+        self::assertStringNotContainsString('MCP_AUTH_TOKEN', $reply->text);
+        self::assertStringNotContainsString('serwera MCP', $reply->text);
         self::assertStringNotContainsString('Public fixture query', $reply->text);
     }
 

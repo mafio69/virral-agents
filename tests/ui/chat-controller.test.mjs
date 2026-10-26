@@ -135,6 +135,15 @@ test('an unreachable application and an unexpected reply are reported differentl
         assert.equal(await controller.send(), false);
         assert.match(controller.state.error, new RegExp(detail.replace('.', '\\.')));
     }
+
+    const serverErrorController = new ChatController(fixture({
+        sendMessage: async () => { throw new ChatApiError('Failure', 500); },
+    }));
+    await serverErrorController.load();
+    serverErrorController.setDraft('Cześć');
+    assert.equal(await serverErrorController.send(), false);
+    assert.match(serverErrorController.state.error, /Przepraszamy, wystąpił chwilowy problem/);
+    assert.doesNotMatch(serverErrorController.state.error, /HTTP 500/);
 });
 
 test('a saved user message after an AI failure is recovered without an automatic retry', async () => {

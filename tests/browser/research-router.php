@@ -161,7 +161,7 @@ try {
         $result = $service->getChatWithMessages((int)$matches[1], 1);
     } elseif (str_starts_with($path, '/api/research')) {
         $operation = match ($path) {
-            '/api/research' => 'state', '/api/research/actions' => 'propose', '/api/research/decisions' => 'decide', '/api/research/sources' => 'select', '/api/research/prepare' => 'prepare', default => throw new \RuntimeException('Fixture route unavailable')
+            '/api/research' => $method === 'DELETE' ? 'clear' : 'state', '/api/research/actions' => 'propose', '/api/research/decisions' => 'decide', '/api/research/sources' => 'select', '/api/research/prepare' => 'prepare', default => throw new \RuntimeException('Fixture route unavailable')
         };
         [$scope, $args] = (new \App\Mapper\Chat\ResearchInputMapper())->map($operation, $_GET, $data);
         $result = $research->{$operation}(1, $scope, ...$args);

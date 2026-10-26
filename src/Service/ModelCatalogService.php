@@ -69,7 +69,14 @@ final readonly class ModelCatalogService implements ModelCatalogInterface
 
             return $models;
         } catch (\Throwable $e) {
-            $this->logger->error('Failed to fetch models from OVH AI API');
+            $this->logger->error('Failed to fetch models from OVH AI API', [
+                'connection' => $connection ?? 'ovh',
+                'reason' => $e instanceof \App\Exception\AiConnectionException ? $e->reason : 'internal_error',
+                'type' => get_class($e),
+                'origin' => basename($e->getFile()).':'.$e->getLine(),
+                'line' => $e->getLine(),
+                'code' => $e->getCode(),
+            ]);
             throw $e;
         }
     }

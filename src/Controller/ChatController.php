@@ -108,6 +108,10 @@ final readonly class ChatController
     {
         return $this->researchCall('prepare', $request, $response);
     }
+    public function researchClear(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return $this->researchCall('clear', $request, $response);
+    }
 
     private function researchCall(string $operation, ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {

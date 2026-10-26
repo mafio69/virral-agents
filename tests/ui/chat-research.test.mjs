@@ -407,3 +407,35 @@ test('a manual search allow never dispatches an automatic answer', async () => {
     assert.equal(agents, 0);
     assert.match(notices.at(-1)[0], /Wyniki zaznaczone domyślnie/);
 });
+
+test('an allowed AI search with unread sources waits for Continue and clear removes all results', async () => {
+    const action = { id: 'ai-s', request: { kind: 'search', query: 'Public query' }, origin: 'ai', status: 'pending' };
+    const source = { id: 'r1', url: 'https://example.org/r1', title: 'R1', snippet: '', page: { status: 'unread' } };
+    let agents = 0;
+    const calls = [];
+    const notices = [];
+    const panel = fixture({ research: async operation => {
+        calls.push(operation);
+        if (operation === 'state') {
+            return state([], [action]);
+        }
+        if (operation === 'clear') {
+            return state([], []);
+        }
+        return { ...state([source], [{ ...action, status: 'done' }]), results: [source] };
+    } }, {
+        onAgent: () => { agents++; },
+        onNotice: (...args) => notices.push(args),
+    });
+    await panel.setScope(0);
+    await panel.decide(action, true);
+    assert.equal(agents, 0);
+    assert.match(notices.at(-1)[0], /Wyniki zaznaczone domyślnie/);
+    const clearBtn = panel.body.children.find(el => el.textContent === 'Usuń wszystkie');
+    assert.ok(clearBtn);
+    assert.equal(clearBtn.disabled, false);
+    assert.equal(await panel.clear(), true);
+    assert.equal(calls.at(-1), 'clear');
+    assert.equal(panel.state.sources.length, 0);
+    assert.equal(panel.state.results.length, 0);
+});

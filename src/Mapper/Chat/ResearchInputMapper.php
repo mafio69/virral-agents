@@ -15,7 +15,7 @@ final class ResearchInputMapper
             throw new ValidationException('Nieprawidłowa rozmowa.');
         }
         $args = match ($operation) {
-            'state', 'prepare' => [],
+            'state', 'prepare', 'clear' => [],
             'propose' => [is_array($data['request'] ?? null) ? $data['request'] : throw new ValidationException('Brak prośby WWW.')],
             'decide' => [$this->id($data['id'] ?? null), $this->boolean($data['allow'] ?? null)],
             'select' => [$this->id($data['id'] ?? null), $this->boolean($data['selected'] ?? null)],

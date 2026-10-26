@@ -1,12 +1,12 @@
 const AI_ERRORS = {
     provider_timeout: 'Model przekroczył limit czasu odpowiedzi. Możesz ponowić po zakończeniu poprzedniej próby.',
-    catalogue_unavailable: 'Nie udało się pobrać katalogu modeli od dostawcy. Spróbuj ponownie.',
-    missing_configuration: 'Brakuje konfiguracji dostawcy AI lub klucza szyfrowania rejestru. Sprawdź bezpieczne ustawienia aplikacji.',
-    provider_auth: 'Dostawca AI odrzucił dostęp. Sprawdź klucz w bezpiecznych ustawieniach, nie w czacie.',
-    model_unavailable: 'Model lub endpoint nie jest dostępny u dostawcy AI. Rozpocznij nową rozmowę z dostępnym modelem.',
-    provider_limit: 'Dostawca AI zgłasza limit. Spróbuj ponownie później.',
-    connection_failed: 'Nie udało się połączyć z dostawcą AI. Sprawdź połączenie i adres usługi.',
-    invalid_response: 'Dostawca AI nie zwrócił poprawnej odpowiedzi modelu.',
+    catalogue_unavailable: 'Przepraszamy, nie udało się pobrać katalogu modeli. Pracujemy nad przywróceniem pełnej dostępności — spróbuj ponownie za chwilę.',
+    missing_configuration: 'Przepraszamy, wybrany dostawca AI jest obecnie niedostępny. Pracujemy nad jak najszybszym usunięciem problemu.',
+    provider_auth: 'Przepraszamy, połączenie z dostawcą AI jest obecnie niedostępne. Pracujemy nad jak najszybszym usunięciem problemu.',
+    model_unavailable: 'Wybrany model nie jest obecnie dostępny. Rozpocznij nową rozmowę z dostępnym modelem.',
+    provider_limit: 'Dostawca AI zgłasza chwilowy limit zapytań. Spróbuj ponownie za chwilę.',
+    connection_failed: 'Przepraszamy, nie udało się połączyć z dostawcą AI. Pracujemy nad jak najszybszym usunięciem problemu — spróbuj ponownie za chwilę.',
+    invalid_response: 'Przepraszamy, dostawca AI nie zwrócił poprawnej odpowiedzi. Spróbuj ponownie za chwilę.',
 };
 export function aiFailureMessage(error) {
     return Object.hasOwn(AI_ERRORS, error?.reason) ? AI_ERRORS[error.reason] : '';
@@ -152,7 +152,7 @@ export class ChatApi {
         if (!Number.isInteger(scope) || scope < 0) {
             throw new ChatApiError('Nieprawidłowe badanie.');
         }
-        const routes = { state: ['GET', ''], propose: ['POST', '/actions'], decide: ['POST', '/decisions'], select: ['PUT', '/sources'], prepare: ['POST', '/prepare'] };
+        const routes = { state: ['GET', ''], propose: ['POST', '/actions'], decide: ['POST', '/decisions'], select: ['PUT', '/sources'], prepare: ['POST', '/prepare'], clear: ['DELETE', ''] };
         const route = routes[operation];
         if (!route) {
             throw new ChatApiError('Nieznana operacja badania.');

@@ -101,7 +101,7 @@ final class AuthHttpTest extends TestCase
         foreach ([['GET', '/api/auth/me'], ['GET', '/api/tasks'], ['POST', '/api/tasks'],
             ['PUT', '/api/tasks/1'], ['DELETE', '/api/tasks/1'], ['GET', '/api/chats'],
             ['POST', '/api/chats'], ['GET', '/api/chats/1'], ['POST', '/api/chats/1/messages'],
-            ['GET', '/api/search/status'], ['GET', '/api/research'],
+            ['GET', '/api/search/status'], ['GET', '/api/research'], ['DELETE', '/api/research'],
             ['POST', '/api/research/actions'], ['POST', '/api/research/decisions'],
             ['PUT', '/api/research/sources'], ['POST', '/api/research/prepare']] as [$method, $path]) {
             self::assertSame(401, $this->request($method, $path)->getStatusCode(), $path);

@@ -1,6 +1,10 @@
 /vendor/
 .env
 .local
+secret/
+var/
+.pi/
+.opencode/plugins/
 /var/database/
 /var/logs/
 /.idea/

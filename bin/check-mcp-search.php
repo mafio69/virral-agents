@@ -12,6 +12,7 @@ $url = $options['url'] ?? 'http://127.0.0.1:8890/mcp';
 $query = $options['query'] ?? null;
 // The token comes only from the process environment (export MCP_AUTH_TOKEN), never from .env.
 $envToken = getenv('MCP_AUTH_TOKEN');
+// aiwg:ignore secret-generic-assignment
 $token = is_string($envToken) ? $envToken : '';
 
 function isValidUrl(mixed $url): bool

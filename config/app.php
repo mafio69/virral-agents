@@ -17,7 +17,7 @@ return [
     ],
     'logger' => [
         'log_dir' => dirname(__DIR__).'/var/logs',
-        'min_level' => 'warning',
+        'min_level' => 'info',
         'date_format' => 'Y-m-d H:i:s',
         'timezone' => 'Europe/Warsaw',
     ],

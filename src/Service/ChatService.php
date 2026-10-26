@@ -84,6 +84,22 @@ final readonly class ChatService
 
         $messages = $this->chatRepository->findMessagesByChatId($chatId);
 
+        $assistantMessageIds = [];
+        foreach ($messages as $msg) {
+            if (($msg['role'] ?? null) === 'assistant') {
+                $assistantMessageIds[] = (int) $msg['id'];
+            }
+        }
+
+        $usages = $this->chatUsageRepository?->findByMessageIds($assistantMessageIds) ?? [];
+
+        foreach ($messages as &$msg) {
+            if (($msg['role'] ?? null) === 'assistant') {
+                $msg['usage'] = $usages[(int) $msg['id']] ?? null;
+            }
+        }
+        unset($msg);
+
         return new ChatResult(
             id: (int)$chat['id'],
             userId: (int)$chat['user_id'],
@@ -309,6 +325,10 @@ final readonly class ChatService
         if ($reply->search !== null) {
             $assistantMessage['search'] = $reply->search;
         }
+        $assistantMessage['usage'] = $reply->usage !== null ? [
+            'prompt_tokens' => (int) ($reply->usage['prompt_tokens'] ?? $reply->usage['input_tokens'] ?? 0),
+            'completion_tokens' => (int) ($reply->usage['completion_tokens'] ?? $reply->usage['output_tokens'] ?? 0),
+        ] : null;
 
         return $assistantMessage;
     }

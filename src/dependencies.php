@@ -41,7 +41,7 @@ return function (ContainerBuilder $containerBuilder) {
 
             return DualLogger::create(
                 logDir: $config['log_dir'],
-                minLevel: $config['min_level'] ?? 'warning',
+                minLevel: $config['min_level'] ?? 'info',
                 dateFormat: $config['date_format'] ?? 'Y-m-d H:i:s',
                 timezone: $config['timezone'] ?? 'Europe/Warsaw',
             );
@@ -135,6 +135,17 @@ return function (ContainerBuilder $containerBuilder) {
                 loginLimiter: $c->get(\App\Service\LoginAttemptLimiterInterface::class),
             );
         },
+        \App\Observability\LangfuseTrace::class => function (ContainerInterface $c) {
+            $config = $c->get('settings')['langfuse'] ?? [];
+            return new \App\Observability\LangfuseTrace(
+                http: new \GuzzleHttp\Client(),
+                logger: $c->get(LoggerInterface::class),
+                host: $config['host'] ?? null,
+                publicKey: $config['public_key'] ?? null,
+                secretKey: $config['secret_key'] ?? null,
+                enabled: (bool) ($config['enabled'] ?? false),
+            );
+        },
         ChatService::class => function (ContainerInterface $c) {
             return new ChatService(
                 chatRepository: $c->get(ChatRepository::class),
@@ -146,6 +157,7 @@ return function (ContainerBuilder $containerBuilder) {
                 modelCatalog: $c->get(\App\Service\ModelCatalogService::class),
                 research: $c->get(\App\Service\ResearchServiceInterface::class),
                 researchReply: $c->get(\App\Service\ResearchReplyGeneratorInterface::class),
+                langfuse: $c->get(\App\Observability\LangfuseTrace::class),
             );
         },
         \App\Infrastructure\Search\SearchClientInterface::class => function (ContainerInterface $c) {

@@ -84,10 +84,11 @@ final class OpenAiProvider implements ChatProviderInterface, WebToolClientInterf
         if (isset($body['error'])) {
             throw new AiConnectionException('invalid_response');
         }
+        $usage = is_array($body['usage'] ?? null) ? $body['usage'] : null;
         $text = [];
         foreach ($body['output'] ?? [] as $item) {
             if ($web && ($item['type'] ?? '') === 'function_call') {
-                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($item['name'] ?? '', $item['arguments'] ?? null));
+                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($item['name'] ?? '', $item['arguments'] ?? null), usage: $usage);
             }
             if (($item['type'] ?? '') !== 'message') {
                 continue;
@@ -102,6 +103,6 @@ final class OpenAiProvider implements ChatProviderInterface, WebToolClientInterf
         if (trim($result) === '' || isset($body['error'])) {
             throw new AiConnectionException('invalid_response');
         }
-        return new \App\Dto\AI\AiReply($result);
+        return new \App\Dto\AI\AiReply($result, usage: $usage);
     }
 }

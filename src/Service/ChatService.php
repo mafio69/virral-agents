@@ -29,6 +29,7 @@ final readonly class ChatService
         private readonly ModelCatalogInterface $modelCatalog,
         private readonly ResearchServiceInterface $research,
         private readonly ResearchReplyGeneratorInterface $researchReply,
+        private readonly ?\App\Observability\LangfuseTrace $langfuse = null,
     ) {
     }
 
@@ -172,6 +173,7 @@ final readonly class ChatService
         if ($retryMessageId === null) {
             $this->chatRepository->startReply($userMessageId, $input->research);
         }
+        $startNs = (int) hrtime(true);
         // Add assistant message
         try {
             $reply = $input->research ? $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId)
@@ -183,6 +185,19 @@ final readonly class ChatService
             $this->logReplyFailure('AI call failed', $e, $input->chatId, $input->userId, $selector);
             throw $e;
         }
+        $endNs = (int) hrtime(true);
+
+        $turnNumber = count(array_filter($history, static fn (array $m): bool => ($m['role'] ?? '') === 'user')) + 1;
+        $this->langfuse?->span(
+            sessionId: (string) $input->chatId,
+            turn: $turnNumber,
+            model: $apiModel,
+            messages: $messageHistory,
+            usage: $reply->usage,
+            startNs: $startNs,
+            endNs: $endNs,
+            extra: $reply->traceExtra ?? [],
+        );
 
         return [$userMessage, $this->assistantPayload($aiMessageId, $input->chatId, $reply)];
     }
@@ -221,6 +236,7 @@ final readonly class ChatService
         $this->research->evidence($input->userId, $input->chatId);
         $messageHistory = $this->historyForModel(array_slice($history, 0, $targetIndex + 1));
 
+        $startNs = (int) hrtime(true);
         try {
             $reply = $this->researchReply->generate($client, $messageHistory, $apiModel, $input->userId, $input->chatId);
             $aiMessageId = $this->chatRepository->addMessage($input->chatId, 'assistant', $reply->text, $reply->images, $reply->kind);
@@ -228,6 +244,19 @@ final readonly class ChatService
             $this->logReplyFailure('AI continue failed', $e, $input->chatId, $input->userId, $selector);
             throw $e;
         }
+        $endNs = (int) hrtime(true);
+
+        $turnNumber = count(array_filter(array_slice($history, 0, $targetIndex + 1), static fn (array $m): bool => ($m['role'] ?? '') === 'user'));
+        $this->langfuse?->span(
+            sessionId: (string) $input->chatId,
+            turn: $turnNumber,
+            model: $apiModel,
+            messages: $messageHistory,
+            usage: $reply->usage,
+            startNs: $startNs,
+            endNs: $endNs,
+            extra: $reply->traceExtra ?? [],
+        );
 
         return $this->assistantPayload($aiMessageId, $input->chatId, $reply);
     }

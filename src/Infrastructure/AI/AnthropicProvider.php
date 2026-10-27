@@ -111,10 +111,11 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
         if (isset($body['error'])) {
             throw new AiConnectionException('invalid_response');
         }
+        $usage = is_array($body['usage'] ?? null) ? $body['usage'] : null;
         $text = [];
         foreach ($body['content'] ?? [] as $part) {
             if ($web && ($part['type'] ?? '') === 'tool_use') {
-                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($part['name'] ?? '', $part['input'] ?? null));
+                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($part['name'] ?? '', $part['input'] ?? null), usage: $usage);
             }
             if (($part['type'] ?? '') === 'text' && is_string($part['text'] ?? null)) {
                 $text[] = $part['text'];
@@ -124,6 +125,6 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
         if (trim($result) === '' || isset($body['error'])) {
             throw new AiConnectionException('invalid_response');
         }
-        return new \App\Dto\AI\AiReply($result);
+        return new \App\Dto\AI\AiReply($result, usage: $usage);
     }
 }

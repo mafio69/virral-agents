@@ -7,7 +7,14 @@ namespace App\Dto\AI;
 final readonly class AiReply
 {
     /** @param list<string> $images */
-    public function __construct(public string $text, public array $images = [], public ?array $search = null, public ?array $webRequest = null, public string $kind = 'message')
-    {
+    public function __construct(
+        public string $text,
+        public array $images = [],
+        public ?array $search = null,
+        public ?array $webRequest = null,
+        public string $kind = 'message',
+        public ?array $usage = null,
+        public ?array $traceExtra = null,
+    ) {
     }
 }

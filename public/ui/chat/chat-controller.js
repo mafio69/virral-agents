@@ -2,11 +2,14 @@ import { aiFailureMessage } from './chat-api.js?v=20261025-clear';
 import { isInlineImage } from './chat-images.js?v=20261013-6';
 
 function deliveryFailureDetail(error) {
-    if (error.status) {
-        return ' Przepraszamy, wystąpił chwilowy problem po naszej stronie — pracujemy nad jego jak najszybszym usunięciem.';
-    }
-    if (error.reason === 'invalid_app_response') {
+    if (error?.reason === 'invalid_app_response') {
         return ' Aplikacja zwróciła odpowiedź w nieoczekiwanym formacie.';
+    }
+    if (error?.status === 400 || error?.status === 422) {
+        return ' Wiadomość nie spełnia wymagań (np. jest za długa lub brak wymaganych pól).';
+    }
+    if (error?.status >= 500) {
+        return ' Przepraszamy, wystąpił chwilowy problem po naszej stronie — pracujemy nad jego jak najszybszym usunięciem.';
     }
     return ' Błąd połączenia z aplikacją.';
 }
@@ -207,6 +210,10 @@ export class ChatController {
             return false;
         }
 
+        if (content.length > 16000) {
+            this.update({ error: 'Wiadomość jest za długa (maksymalnie 16 000 znaków).' });
+            return false;
+        }
         if (!this.state.activeChat && !this.state.selectedModel) {
             this.update({ error: 'Wybierz połączenie z dostępnym modelem.' });
             return false;

@@ -147,6 +147,10 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         if (isset($candidate['finishReason']) && $candidate['finishReason'] !== 'STOP') {
             throw new AiConnectionException('invalid_response');
         }
+        $usage = isset($body['usageMetadata']) && is_array($body['usageMetadata']) ? [
+            'prompt_tokens' => $body['usageMetadata']['promptTokenCount'] ?? 0,
+            'completion_tokens' => $body['usageMetadata']['candidatesTokenCount'] ?? 0,
+        ] : null;
         $parts = $candidate['content']['parts'] ?? [];
         if (!is_array($parts) || !array_is_list($parts)) {
             throw new AiConnectionException('invalid_response');
@@ -160,7 +164,7 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
             }
             if ($web && isset($part['functionCall'])) {
                 $call = $part['functionCall'];
-                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['args'] ?? null));
+                return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['args'] ?? null), usage: $usage);
             }
             if (is_string($part['text'] ?? null)) {
                 $text[] = $part['text'];
@@ -182,6 +186,6 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         if (trim($result) === '' && $images === []) {
             throw new AiConnectionException('invalid_response');
         }
-        return new \App\Dto\AI\AiReply($result, $images);
+        return new \App\Dto\AI\AiReply($result, $images, usage: $usage);
     }
 }

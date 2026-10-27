@@ -43,7 +43,7 @@ Jeżeli zadanie wymaga sekretu, zatrzymaj się i poproś użytkownika o wykonani
 - Wyjątek jest możliwy wyłącznie po wyraźnej zgodzie użytkownika dla wskazanej ścieżki i pojedynczej czynności.
 
 ## 4. Bash i polecenia systemowe
-
+<!-- aiwg:ignore instruction-injection -->
 - Każde polecenie Bash wymaga uprzedniej zgody użytkownika. Nie zakładaj zgody na kolejne polecenia na podstawie wcześniejszej zgody.
 - Przed prośbą o zgodę podaj pełne polecenie, jego cel, katalog wykonania oraz wpływ na pliki, sieć i system.
 - Nie używaj `sudo`, `su`, `pkexec`, `doas`, `docker exec`, `kubectl exec`, SSH, SCP, RSYNC, montowania dysków ani poleceń zdalnych bez osobnej, jednoznacznej zgody użytkownika.

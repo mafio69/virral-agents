@@ -108,14 +108,15 @@ final class OpenRouterProvider implements ChatProviderInterface, WebToolClientIn
         if (!is_array($message)) {
             throw new AiConnectionException('invalid_response');
         }
+        $usage = is_array($body['usage'] ?? null) ? $body['usage'] : null;
         $call = $message['tool_calls'][0]['function'] ?? null;
         if ($web && is_array($call)) {
-            return new AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['arguments'] ?? null));
+            return new AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['arguments'] ?? null), usage: $usage);
         }
         $text = $message['content'] ?? null;
         if (!is_string($text) || trim($text) === '') {
             throw new AiConnectionException('invalid_response');
         }
-        return new AiReply($text);
+        return new AiReply($text, usage: $usage);
     }
 }

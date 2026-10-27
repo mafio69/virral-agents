@@ -400,3 +400,47 @@ test('opening a running reply after reload keeps the state check available', asy
     assert.equal(controller.state.deliveryUncertain, false);
     assert.equal(controller.state.messages.length, 2);
 });
+
+test('sending a draft exceeding 16000 characters is rejected before request', async () => {
+    let called = false;
+    const controller = new ChatController(fixture({
+        createChat: async () => { called = true; return chat(5); },
+        sendMessage: async () => { called = true; return pair('test'); },
+    }));
+    await controller.load();
+    controller.selectModel('fixture-model');
+    controller.setDraft('a'.repeat(16001));
+    const result = await controller.send();
+    assert.equal(result, false);
+    assert.equal(called, false);
+    assert.equal(controller.state.error, 'Wiadomość jest za długa (maksymalnie 16 000 znaków).');
+});
+
+test('delivery failure distinguishes validation errors, invalid json and server failures', async () => {
+    const cases = [
+        {
+            error: new ChatApiError('Validation', 422),
+            expected: 'Nie udało się odebrać odpowiedzi. Wiadomość nie spełnia wymagań (np. jest za długa lub brak wymaganych pól). Treść wiadomości została zachowana.',
+        },
+        {
+            error: new ChatApiError('Bad JSON', 200, 'invalid_app_response'),
+            expected: 'Nie udało się odebrać odpowiedzi. Aplikacja zwróciła odpowiedź w nieoczekiwanym formacie. Treść wiadomości została zachowana.',
+        },
+        {
+            error: new ChatApiError('Server Error', 500),
+            expected: 'Nie udało się odebrać odpowiedzi. Przepraszamy, wystąpił chwilowy problem po naszej stronie — pracujemy nad jego jak najszybszym usunięciem. Treść wiadomości została zachowana.',
+        },
+    ];
+
+    for (const { error, expected } of cases) {
+        const controller = new ChatController(fixture({
+            sendMessage: async () => { throw error; },
+            getChat: async id => ({ ...chat(id), messages: [] }),
+        }));
+        await controller.load();
+        controller.selectModel('fixture-model');
+        controller.setDraft('Wiadomość testowa');
+        await controller.send();
+        assert.equal(controller.state.error, expected);
+    }
+});

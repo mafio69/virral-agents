@@ -50,4 +50,31 @@ final readonly class ChatUsageRepository
             'created_at' => (string) $row['created_at'],
         ];
     }
+
+    /**
+     * @param list<int> $ids
+     * @return array<int, array{prompt_tokens: int, completion_tokens: int}>
+     */
+    public function findByMessageIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT message_id, prompt_tokens, completion_tokens FROM chat_usage WHERE message_id IN ({$placeholders})"
+        );
+        $stmt->execute(array_values($ids));
+
+        $result = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $result[(int) $row['message_id']] = [
+                'prompt_tokens' => (int) $row['prompt_tokens'],
+                'completion_tokens' => (int) $row['completion_tokens'],
+            ];
+        }
+
+        return $result;
+    }
 }

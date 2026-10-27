@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-10-27 — T1.2: podglad liczby tokenow w UI pod odpowiedzia AI
+
+- Dodano metode `ChatUsageRepository::findByMessageIds(list<int> $ids)` wykonujaca pojedyncze zapytanie `WHERE message_id IN (...)` bez N+1 (pusta lista zwraca `[]` bez zapytania).
+- W `ChatService::getChatWithMessages()` dodano doklejanie `usage` do wiadomosci roli `assistant` (dla starych wiadomosci bez wpisu: `usage: null`).
+- W `ChatService::assistantPayload()` dolaczono pole `usage` bezposrednio z `AiReply`.
+- W UI (`public/ui/chat/chat-usage.js`, `public/ui/chat/chat-app.js`, `public/ui/chat.html`) dodano dyskretny element `.msg-usage` w `msg-actions` wyswietlajacy licznik tokenow w formacie „wej. X / wyj. Y” (`Intl.NumberFormat('pl-PL')`), niewidoczny gdy brak usage.
+- Testy najpierw (czerwony -> zielony):
+  - PHP: `tests/Repository/ChatUsageRepositoryTest.php` (`testFindByMessageIds*`), `tests/ChatServiceUsagePayloadTest.php`.
+  - UI: `tests/ui/chat-usage.test.mjs`.
+
 ## 2026-10-26 — T1.1: zapis zuzycia tokenow (chat_usage)
 
 - Migracja SQLite: dodano tabele `chat_usage` (`message_id`, `model`, `prompt_tokens`, `completion_tokens`, `created_at`) z `FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE`.

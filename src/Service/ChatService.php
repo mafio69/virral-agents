@@ -82,7 +82,9 @@ final readonly class ChatService
             throw new NotFoundException('Chat not found');
         }
 
-        $messages = $this->chatRepository->findMessagesByChatId($chatId);
+        $messages = $this->attachUsageToMessages(
+            $this->chatRepository->findMessagesByChatId($chatId)
+        );
 
         return new ChatResult(
             id: (int)$chat['id'],
@@ -309,6 +311,7 @@ final readonly class ChatService
         if ($reply->search !== null) {
             $assistantMessage['search'] = $reply->search;
         }
+        $assistantMessage['usage'] = $this->normalizeUsage($reply);
 
         return $assistantMessage;
     }
@@ -365,14 +368,56 @@ final readonly class ChatService
         return $parts;
     }
 
+    /**
+     * @param list<array<string, mixed>> $messages
+     * @return list<array<string, mixed>>
+     */
+    private function attachUsageToMessages(array $messages): array
+    {
+        $assistantMessageIds = [];
+        foreach ($messages as $msg) {
+            if (($msg['role'] ?? null) === 'assistant') {
+                $assistantMessageIds[] = (int) $msg['id'];
+            }
+        }
+
+        $usages = $this->chatUsageRepository?->findByMessageIds($assistantMessageIds) ?? [];
+
+        foreach ($messages as &$msg) {
+            if (($msg['role'] ?? null) === 'assistant') {
+                $msg['usage'] = $usages[(int) $msg['id']] ?? null;
+            }
+        }
+        unset($msg);
+
+        return $messages;
+    }
+
     private function recordUsage(int $aiMessageId, string $model, AiReply $reply): void
     {
-        if ($reply->usage === null) {
+        $usage = $this->normalizeUsage($reply);
+        if ($usage === null) {
             return;
         }
 
-        $promptTokens = (int) ($reply->usage['prompt_tokens'] ?? $reply->usage['input_tokens'] ?? 0);
-        $completionTokens = (int) ($reply->usage['completion_tokens'] ?? $reply->usage['output_tokens'] ?? 0);
-        $this->chatUsageRepository?->save($aiMessageId, $model, $promptTokens, $completionTokens);
+        $this->chatUsageRepository?->save(
+            $aiMessageId,
+            $model,
+            $usage['prompt_tokens'],
+            $usage['completion_tokens'],
+        );
+    }
+
+    /** @return array{prompt_tokens: int, completion_tokens: int}|null */
+    private function normalizeUsage(AiReply $reply): ?array
+    {
+        if ($reply->usage === null) {
+            return null;
+        }
+
+        return [
+            'prompt_tokens' => (int) ($reply->usage['prompt_tokens'] ?? $reply->usage['input_tokens'] ?? 0),
+            'completion_tokens' => (int) ($reply->usage['completion_tokens'] ?? $reply->usage['output_tokens'] ?? 0),
+        ];
     }
 }

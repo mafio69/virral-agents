@@ -7,6 +7,7 @@ import { ResearchModal } from './chat-research-modal.js?v=20261025-clear';
 import { ResearchPanel, continueResearch } from './chat-research.js?v=20261025-clear';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
+import { appendMessageUsage } from './chat-usage.js?v=20261027-usage';
 
 let preparingImage = false;
 let researchPanel;
@@ -78,6 +79,7 @@ function messageNode(message) {
         const avatar = element('div', 'avatar');
         avatar.append(icon('i-mark'));
         const actions = element('div', 'msg-actions');
+        appendMessageUsage(actions, message);
         const copy = element('button', 'btn-ghost', 'Kopiuj');
         copy.type = 'button';
         copy.setAttribute('aria-label', 'Kopiuj odpowiedź');

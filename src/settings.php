@@ -32,7 +32,7 @@ return function (ContainerBuilder $containerBuilder) {
         'host' => $sensitiveValue('LANGFUSE_HOST', 'https://cloud.langfuse.com'),
         'public_key' => $sensitiveValue('LANGFUSE_PUBLIC_KEY'),
         'secret_key' => $sensitiveValue('LANGFUSE_SECRET_KEY'),
-        'enabled' => $sensitiveValue('LANGFUSE_ENABLED', '0') === '1',
+        'enabled' => filter_var($sensitiveValue('LANGFUSE_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN),
     ];
     // The application runs in Docker; loopback here would point back to PHP-FPM.
     // Host-only installations can explicitly set MCP_SEARCH_URL to the host endpoint.

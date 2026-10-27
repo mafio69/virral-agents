@@ -146,6 +146,7 @@ return function (ContainerBuilder $containerBuilder) {
                 enabled: (bool) ($config['enabled'] ?? false),
             );
         },
+        \App\Repository\ChatUsageRepository::class => fn (ContainerInterface $c) => new \App\Repository\ChatUsageRepository($c->get(PDO::class)),
         ChatService::class => function (ContainerInterface $c) {
             return new ChatService(
                 chatRepository: $c->get(ChatRepository::class),
@@ -158,6 +159,7 @@ return function (ContainerBuilder $containerBuilder) {
                 research: $c->get(\App\Service\ResearchServiceInterface::class),
                 researchReply: $c->get(\App\Service\ResearchReplyGeneratorInterface::class),
                 langfuse: $c->get(\App\Observability\LangfuseTrace::class),
+                chatUsageRepository: $c->get(\App\Repository\ChatUsageRepository::class),
             );
         },
         \App\Infrastructure\Search\SearchClientInterface::class => function (ContainerInterface $c) {

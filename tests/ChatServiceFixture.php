@@ -26,6 +26,7 @@ final class ChatServiceFixture
         ?ChatReplyGeneratorInterface $replyGenerator = null,
         ?ResearchServiceInterface $research = null,
         ?ResearchReplyGeneratorInterface $researchReply = null,
+        ?\App\Repository\ChatUsageRepository $chatUsageRepository = null,
     ): ChatService {
         $modelRegistry ??= new class () implements ChatModelRegistryInterface {
             public function listModels(): array
@@ -89,7 +90,8 @@ final class ChatServiceFixture
             new ChatImageValidator(),
             new ModelCatalogService($ovhAiClient, $modelRegistry, $logger),
             $research,
-            $researchReply
+            $researchReply,
+            chatUsageRepository: $chatUsageRepository,
         );
     }
 }

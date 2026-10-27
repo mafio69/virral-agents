@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-10-26 — T1.1: zapis zuzycia tokenow (chat_usage)
+
+- Migracja SQLite: dodano tabele `chat_usage` (`message_id`, `model`, `prompt_tokens`, `completion_tokens`, `created_at`) z `FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE`.
+- Utworzono `ChatUsageRepository` z metodami `save()` i `findByMessageId()`.
+- W `ChatService` dodano zapis tokenow po wygenerowaniu odpowiedzi asystenta w `addMessage()` oraz `continueMessage()`, gdy dostawca zwraca pole `usage`.
+- Odpowiedz bez `usage` nie powoduje bledu ani zapisu.
+- Testy: `tests/Repository/ChatUsageRepositoryTest.php` oraz `tests/ChatServiceUsageTest.php`.
+
 ## 2026-10-17 — audyt S3: panel testowy tylko w development
 
 - S2 `de0bf00` scalony lokalnie fast-forward do develop; nowa gałąź `codex/audit-s3-dev-test-api`.

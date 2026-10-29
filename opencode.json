@@ -20,6 +20,17 @@
       "git status *": "allow",
       "git diff": "allow",
       "git diff *": "allow",
+      "git add": "allow",
+      "git add *": "allow",
+      "git commit": "allow",
+      "git commit *": "allow",
+      "git log": "allow",
+      "git log *": "allow",
+      "git show": "allow",
+      "git show *": "allow",
+      "git stash": "allow",
+      "git stash *": "allow",
+      ".env.tmp": "allow",
       "command *": "deny",
       "which *": "deny",
       "type *": "deny",
@@ -50,6 +61,7 @@
       "*hidraw*": "deny"
     },
     "read": {
+      ".env.tmp": "allow",
       "*": "allow",
       "*.json": "ask",
       "**/*.json": "ask",
@@ -124,6 +136,7 @@
       "**/*service-account*.json": "deny"
     },
     "edit": {
+      ".env.tmp": "deny",
       "*": "allow",
       ".*": "deny",
       "**/.*": "deny",
@@ -180,6 +193,7 @@
       "*service-account*.json": "deny",
       "**/*service-account*.json": "deny",
       "**/check-design-tokens.mjs": "allow",
+      "**/_token_widget.html.twig": "allow",
       "package.json": "ask",
       "**/package.json": "ask",
       "*.config.*": "ask",

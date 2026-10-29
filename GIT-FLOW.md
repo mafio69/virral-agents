@@ -1,22 +1,4 @@
-# Preambuła – zasady współpracy
-
-## Role
-- Jestem zleceniodawcą. Wynająłem Cię od dostawcy na określony czas, więc jesteś wykonawcą, a nie stałym pracownikiem.
-- Rozmawiamy partnersko. Płacę za Twój czas, dlatego ostateczna decyzja należy do mnie.
-- Ty jesteś koderem. Trzymamy się swoich ról.
-
-## Sprzeciw i uwagi
-- Jeśli uznasz, że moja decyzja szkodzi projektowi, musisz mi o tym powiedzieć. To Twój obowiązek.
-- Masz pomysł na usprawnienie, inną mechanikę, bibliotekę lub rozwiązanie? Zgłoś go. Jestem otwarty na uwagi.
-- Po zgłoszeniu uwagi decyzja nadal należy do mnie.
-
-## Uczciwość i błędy
-- Mów wprost, gdy czegoś nie wiesz. Nie zgaduj i nie udawaj pewności.
-- Mów wprost, gdy popełnisz błąd. Nie rób z tego rytuału ani nie przepraszaj na siłę.
-- Ja też mogę czegoś nie wiedzieć albo popełnić błąd. To normalna część pracy i nie szkodzi, dopóki wyciągamy z niej wnioski.
-- Szukamy przyczyny błędu tylko po to, żeby rozwiązać problem i nie powtórzyć go w przyszłości. Nie szukamy winnych.
-- Gdy polecenie jest niejasne lub niekompletne, zapytaj przed działaniem. Nie zgaduj zakresu.
-
+#mariusz/latitude
 ## Złota zasada
 - Przed każdym commitem pełny zestaw testów wymagany przez repozytorium musi być zielony.
 - Czerwone testy, linting, typecheck lub skaner bezpieczeństwa blokują commit.
@@ -29,21 +11,15 @@
 - Nie pracuj bezpośrednio na master ani develop.
 - Wyjątki dla develop: moja wyraźna zgoda albo zadanie oznaczone przeze mnie jako fire.
 
-## W trakcie zadania
-- Wykonuj tylko zakres zlecony przez Mariusza.
-- Nie dodawaj zależności, nie aktualizuj pakietów i nie refaktoryzuj pobocznych elementów bez zgody.
-- Nie odczytuj ani nie modyfikuj sekretów. Nie analizuj dxrun, dotenvx ani skryptów środowiska. Obowiązuje AGENTS.md.
-- Testy i kontrole jakości uruchamiaj przez dxrun, jeśli polecenie wymaga środowiska.
-- Zauważysz problem poza zakresem? Zgłoś go w raporcie, nie naprawiaj na własną rękę.
-
 ## Commit
 - Agent commituje sam.
 - Nie zmieniaj git config user.name ani git config user.email.
 - Nie cofaj zmian przez git restore, git checkout --, git reset --hard, git clean -f ani podobne mechanizmy bez mojej zgody.
 - Nie commituj sekretów, plików .env ani kluczy. Pilnujcie tych sekretów potem jest masa roboty jak wyjdzie na github
-- Obowiązek podpisywania się w każdym commicie nazwą swojego modelu AI (spójny format w repozytoriach), np.:
-    - dla Gemini: `Co-Authored-By: Gemini <noreply@google.com>`
-    - dla Claude: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
+- Starannie opisuj by poszukiwaniu za miesiąc coś dał ten komentarz 
+- Przed commitem rytuał końca , czyli aktualizowanie plików README.md, STATUS.md, GIT-FLOW.md, AGENTS.md, HANDOFF.md oraz aktualizacja pliku CHANGELOG.md ! WAŻNE
+- Obowiązek podpisywania się macie obowiązek podpisywać się w commit przykład   
+    `Co-Authored-By: Dostawca Model 5.5 <noreply@model.com>` WAŻNE
 
 ## Push, master, deploy
 - git push wymaga osobnej, wyraźnej zgody Mariusza w bieżącej rozmowie.
@@ -52,14 +28,35 @@
 - Deploy wymaga osobnej zgody Mariusza.
 - Po udanym wdrożeniu gałąź zadaniową można usunąć.
 
-## Koniec zadania
+## Koniec zadania (rytuał końca)
 - Podaj krótki raport: co zmieniono, jakie testy uruchomiono i z jakim wynikiem, co zostało otwarte.
 - Jeśli pliki istnieją i zmiana tego wymaga, zaktualizuj kolejno:
 1. HANDOFF.md – krótka pałeczka dla następnej sesji.
 2. CHANGELOG.md – trwała historia, append-only.
-3. STATUS.md – aktualny stan i następny priorytet.
+3. STATUS.md – aktualny stan i następny priorytet. Gdzie jesteśmy teraz . Odpowiedz na pyatanie w jakim momencie prac nad projektem jestesmy teraz i najbliższy krok (ogólnie np dołążyć wysyłkę email).
+4. REPO.md – krótkie uwagi o: pułapki, uwagi techniczne jak działa dany ficzer. Coś co trzeba wiedzieć by uniknąć przeszukiwania jak to działa i nie robić błedów.
 
+## PO co to komu? (mem)
+README.md – Wizytówka projektu: mówi, czym jest projekt, do czego służy i jak go szybko uruchomić. Jest pierwszym plikiem, który czyta każdy nowy użytkownik lub współpracownik.
+
+STATUS.md – Bieżący stan prac: co działa, co jest w toku, co jest zablokowane i co zostało do zrobienia. Aktualizuje się go często, więc jest migawką "tu i teraz", a nie dokumentacją na stałe.
+
+GIT-FLOW.md – Zasady pracy z Gitem: nazewnictwo gałęzi, format commitów, sposób scalania i wydawania wersji. Dzięki niemu każdy (człowiek lub agent AI) pracuje na repozytorium tak samo.
+
+AGENTS.md – Instrukcja dla agentów AI (np. Codex, Claude Code, Cursor): konwencje kodu, komendy do budowania i testów oraz zakazy, np. dotyczące sekretów. Działa jak README dla maszyn, a jego treść wyznacza agentom uprawnienia i granice.
+
+HANDOFF.md – Notatka przekazania pracy między sesjami, osobami lub agentami: co zrobiono, w jakim stanie jest system i jaki jest następny krok. Pozwala podjąć zadanie bez odtwarzania kontekstu od zera.
+
+CHANGELOG.md – Chronologiczny dziennik zmian między wersjami, zwykle w formacie Keep a Changelog (Added, Changed, Fixed, Removed). Służy do szybkiej oceny, co się zmieniło i czy aktualizacja jest bezpieczna.
+
+Różnice między podobnymi plikami
+STATUS.md opisuje stan teraźniejszy, HANDOFF.md przekazuje kontekst na następną sesję, a CHANGELOG.md zapisuje historię.
+REPO.md kruczki, pułapki, uwagi techniczne jak działa dany ficzer. Coś co trzeba wiedzieć by uniknąć błędów,  przeszukiwania jak to działa.
+README.md jest dla ludzi, a AGENTS.md dla agentów AI.
 ## Diagram przepływu pracy
+# Krótki schemat :
+### `pull develop -> newbranch from develop TaskName -> end work, only all tests green ->`  
+### `commit -> change branch to develop -> merge TaskName to develop -> push to Github`   
 
 ```mermaid
 flowchart TD
@@ -76,8 +73,7 @@ flowchart TD
     I --> J{Wszystko zielone?}
     J -- Nie --> K[Napraw lub zgłoś Mariuszowi]
     K --> I
-    J -- Tak --> Y[Dokumentacja: HANDOFF, CHANGELOG, STATUS]
-    Y --> L{Zgoda Mariusza na commit?}
+    J -- Tak --> L{Zgoda Mariusza na commit?}
     L -- Nie --> M[Czekaj na zgodę]
     M --> L
     L -- Tak --> N[Commit]
@@ -93,6 +89,7 @@ flowchart TD
     T --> V{Zgoda na usunięcie brancha?}
     V -- Tak --> W[Usuń branch zadaniowy]
     V -- Nie --> X[Zostaw branch]
-    W --> Z([Raport końcowy])
-    X --> Z
+    W --> Y
+    X --> Y[Dokumentacja: HANDOFF, CHANGELOG, STATUS]
+    Y --> Z([Raport końcowy])
 ```

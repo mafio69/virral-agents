@@ -162,7 +162,7 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `DeepSeekProvider` na wspólnym `ProviderTransport` (OpenAI-compatible, `Bearer`): `POST /chat/completions`, `max_tokens` 4096; narzędzia `web_search`/`web_fetch` w trybie ASK dla obu modeli. Selektor: `deepseek:<model>`.
 - Katalog jest **stały** (`deepseek-flash`, `deepseek-v4-pro`, tekst, bez obrazów) — DeepSeek nie wystawia metadanych możliwości, `listModels()` nie robi zapytania sieciowego (odmiennie niż OpenRouter).
 - Env: `DEEPSEEK_API_KEY` + opcjonalny `DEEPSEEK_BASE_URL` (domyślnie `https://api.deepseek.com`; `src/settings.php` normalizuje ukośnik końcowy, bo Guzzle rozwiązuje `base_uri` względnie). `DEEPSEEK_BASE_URL_ANTHROPIC` to niespaiwana notatka właściciela.
-- Pusta treść odpowiedzi → `EmptyReply::fromChatCompletion()` jak u pozostałych dostawców OpenAI-compatible.
+- Pusta treść odpowiedzi → `invalid_response` jak u pozostałych dostawców OpenAI-compatible tej linii.
 
 ### Ślady Langfuse (obserwowalność czatu)
 

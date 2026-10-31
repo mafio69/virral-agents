@@ -45,6 +45,9 @@ final class AuthHttpTest extends TestCase
         $service = new AuthService($repository, $this->mail, 'https://fixture.example.invalid', $logger, new \App\Service\LoginAttemptLimiter(
             new \App\Repository\LoginAttemptRepository($this->pdo),
             ProtectedDataFixture::cipher($this->pdo)
+        ), new \App\Service\PasswordResetLimiter(
+            new \App\Repository\LoginAttemptRepository($this->pdo),
+            ProtectedDataFixture::cipher($this->pdo)
         ));
         $container = new Container([
             LoggerInterface::class => $logger,
@@ -358,4 +361,40 @@ final class AuthHttpTest extends TestCase
         self::assertSame(401, $this->request('GET', '/api/auth/me', cookies: ['token' => $session])->getStatusCode());
     }
 
+    public function testFourthForgotPasswordRequestReturns429WithRetryAfter(): void
+    {
+        $body = ['email' => 'fixture@example.invalid'];
+        for ($attempt = 0; $attempt < 3; ++$attempt) {
+            self::assertSame(200, $this->request('POST', '/api/auth/forgot-password', $body)->getStatusCode());
+        }
+        $blocked = $this->request('POST', '/api/auth/forgot-password', $body);
+        self::assertSame(429, $blocked->getStatusCode());
+        self::assertGreaterThan(0, (int)$blocked->getHeaderLine('Retry-After'));
+        self::assertLessThanOrEqual(900, (int)$blocked->getHeaderLine('Retry-After'));
+        self::assertStringContainsString('wysłania', $this->data($blocked)['error']);
+    }
+
+    public function testForgotPasswordResponseDoesNotRevealAccountOrDelivery(): void
+    {
+        $this->registerConfirmed();
+        $existing = $this->request('POST', '/api/auth/forgot-password', ['email' => 'fixture@example.invalid']);
+        $missing = $this->request('POST', '/api/auth/forgot-password', ['email' => 'missing@example.invalid']);
+        self::assertSame(200, $existing->getStatusCode());
+        self::assertSame($this->data($missing), $this->data($existing));
+        self::assertArrayNotHasKey('sent', $this->data($existing));
+    }
+
+    public function testResetPasswordOverHttpChangesPasswordAndRejectsReusedLink(): void
+    {
+        $this->registerConfirmed();
+        self::assertSame(200, $this->request('POST', '/api/auth/forgot-password', ['email' => 'fixture@example.invalid'])->getStatusCode());
+        $resetToken = $this->verificationToken;
+        $body = ['token' => $resetToken, 'password' => 'fixture-new-password'];
+        self::assertSame(200, $this->request('POST', '/api/auth/reset-password', $body)->getStatusCode());
+        self::assertSame(422, $this->request('POST', '/api/auth/reset-password', $body)->getStatusCode());
+        self::assertSame(401, $this->request('POST', '/api/auth/login', $this->credentials())->getStatusCode());
+        self::assertSame(200, $this->request('POST', '/api/auth/login', [
+            'email' => 'fixture@example.invalid', 'password' => 'fixture-new-password',
+        ])->getStatusCode());
+    }
 }

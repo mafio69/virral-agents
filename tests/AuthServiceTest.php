@@ -62,6 +62,10 @@ class AuthServiceTest extends TestCase
             new \App\Service\LoginAttemptLimiter(
                 new \App\Repository\LoginAttemptRepository($this->pdo),
                 ProtectedDataFixture::cipher($this->pdo)
+            ),
+            new \App\Service\PasswordResetLimiter(
+                new \App\Repository\LoginAttemptRepository($this->pdo),
+                ProtectedDataFixture::cipher($this->pdo)
             )
         );
     }

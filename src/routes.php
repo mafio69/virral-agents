@@ -44,6 +44,8 @@ return function (App $app) {
         $group->post('/auth/login', [AuthController::class, 'login']);
         $group->post('/auth/logout', [AuthController::class, 'logout']);
         $group->get('/auth/verify-email', [AuthController::class, 'verifyEmail']);
+        $group->post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+        $group->post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
         $group->group('', function (RouteCollectorProxy $group) {
             $group->get('/auth/me', [AuthController::class, 'me']);

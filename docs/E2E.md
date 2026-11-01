@@ -23,6 +23,13 @@ i szuka wiadomości po unikalnym adresie `e2e-<czas>@example.invalid`; niczego n
 Inny serwer: `E2E_MAILBOX_URL` (API HTTP) i `E2E_SMTP_DSN` (SMTP). Nie używaj prywatnej
 skrzynki. Niedostępne API Mailpita powoduje jawny błąd przygotowania, a nie pominięcie testów.
 
+Na samym serwerze nazwy `*.dom` się nie rozwiązują (host pyta systemd-resolved, nie Pi-hole),
+więc Mailpita wskazuje się po loopback:
+
+```bash
+E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e
+```
+
 ## Uruchomienie
 
 ```bash

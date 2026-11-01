@@ -24,3 +24,4 @@ tests/e2e/runtime/
 # PHP CS Fixer configuration
 /.php-cs-fixer.cache
 /.php-cs-fixer.php
+/identifier.sqlite

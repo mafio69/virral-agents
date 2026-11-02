@@ -19,15 +19,15 @@ Szablon:
 
 ---
 
-## 2026-11-01 — porządek gałęzi, nginx/ACL, weryfikacja (Claude)
+## 2026-11-02 — T6.1 scalone z masterem (rebase), T6.2 UI w toku
 
-- **Gałąź:** `chore/agents-dom-status` z `origin/master` (lokalny `develop` przesunięty na `origin/master`, bez push). Zmiany niezacommitowane do akceptacji właściciela.
-- **Zrobione:** diagnoza i naprawa (przez właściciela, `setfacl`) plików statycznych za nginx; `.env` `660`; `server_name agents.dom`; wpisy CHANGELOG/REPO/STATUS, `docs/E2E.md`; pliki do `.local/karencja` (usunąć po 2026-11-08).
-- **Od czego zacząć:** po akceptacji commit i push `develop` + gałęzi, PR do `develop`; potem test wyszukiwania po konfiguracji MCP przez właściciela.
+- **Stan:** PR #15 (owner, `chore/agents-dom-status`) scalony do `master` (`c42ab6b`); lokalne `master` i `develop` przesunięte ff. `feature/T6.1` (commit T6.1 z #62-524) zrebasowany na nowy develop; `feature/T6.2` na wierzchu. DT #62-524/#62-525 `[CLAIMED] OpenCode/GLM-5.3`.
+- **Kluczowe odkrycie do T6.2:** ręczne wyszukiwanie w UI idzie przez `ResearchPanel` (klik „Szukaj stron…" → `run('propose', {request:{kind:'search',query}})` → karta Allow/Deny), NIE przez stary `bindSearchControls`/`approveSearch` (to kontrakt zgodności API). Chipy filtrów trzeba wpinać w `ResearchPanel` (chat-research.js) + `chat.html`.
+- **Zrobione w T6.1 (zacommitowane):** `SearchQuery`+`SearchQueryBuilder`, `SearchOptions`, `ResearchService`, `WebTools` (must_have/exclude/exact_phrase/sites), `describeSearchFilters` w chat-search.js, karta zgody z filtrami, testy (PHP 275/275, UI 100/100), dokumentacja REPO/MCP-USAGE/CHANGELOG.
+- **Od czego zacząć:** T6.2 (#62-525): w `chat.html` pod `#search-query` chipy „Bez"/„Musi zawierać" (klik = usuń) + „Więcej opcji" (dokładna fraza, strona); `ResearchPanel` dokleja filtry do `request` w `propose`; `canSearch` bez zmian (query wymagane); po zmianach JS podbić `?v=` w importach `chat.html`; testy: `tests/ui/chat-research.test.mjs` + `chat-search.test.mjs`. Po T6.2: wpis CHANGELOG, walidacja pełna, commit po zgodzie.
 - **Pułapki:**
-  - `MCP_SEARCH_URL` musi być `http://mcp-search:8000/mcp` (nie `szukaj:8000` — to SearXNG); token MCP do rotacji.
-  - Traefik (osobny projekt) w pętli restartów: port 443 zajęty przez Tailscale; tymczasowo aplikacja po IP `:8181`.
-  - Na serwerze `*.dom` się nie rozwiązuje — E2E z `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025`.
-  - Lokalny Node 22 nie zna `--test-isolation=none` (CI ma Node 24); ręcznie `--experimental-test-isolation=none`.
-  - Narzędzia Read/Edit agenta są ograniczone do `bin/` — edycje przez Bash.
-  - Podpis commitów zgodny z modelem (`GIT-FLOW.md`), np. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+  - Lokalny Node 22: UI przez `node --test --experimental-test-isolation=none tests/ui/*.test.mjs` (CI Node 24).
+  - `SearchQueryBuilder` celowo w `Dto\Chat`; limit tokenów przed deduplikacją; `toArray()`: query, must_have, exclude, exact_phrase, sites.
+  - Decyzje właściciela: must → `+słowo`; kontrakt WebTools rozszerzony w T6.1; `time_range`/`categories`/`language` czekają na serwer w repo `szukaj` (#62-528).
+  - Dostęp do DT: `DT_MCP_TOKEN` z `.env` przez awk/curl bez wyświetlania tokenu (zaakceptowane 2026-11-02).
+  - origin/develop wciąż 19 commitów za masterem (push develop czeka na zgodę właściciela).

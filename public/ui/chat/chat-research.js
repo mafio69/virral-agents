@@ -1,3 +1,5 @@
+import { describeSearchFilters } from './chat-search.js';
+
 const empty = () => ({ results: [], sources: [], actions: [] });
 const FETCH_REASONS = {
     dns_failed: 'nie znaleziono adresu',
@@ -347,6 +349,10 @@ export class ResearchPanel {
             const request = action.request;
             card.append(node('strong', `${action.origin === 'ai' ? 'AI prosi o zgodę' : 'Zgoda'}: ${request.kind === 'search' ? 'wyszukanie WWW' : 'pobranie strony'}`));
             card.append(node('p', request.query || request.url, 'research-address'));
+            const filterSummary = request.kind === 'search' ? describeSearchFilters(request) : '';
+            if (filterSummary) {
+                card.append(node('p', filterSummary, 'research-address'));
+            }
             card.append(node('p', request.kind === 'search'
                 ? 'Zapytanie trafi do wyszukiwarki; wyniki pojawią się tutaj.'
                 : 'Jedno żądanie GET bez Twoich cookies.'));

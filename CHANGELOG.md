@@ -38,6 +38,18 @@
   nieudanych logowan liczy sie wspolnie dla wszystkich klientow (jeden koszyk zamiast per IP).
   Patrz `docs/KONFIGURACJA.md`, sekcja o limicie za reverse proxy.
 
+## 2026-11-02 — #62-524 (T6.1): filtry wyszukiwania zaawansowanego w backendzie
+
+- Nowe klasy: `App\Dto\Chat\SearchQuery` (DTO `query`/`exclude[]`/`mustHave[]`/`exactPhrase`/`sites[]` z walidacją i normalizacją: trim, zwijanie białych znaków, deduplikacja, domeny małymi literami) oraz `App\Dto\Chat\SearchQueryBuilder` (składanie jednego zapytania `query +słowo -słowo "fraza" site:domena`, limit 1000 B; celowo w przestrzeni Dto, żeby Dto nie importowało Infra).
+- `SearchOptions::$query` ma teraz typ `SearchQuery`; `fromInput()` przyjmuje dodatkowe klucze `exclude`, `must_have`, `exact_phrase`, `sites` (nieznane klucze nadal 422).
+- `ChatReplyGenerator` wysyła do MCP zapytanie złożone i dokładnie ono trafia do JSON z wynikami dla modelu.
+- `ResearchService`: prośby `kind:"search"` przyjmują te same filtry (zapisywane w stanie akcji w formie snake_case przez `toArray()`), a `decide()` składa zapytanie przed wywołaniem `SearchClientInterface::search()`.
+- Kontrakt narzędzia `web_search` dla modeli (`WebTools`) rozszerzony o opcjonalne `must_have`, `exclude`, `exact_phrase`, `sites` (opisy po polsku w schemacie; złe argumenty → `invalid_response`). `time_range`/`categories`/`language` świadomie poza zakresem — wymagają rozszerzenia serwera MCP w repo `szukaj` (#62-528).
+- UI: `chat-search.js` eksportuje `describeSearchFilters()` (czytelne podsumowanie filtrów), `chat-research.js` pokazuje je na karcie zgody — zgoda jest informowana także przy filtrowanych prośbach AI.
+- Bezpieczeństwo: token nie może zaczynać się od `-`/`+` ani zawierać cudzysłowu (brak wstrzykiwania operatorów); limit liczby tokenów liczony przed deduplikacją.
+- Testy: nowe `SearchQueryTest`, `SearchQueryBuilderTest`; rozszerzone `ChatSearchTest` (kompozycja + odrzucenia), `ResearchServiceTest` (filtry w prośbach i wykonaniu), `ResearchAgentTest` (filtry od dostawców, odrzucenie nieprawidłowych), `tests/ui/chat-search.test.mjs` (`describeSearchFilters`); zaktualizowane konstruktory w `SearchDiagnosticsTest`, `ProviderRoutingTest`.
+- Walidacja: PHPUnit 275/275 (1303 asercje), UI 100/100 (`--experimental-test-isolation=none` lokalnie), formatter czysty po `composer format`, `composer validate --strict --no-check-publish` OK.
+
 ## 2026-10-27 — T1.2: podglad liczby tokenow w UI pod odpowiedzia AI
 
 - Dodano metode `ChatUsageRepository::findByMessageIds(list<int> $ids)` wykonujaca pojedyncze zapytanie `WHERE message_id IN (...)` bez N+1 (pusta lista zwraca `[]` bez zapytania).

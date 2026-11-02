@@ -39,8 +39,9 @@ Model dostaje instrukcję, że nie są to treści przeczytanej strony.
 API chronione istniejącą sesją:
 - `GET /api/research?chat_id=0` — szkic; identyfikator rozmowy zamiast 0 wybiera jej listę.
 - `DELETE /api/research?chat_id=0` — wyczyszczenie wyników, wybranych źródeł i nierozstrzygniętych decyzji.
-- `POST /api/research/actions?chat_id=0` — `{request:{kind:"search",query}}`
-  lub `{request:{kind:"fetch",url}}`; tworzy oczekującą prośbę.
+- `POST /api/research/actions?chat_id=0` — `{request:{kind:"search",query}}` oraz opcjonalne
+  filtry `must_have`, `exclude`, `exact_phrase`, `sites` (patrz niżej), albo `{request:{kind:"fetch",url}}`;
+  tworzy oczekującą prośbę.
 - `POST /api/research/decisions?chat_id=0` — `{id,allow:true|false}`; decyzja jednorazowa.
 - `PUT /api/research/sources?chat_id=0` — `{id,selected:true|false}`.
 - `POST /api/research/prepare?chat_id=0` — `{}`; przygotowuje zgody, nie pobiera.
@@ -52,6 +53,25 @@ z rzeczywistymi źródłami i decyzjami; nie odtwarzamy surowych tool calls ani 
 uruchamiamy pętli samodzielnych operacji. Dawny kontrakt `search:{engine:"mcp",
 query,approved:true,max_calls:1}` pozostaje dla zgodności API; nowy widok używa
 oddzielnego panelu źródeł. Zapytania mają maksymalnie 1000 bajtów.
+
+### Filtry wyszukiwania zaawansowanego
+
+Wyszukiwanie można zawęzić filtrami `must_have` (słowa wymagane, lista stringów),
+`exclude` (słowa wykluczone, lista), `exact_phrase` (dokładna fraza, string)
+i `sites` (domeny, lista). Przyjmują je: `search` w `POST /api/chats/{id}/messages`
+(obok `engine`/`query`/`approved`/`max_calls`), prośby `kind:"search"` w
+`/api/research/actions` oraz narzędzie `web_search` kontraktu modeli (`WebTools`).
+Backend składa jeden string wyszukiwarki (`SearchQueryBuilder`): `query +słowo
+-słowo "fraza" site:domena`; złożone zapytanie trafia do MCP i do JSON z wynikami
+dla modelu, a karta zgody pokazuje filtry czytelnie po polsku (`describeSearchFilters`).
+
+Limity i walidacja (`SearchQuery`): token 1–64 znaki, po maks. 10 w `must_have`
+i `exclude` (limit liczony przed deduplikacją), fraza ≤ 100 znaków, maks. 5 domen
+(sama domena, bez schematu i ścieżki, normalizowana do małych liter), złożone
+zapytanie ≤ 1000 bajtów. Token nie może zaczynać się od `-`/`+` ani zawierać
+cudzysłowu — operatorów nie da się wstrzyknąć. Złe wartości → 422; dla modelu
+`invalid_response`. `time_range`/`categories`/`language` nie są jeszcze obsłużone
+(wymagają rozszerzenia serwera MCP w repo `szukaj` — zadanie #62-528).
 
 Testy izolowane: `ResearchServiceTest`, `ResearchAgentTest`, `PublicWebPageFetcherTest`,
 `tests/ui/chat-research.test.mjs`. Pełny widok z atrapami bez sieci można uruchomić

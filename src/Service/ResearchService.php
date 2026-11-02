@@ -6,6 +6,8 @@ namespace App\Service;
 
 use App\Exception\NotFoundException;
 use App\Exception\ValidationException;
+use App\Dto\Chat\SearchQuery;
+use App\Dto\Chat\SearchQueryBuilder;
 use App\Repository\ChatRepository;
 use App\Repository\ResearchRepositoryInterface;
 use App\Infrastructure\Search\PublicWebUrl;
@@ -148,7 +150,8 @@ final readonly class ResearchService implements ResearchServiceInterface
         try {
             if ($request['kind'] === 'search') {
                 try {
-                    $result = $this->search->search($request['query'], 10);
+                    $query = SearchQuery::fromArray(array_diff_key($request, ['kind' => 'search']));
+                    $result = $this->search->search(SearchQueryBuilder::build($query), 10);
                 } finally {
                     $this->search->close();
                 }
@@ -240,9 +243,13 @@ final readonly class ResearchService implements ResearchServiceInterface
     private function validateRequest(array $request): array
     {
         $kind = $request['kind'] ?? null;
-        if ($kind === 'search' && array_diff(array_keys($request), ['kind', 'query']) === []
-            && is_string($request['query'] ?? null) && trim($request['query']) !== '' && strlen($request['query']) <= 1000) {
-            return ['kind' => 'search', 'query' => trim($request['query'])];
+        if ($kind === 'search' && array_diff(array_keys($request), ['kind', 'query', 'exclude', 'must_have', 'exact_phrase', 'sites']) === []) {
+            $query = SearchQuery::fromArray(array_diff_key($request, ['kind' => 'search']));
+            if ($query->query === '') {
+                throw new ValidationException('Nieprawidłowa prośba WWW.');
+            }
+            SearchQueryBuilder::build($query);
+            return ['kind' => 'search', ...$query->toArray()];
         }
         if ($kind === 'fetch' && array_diff(array_keys($request), ['kind', 'url']) === [] && is_string($request['url'] ?? null)) {
             return ['kind' => 'fetch', 'url' => PublicWebUrl::normalize($request['url'])];

@@ -19,16 +19,15 @@ Szablon:
 
 ---
 
-## 2026-10-26 — Poprawki z przeglądu PR #10 (wydanie v1.0.0)
+## 2026-11-01 — porządek gałęzi, nginx/ACL, weryfikacja (Claude)
 
-- **Gałąź:** `develop` (otwarty PR #10 `develop` → `master`). Automatyczna walidacja 100% zielona (`composer check-all`: formatter 0/168, PHP 239/239 — 1148 asercji, UI 93/93; `npm run test:e2e`: 5/5). Potwierdzono testy manualne czatu i badania źródeł w przeglądarce; przed oznaczeniem tagu `v1.0.0` obowiązują pozostałe weryfikacje środowiskowe/produkcyjne z `STATUS.md`.
-- **Zrobione w tej sesji:**
-  - Usunięto zahardkodowane hasło z `bin/restore-dev-user.php` i `docs/DEV-ADMIN.md`; skrypt wczytuje teraz `DEV_ADMIN_PASSWORD` (min. 10 znaków) z lokalnego środowiska bez wypisywania hasła na `STDOUT`.
-  - Zaktualizowano przykład zdalnego adresu `MCP_SEARCH_URL` w `docs/KONFIGURACJA.md`, `README.md` i `REPO.md` na `https://szukaj.dom/mcp` z wymogiem TLS dla zdalnych endpointów z `MCP_AUTH_TOKEN`.
-  - W `ChatReplyGenerator` rozróżniono brak konfiguracji wyszukiwania (`missing_configuration`) od chwilowej awarii; w `ChatService` wydzielono wspólne metody pomocnicze dla `addMessage()` i `continueMessage()`; w `SettingsSearchEnvTest` dodano pełny snapshot i przywracanie `$_ENV`/`$_SERVER`/`putenv`; w `GIT-FLOW.md` przeniesiono krok dokumentacji przed `Commit`.
-- **Od czego zacząć:** weryfikacja PR #10 na GitHubie (w GitGuardian oznaczenie historycznego commitu `68d938a` jako testowego lub decyzja właściciela), merge `develop` → `master`, deploy na Optiplex i pozostałe kontrole z `STATUS.md` przed tagiem `v1.0.0`.
+- **Gałąź:** `chore/agents-dom-status` z `origin/master` (lokalny `develop` przesunięty na `origin/master`, bez push). Zmiany niezacommitowane do akceptacji właściciela.
+- **Zrobione:** diagnoza i naprawa (przez właściciela, `setfacl`) plików statycznych za nginx; `.env` `660`; `server_name agents.dom`; wpisy CHANGELOG/REPO/STATUS, `docs/E2E.md`; pliki do `.local/karencja` (usunąć po 2026-11-08).
+- **Od czego zacząć:** po akceptacji commit i push `develop` + gałęzi, PR do `develop`; potem test wyszukiwania po konfiguracji MCP przez właściciela.
 - **Pułapki:**
-  - Nieśledzone `.opencode/plugins/` i `var/` — nie commitować.
-  - Formatter obejmuje `bin/` — skrypty w `bin/` muszą trzymać PSR-12.
-  - E2E wysyła pocztę do `mail-trap.dom:1025`, API `http://mail-trap.dom`.
-  - Opisy poleceń Bash po polsku; `sudo` uruchamia właściciel w swoim terminalu; podpis commitów: `Co-Authored-By: Gemini <noreply@google.com>`.
+  - `MCP_SEARCH_URL` musi być `http://mcp-search:8000/mcp` (nie `szukaj:8000` — to SearXNG); token MCP do rotacji.
+  - Traefik (osobny projekt) w pętli restartów: port 443 zajęty przez Tailscale; tymczasowo aplikacja po IP `:8181`.
+  - Na serwerze `*.dom` się nie rozwiązuje — E2E z `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025`.
+  - Lokalny Node 22 nie zna `--test-isolation=none` (CI ma Node 24); ręcznie `--experimental-test-isolation=none`.
+  - Narzędzia Read/Edit agenta są ograniczone do `bin/` — edycje przez Bash.
+  - Podpis commitów zgodny z modelem (`GIT-FLOW.md`), np. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

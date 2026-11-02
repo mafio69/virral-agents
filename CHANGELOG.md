@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## 2026-11-01 — porządek gałęzi, pliki statyczne za nginx, weryfikacja
+
+- Gałęzie: `origin/develop` był 19 commitów za `master` (T1.0–T1.2 i #14 trafiły do `master`
+  z gałęzi feature z pominięciem `develop`). Lokalny `develop` przesunięty fast-forward na
+  `origin/master`; praca na `chore/agents-dom-status`.
+- Nginx nie serwował plików z `public/` (CSS/JS → PHP → 404, w przeglądarce 503), bo ACL repo
+  ma `other::---`, a worker nginx działa jako uid 101. Skutek: czat w przeglądarce bez JS —
+  wiadomość znikała bez wysyłki. Właściciel nadał ACL: `u:101:x` na katalogu repo oraz
+  `u:101:rX` (także domyślne) na `public/`. Przy okazji `.env` i `.env.tmp` dostały `660`
+  (wcześniej odczyt dla „innych”). Opis w `REPO.md` (Decyzje i pułapki).
+- Odłożone do `.local/karencja` (do usunięcia po 2026-11-08): kopia
+  `docker/nginx/default.conf.przed-agentsdom-20261029` i pusty `identifier.sqlite`
+  (artefakt IDE, dopisany do `.gitignore`).
+- `docs/E2E.md`: uruchomienie E2E na samym serwerze, gdzie `*.dom` się nie rozwiązuje
+  (`E2E_MAILBOX_URL`, `E2E_SMTP_DSN` na `127.0.0.1`).
+- Walidacja: formatter 0/175, PHPUnit 261/261 (1224 asercje), UI 99/99 (lokalnie Node 22
+  wymaga `--experimental-test-isolation=none`; CI Node 24 bez zmian), E2E 5/5.
+  Test manualny `agents.dom`: czat Gemini i licznik tokenów pod odpowiedzią działają;
+  wyszukiwanie WWW — początkowo `connection_refused`: `MCP_SEARCH_URL` wskazywał `szukaj:8000`
+  (SearXNG) zamiast `mcp-search:8000`, a `MCP_AUTH_TOKEN` różnił się od tokenu serwera. Po poprawce
+  `.env` (2026-11-02) `/api/search/status` → `available: true`; wyszukanie z Allow zwraca 10 wyników.
+
+## 2026-10-29 — aplikacja oglasza sie jako agents.dom
+
+- `docker/nginx/default.conf`: `server_name localhost` -> `server_name agents.dom localhost`.
+  Dotad vhost odpowiadal na `agents.dom` tylko dlatego, ze jest jedynym blokiem `server`, czyli
+  serwerem domyslnym — nazwa nie byla nigdzie zadeklarowana. Kopia:
+  `docker/nginx/default.conf.przed-agentsdom-20261029`.
+- Przeladowane bez przestoju (`nginx -s reload`). Sprawdzone: `Host: agents.dom` przez Traefika
+  -> **200**, `http://192.168.1.172:8181/` -> **200**, tytul strony `Virral Agents`.
+- Trasa w Traefiku istnieje od 2026-10-23 (`~/app/observability/proxy/dynamic/uslugi.yml`,
+  router `agents` -> `http://127.0.0.1:8181`); DNS `*.dom` -> `192.168.1.172` z Pi-hole.
+  **Z samego serwera `192.168.1.172` nazwa sie nie rozwiazuje** (NXDOMAIN — host pyta
+  systemd-resolved, nie Pi-hole); z telefonu i laptopa dziala.
+- Nie ruszane, do rozwazenia osobno: `TRUSTED_PROXIES` jest puste, wiec za Traefikiem limit
+  nieudanych logowan liczy sie wspolnie dla wszystkich klientow (jeden koszyk zamiast per IP).
+  Patrz `docs/KONFIGURACJA.md`, sekcja o limicie za reverse proxy.
+
 ## 2026-10-27 — T1.2: podglad liczby tokenow w UI pod odpowiedzia AI
 
 - Dodano metode `ChatUsageRepository::findByMessageIds(list<int> $ids)` wykonujaca pojedyncze zapytanie `WHERE message_id IN (...)` bez N+1 (pusta lista zwraca `[]` bez zapytania).

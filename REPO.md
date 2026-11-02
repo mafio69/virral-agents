@@ -77,6 +77,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Szyfrowanie | szyfrowane są wybrane pola, nie cały plik SQLite | metadane (czasy, ID, liczba wiadomości) pozostają jawne; dostawca AI widzi treść rozmowy |
 | Git | gałęzie z `develop`, push tylko `develop`, `master` tylko przez PR | patrz `GIT-FLOW.md`; nie scalać lokalnie do `master` |
 | Testy UI | `node --test --test-isolation=none` | w ograniczonym środowisku agenta izolacja procesów zawodzi |
+| Uprawnienia plików | ACL repo ma `other::---`; nginx (uid 101 w kontenerze) ma osobny wpis: `u:101:x` na katalogu repo i `u:101:rX` (także domyślny) na `public/` | bez tego CSS/JS trafiają do PHP (404/503) i czat nie działa, choć `/chat` zwraca 200; nie nadawać `o+r` — `.env` musi mieć `660` |
 
 ## 6. Stałe operacyjne
 

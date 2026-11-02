@@ -9,30 +9,28 @@
 
 ---
 
-**Ostatnia aktualizacja:** 2026-10-26
-**Gałąź:** `develop` (otwarty PR #10 `develop` → `master`).
-**Ostatnia pełna walidacja (2026-10-26):** `composer check-all` — formatter 0/168, PHP 239/239 (1148 asercji), UI 93/93; Composer strict/platform-reqs OK; E2E 5/5; testy manualne czatu i badania źródeł w przeglądarce potwierdzone przez właściciela.
+**Ostatnia aktualizacja:** 2026-11-01
+**Gałąź:** `chore/agents-dom-status` (z `develop` = `origin/master` po fast-forward). `v1.0.0` otagowane na `32ae5a5` (PR #10).
+**Ostatnia pełna walidacja (2026-11-01):** formatter 0/175, PHPUnit 261/261 (1224 asercje), UI 99/99, E2E 5/5. Test manualny na `agents.dom`: czat (Gemini) i licznik tokenów OK; wyszukiwanie WWW działa po poprawce konfiguracji (2026-11-02).
 
-## Gotowe (w develop / release/v1.0.0)
+## Gotowe
 
-- **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, CLI resetu hasła.
-- **Ochrona danych:** szyfrowanie pól (XChaCha20-Poly1305, `USER_DATA_KEY`), HMAC e-maila, hashe tokenów, migracja CLI `bin/protect-user-data.php`.
-- **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter. Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny).
-- **Obsługa błędów i logowanie (`Mariusz\Logger\DualLogger`):** wspólne mapowanie wyjątków w `src/middleware.php`; użytkownik nigdy nie widzi surowych błędów debugowania, kodów `HTTP 5xx` ani wewnętrznych nazw zmiennych — zawsze otrzymuje przyjazny komunikat z przeprosinami. Miejsca przechwycenia wyjątków (`middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`) logują bogaty kontekst diagnostyczny (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `reason`, `stage`, `sqlstate`, `driver_code`).
-- **WWW i badanie źródeł:** MCP `web_search` w trybie ASK (`MCP_SEARCH_URL` + `MCP_AUTH_TOKEN`), badanie źródeł z kontynuacją (`POST /api/chats/{id}/messages/{messageId}/continue`), izolacja jednego wyszukiwania na jedną wymianę zdań (automatyczne czyszczenie po wygenerowaniu odpowiedzi oraz ręczne czyszczenie `DELETE /api/research` w panelu bocznym i modalu), `chat_messages.kind` (`message`/`approval_request`/`continuation`), fetcher z bezpiecznymi redirectami.
-- **Jakość i dokumentacja:** formatter na całym PHP (`src/`, `bin/`, `tests/`), klamry we wszystkich if/else w PHP i JS, testy spójności zmiennych środowiskowych (`EnvNamesConsistencyTest`), dokumentacja zsynchronizowana pod `v1.0.0`.
-- **Testy:** E2E 5/5 działa przez zewnętrzny Mailpit `mail-trap.dom` (rejestracja/SMTP, logowanie z błędnym e-mailem/hasłem i poprawnymi danymi, czat, badanie źródeł, diagnostyka MCP).
+- **v1.0.0:** konto (potwierdzenie e-maila, limit logowań, sesja HttpOnly/Bearer), szyfrowanie pól, czat z 6 dostawcami, obsługa błędów `DualLogger`, wyszukiwanie ASK i badanie źródeł z kontynuacją.
+- **Po v1.0.0 (w `master`):** T1.0 Langfuse (OTLP, tokeny z dostawców), T1.1 zapis zużycia `chat_usage`, T1.2 licznik „wej. / wyj.” pod odpowiedzią, #14 `LANGFUSE_HOST` i `LANGFUSE_ENABLED`.
+- **2026-11-01:** naprawione serwowanie plików statycznych przez nginx (ACL dla uid 101), `.env` z prawami `660`, nginx odpowiada na `agents.dom`.
 
-## Otwarte / wymagane testy manualne przed tagiem `v1.0.0` (100% pass)
+## Otwarte
 
-- **Wyszukiwarka MCP (`szukaj`):** po ustawieniu `MCP_AUTH_TOKEN` w `.env` i odtworzeniu kontenera `app` — potwierdzić ręczne wyszukanie WWW oraz prośbę AI o WWW z automatyczną kontynuacją (`/continue`).
-- **#62-495:** potwierdzić na rzeczywistym modelu kontynuację badania bez błędu „Nie udało się odebrać odpowiedzi” (w razie wyjątku log zawiera teraz `plik:linia` i kod SQLSTATE/PDO).
-- **#62-503:** na produkcji sprawdzić limit za proxy (6 błędnych logowań z telefonu, potem logowanie z komputera; w razie wspólnej blokady ustawić `TRUSTED_PROXIES`). HTTPS i healthcheck kontenera nadal otwarte.
-- **OpenRouter i dostawcy AI:** sprawdzić widoczność listy połączeń zgodną z kluczami w `.env` oraz odpowiedź na rzeczywistym koncie OpenRouter.
-- **Start i poczta prod:** start przez `./prod-start.sh`, dostarczenie e-maila weryfikacyjnego.
+- **Token MCP do rotacji:** wartość `MCP_AUTH_TOKEN` trafiła 2026-11-02 do rozmowy z agentem — wygenerować nowy i wpisać w `szukaj/.env` oraz `virral-agents/.env`.
+- **`szukaj` w trybie dev** (backend i wbudowany frontend `appEnv:"dev"`); przełączenie na prod wymaga `APP_ENV=prod` w `szukaj/.env` i przebudowy `mcp-search`.
+- **Limit logowań za Traefikiem:** `TRUSTED_PROXIES` puste → wspólny licznik nieudanych logowań dla wszystkich klientów.
+- **Przepływ Git:** `develop` na GitHubie 19 commitów za `master`; po akceptacji push `develop`. Kolejne zmiany tylko przez `develop` (PR feature → `develop`, potem `develop` → `master`).
+- **Brak wpisów CHANGELOG** dla T1.0 (Langfuse) i #14.
+- Do potwierdzenia na rzeczywistym modelu: #62-495 (kontynuacja badania), OpenRouter, start `./prod-start.sh` i poczta prod.
 
 ## Następny priorytet
 
-1. Przejście powyższej listy testów manualnych w 100% → scalenie `release/v1.0.0` do `develop`, PR `develop` → `master`, deploy na Optiplex i tag `v1.0.0`.
-2. #62-486 → #62-493 — jakość źródeł badania.
-3. #62-494 — strumieniowanie odpowiedzi (SSE).
+1. Rotacja tokenu MCP.
+2. `TRUSTED_PROXIES` dla Traefika.
+3. #62-486 → #62-493 — jakość źródeł badania (część E1/E2 już wdrożona, zweryfikować `TODO-zrodla.md`).
+4. #62-494 — strumieniowanie odpowiedzi (SSE).

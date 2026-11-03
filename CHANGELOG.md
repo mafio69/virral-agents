@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-11-02 — #62-525 (T6.2): filtry wyszukiwania w UI (chipy „Bez / Musi zawierać")
+
+- Nowy moduł `public/ui/chat/chat-search-filters.js` (`SearchFilters`): chipy słów wykluczonych i wymaganych (wpisz + Enter, klik = usuń), zwijane „Więcej opcji…" z dokładną frazą i stroną (domeną). Walidacja po stronie klienta dubluje backend (bez `-`/`+` na początku, bez cudzysłowu, ≤ 64 znaki, ≤ 10 tokenów); składnię wyszukiwarki użytkownik nigdy nie widzi.
+- `ResearchPanel` (`chat-research.js`) przyjmuje opcjonalny obiekt `filters`: klik „Szukaj stron…" dokleja `collect()` do `request` w `propose` (tokeny + fraza + domena), a `updateButton()` blokuje wejścia filtrów razem z polem zapytania.
+- `chat.html`: stała linia filtrów pod „Szukaj stron · ASK", style chipów, `?v=20261102-filters` na importach `chat-app.js` i `chat-research.js`.
+- Karta zgody (T6.1) pokazuje te filtry czytelnie przy Allow/Deny — zgoda dotyczy dokładnie tego, co poleci do wyszukiwarki.
+- Testy: nowe `tests/ui/chat-search-filters.test.mjs` (6 przypadków: chipy, usuwanie, walidacja, limity, `collect()`, „więcej opcji", `setEnabled`), rozszerzone `tests/ui/chat-research.test.mjs` (filtry w payloadzie `propose`).
+- Walidacja: PHPUnit 275/275 (1303 asercje), UI 107/107, formatter czysty, `composer validate --strict --no-check-publish` OK.
+
 ## 2026-11-01 — porządek gałęzi, pliki statyczne za nginx, weryfikacja
 
 - Gałęzie: `origin/develop` był 19 commitów za `master` (T1.0–T1.2 i #14 trafiły do `master`

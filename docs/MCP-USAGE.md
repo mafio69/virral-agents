@@ -65,6 +65,12 @@ Backend składa jeden string wyszukiwarki (`SearchQueryBuilder`): `query +słowo
 -słowo "fraza" site:domena`; złożone zapytanie trafia do MCP i do JSON z wynikami
 dla modelu, a karta zgody pokazuje filtry czytelnie po polsku (`describeSearchFilters`).
 
+W UI czatu pod „Szukaj stron · ASK" działa stała linia chipów „Bez" / „Musi zawierać"
+(słowo + Enter dodaje, klik na chip usuwa) oraz „Więcej opcji…" z dokładną frazą i stroną
+(`SearchFilters` w `public/ui/chat/chat-search-filters.js`). Klik „Szukaj stron…"
+dokleja filtry do prośby w `/api/research/actions`; użytkownik nie widzi składni
+wyszukiwarki, a walidacja po stronie klienta dubluje backend.
+
 Limity i walidacja (`SearchQuery`): token 1–64 znaki, po maks. 10 w `must_have`
 i `exclude` (limit liczony przed deduplikacją), fraza ≤ 100 znaków, maks. 5 domen
 (sama domena, bez schematu i ścieżki, normalizowana do małych liter), złożone

@@ -34,8 +34,8 @@ const node = (tag, text, className = '') => {
 
 /** Durable server state; result replacement never clears the selected source shelf. */
 export class ResearchPanel {
-    constructor(api, { query, search, body, summary, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, onState = () => {}, continueControl = null, continueLabel = 'Kontynuuj z wybranymi stronami', canContinue = () => true }) {
-        Object.assign(this, { api, query, search, body, summary, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, onState, continueControl, continueLabel, canContinue });
+    constructor(api, { query, search, body, summary, filters = null, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, onState = () => {}, continueControl = null, continueLabel = 'Kontynuuj z wybranymi stronami', canContinue = () => true }) {
+        Object.assign(this, { api, query, search, body, summary, filters, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, onState, continueControl, continueLabel, canContinue });
         this.scope = null;
         this.version = 0;
         this.busy = false;
@@ -54,7 +54,9 @@ export class ResearchPanel {
             if (!this.canSearch()) {
                 return;
             }
-            void this.run('propose', { request: { kind: 'search', query: text } }).then(ok => {
+            // Filters travel as tokens; the backend composes the final query string.
+            const request = { kind: 'search', query: text, ...(this.filters ? this.filters.collect() : {}) };
+            void this.run('propose', { request }).then(ok => {
                 if (ok) {
                     this.onNotice('Sprawdź dokładne zapytanie poniżej i wybierz Allow lub Deny.');
                 }
@@ -78,6 +80,7 @@ export class ResearchPanel {
     updateButton() {
         this.search.disabled = !this.canSearch();
         this.query.disabled = this.scope === null || this.busy;
+        this.filters?.setEnabled(this.scope === null || this.busy);
         if (this.continueButton) {
             this.continueButton.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue();
             this.continueButton.setAttribute('aria-busy', String(this.continuing));

@@ -9,28 +9,28 @@
 
 ---
 
-**Ostatnia aktualizacja:** 2026-11-01
-**Gałąź:** `chore/agents-dom-status` (z `develop` = `origin/master` po fast-forward). `v1.0.0` otagowane na `32ae5a5` (PR #10).
-**Ostatnia pełna walidacja (2026-11-01):** formatter 0/175, PHPUnit 261/261 (1224 asercje), UI 99/99, E2E 5/5. Test manualny na `agents.dom`: czat (Gemini) i licznik tokenów OK; wyszukiwanie WWW działa po poprawce konfiguracji (2026-11-02).
+**Ostatnia aktualizacja:** 2026-11-02
+**Gałąź:** `develop` (pushnięty; zawiera T6.1+T6.2). PR #15 scalony do `master` (`c42ab6b`); `v1.0.0` otagowane na `32ae5a5`.
+**Ostatnia pełna walidacja (2026-11-02):** formatter 0/179, PHPUnit 275/275 (1303 asercje), UI 107/107 (`--experimental-test-isolation=none` lokalnie). Wcześniejsza (2026-11-01): E2E 5/5; czat i wyszukiwanie WWW OK na `agents.dom`.
 
 ## Gotowe
 
 - **v1.0.0:** konto (potwierdzenie e-maila, limit logowań, sesja HttpOnly/Bearer), szyfrowanie pól, czat z 6 dostawcami, obsługa błędów `DualLogger`, wyszukiwanie ASK i badanie źródeł z kontynuacją.
-- **Po v1.0.0 (w `master`):** T1.0 Langfuse (OTLP, tokeny z dostawców), T1.1 zapis zużycia `chat_usage`, T1.2 licznik „wej. / wyj.” pod odpowiedzią, #14 `LANGFUSE_HOST` i `LANGFUSE_ENABLED`.
-- **2026-11-01:** naprawione serwowanie plików statycznych przez nginx (ACL dla uid 101), `.env` z prawami `660`, nginx odpowiada na `agents.dom`.
+- **Po v1.0.0 (w `master`):** T1.0 Langfuse (OTLP, tokeny z dostawców), T1.1 zapis zużycia `chat_usage`, T1.2 licznik „wej. / wyj.” pod odpowiedzią, #14 `LANGFUSE_HOST` i `LANGFUSE_ENABLED`, PR #15 (nginx `agents.dom`, dokumentacja).
+- **T6.1 + T6.2 (2026-11-02, w `develop`):** filtry wyszukiwania zaawansowanego — backend `SearchQuery`/`SearchQueryBuilder`, kontrakt `web_search` dla modeli (`must_have`/`exclude`/`exact_phrase`/`sites`), chipy „Bez / Musi zawierać" + „Więcej opcji" w UI, podsumowanie filtrów na karcie zgody. #62-524 i #62-525 zamknięte na DT.
 
 ## Otwarte
 
 - **Token MCP do rotacji:** wartość `MCP_AUTH_TOKEN` trafiła 2026-11-02 do rozmowy z agentem — wygenerować nowy i wpisać w `szukaj/.env` oraz `virral-agents/.env`.
 - **`szukaj` w trybie dev** (backend i wbudowany frontend `appEnv:"dev"`); przełączenie na prod wymaga `APP_ENV=prod` w `szukaj/.env` i przebudowy `mcp-search`.
 - **Limit logowań za Traefikiem:** `TRUSTED_PROXIES` puste → wspólny licznik nieudanych logowań dla wszystkich klientów.
-- **Przepływ Git:** `develop` na GitHubie 19 commitów za `master`; po akceptacji push `develop`. Kolejne zmiany tylko przez `develop` (PR feature → `develop`, potem `develop` → `master`).
+- **`develop` → `master`:** develop jest przed masterem (T6.1+T6.2 czekają na PR); scalanie wyłącznie przez PR z zielonymi kontrolami.
 - **Brak wpisów CHANGELOG** dla T1.0 (Langfuse) i #14.
-- Do potwierdzenia na rzeczywistym modelu: #62-495 (kontynuacja badania), OpenRouter, start `./prod-start.sh` i poczta prod.
+- Do potwierdzenia na rzeczywistym modelu: #62-495 (kontynuacja badania), OpenRouter, start `./prod-start.sh` i poczta prod; manualny test filtrów wyszukiwania w UI po deployu.
 
 ## Następny priorytet
 
-1. Rotacja tokenu MCP.
-2. `TRUSTED_PROXIES` dla Traefika.
-3. #62-486 → #62-493 — jakość źródeł badania (część E1/E2 już wdrożona, zweryfikować `TODO-zrodla.md`).
+1. T3.1 (#62-519) — HistoryCompactor: kompakt regułowy historii (przeciwdziałanie kuli śnieżnej); po nim T3.2 pomiar.
+2. Rotacja tokenu MCP.
+3. `TRUSTED_PROXIES` dla Traefika.
 4. #62-494 — strumieniowanie odpowiedzi (SSE).

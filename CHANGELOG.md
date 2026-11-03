@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-11-02 — #62-519 (T3.1): kompakt regułowy historii (HistoryCompactor)
+
+- Nowa klasa `App\Service\HistoryCompactor`: ostatnie `context_recent_turns` tur (domyślnie 8, nowe ustawienie `chat.context_recent_turns` w `config/app.php` przez DI) trafia do modelu w całości; starsze tury zostają wyłącznie jako wiadomości użytkownika przycięte do 300 znaków (bez obrazów), a starsze odpowiedzi AI wypadają. Tura liczy się od wiadomości użytkownika; wiadomość użytkownika bez odpowiedzi to osobna tura.
+- Zachowane dotychczasowe reguły: mechaniczne wiadomości asystenta (`kind != message`, np. `approval_request`/`continuation`) nigdy nie trafiają do modelu; wygenerowane obrazy asystenta w oknie ostatnim mają tekst zastępczy; obrazy użytkownika w oknie ostatnim jako multimodalne części. `HistoryCompactor::modelContent()` przejmuje kształtowanie treści (wcześniej prywatny helper `ChatService`).
+- `ChatService::historyForModel()` deleguje do kompaktora (nowy parametr konstruktora z domyślną wartością — fixture'y bez zmian).
+- Testy: nowe `HistoryCompactorTest` (30 tur → 8 pełnych + przycięte starsze pytania; cięcie do 300 znaków; krótka historia bez zmian z obrazami; notice mechaniczne wypadają; stare obrazy użytkownika wypadają; wisząca wiadomość użytkownika jako tura; `recentTurns < 1` odrzucone).
+- Walidacja: PHPUnit 282/282 (1326 asercji), UI 107/107, E2E 5/5 (Mailpit loopback), formatter czysty. Pomiar realnego zysku tokenów — osobne zadanie T3.2 (#62-520).
+
 ## 2026-11-02 — #62-525 (T6.2): filtry wyszukiwania w UI (chipy „Bez / Musi zawierać")
 
 - Nowy moduł `public/ui/chat/chat-search-filters.js` (`SearchFilters`): chipy słów wykluczonych i wymaganych (wpisz + Enter, klik = usuń), zwijane „Więcej opcji…" z dokładną frazą i stroną (domeną). Walidacja po stronie klienta dubluje backend (bez `-`/`+` na początku, bez cudzysłowu, ≤ 64 znaki, ≤ 10 tokenów); składnię wyszukiwarki użytkownik nigdy nie widzi.

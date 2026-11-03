@@ -19,15 +19,15 @@ Szablon:
 
 ---
 
-## 2026-11-02 — T6.2 UI filtrów gotowe (czeka na zgodę na commit + scalenie)
+## 2026-11-02 — T3.1 HistoryCompactor (czeka na commit + scalenie + push)
 
-- **Stan:** `develop` wypchnięty na GitHub (zawiera T6.1, `8c1e349`; #62-524 zamknięte na DT). Praca na `feature/T6.2` (na bazie T6.1). T6.2 (#62-525) **niezacommitowane** i kompletne: PHPUnit 275/275, UI 107/107, formatter czysty, `composer validate --strict` OK.
-- **Zrobione (T6.2):** nowy `public/ui/chat/chat-search-filters.js` (`SearchFilters`: chipy, Enter/klik, „Więcej opcji", `collect()`, `setEnabled`), `ResearchPanel` z opcją `filters` (dokleja do `propose`), markup+style w `chat.html` (`?v=20261102-filters`), testy `chat-search-filters.test.mjs` + przypadek w `chat-research.test.mjs`, wpisy CHANGELOG/REPO/MCP-USAGE.
+- **Stan:** sesja zamknęła T6.1 (#62-524, `8c1e349`), T6.2 (#62-525, `f079c76`), oba w `develop` na GitHubie; DT zamknięte z notatkami. Teraz `feature/T3.1` z pełną implementacją #62-519 **niezacommitowaną** — walidacja zielona: formatter 0/181, PHPUnit 282/282 (1326 asercji), UI 107/107, E2E 5/5 (Mailpit loopback).
+- **Zrobione (T3.1):** `src/Service/HistoryCompactor.php` (ostatnie `context_recent_turns`=8 tur w całości; starsze: tylko user przycięty do 300 znaków, bez obrazów; notice mechaniczne wypadają; `modelContent` przeniesione jako static), `ChatService::historyForModel` deleguje (nowy parametr z defaultem — fixture bez zmian), `config/app.php` → `chat.context_recent_turns`, DI w `dependencies.php`, testy `HistoryCompactorTest` (7), wpisy REPO/CHANGELOG/STATUS.
 - **Od czego zacząć:**
-  1. Zgoda na commit T6.2 → commit na `feature/T6.2`; potem wg wzorca właściciela: ff do `develop` i push (`git -c credential.helper='!gh auth git-credential' push origin develop`); `devbrain_todo_done` 525 (token `DT_MCP_TOKEN` z `.env`, curl bez wyświetlania).
-  2. Następne zadania: T3.1 (#62-519, HistoryCompactor — wysoki priorytet) lub rotacja tokenu MCP / `TRUSTED_PROXIES` (STATUS).
+  1. Commit na `feature/T3.1`, ff do `develop`, push (`git -c credential.helper='!gh auth git-credential' push origin develop`), `devbrain_todo_done` 519 + notatka z hashem (token `DT_MCP_TOKEN` z `.env` przez awk, bez wyświetlania).
+  2. T3.2 (#62-520): pomiar zysku kompaktu — wymaga właściciela (rozmowa testowa przed/po na rzeczywistym modelu; `prompt_tokens` z `chat_usage`; liczby do STATUS). Umów się na przebieg.
 - **Pułapki:**
-  - Push działa tylko przez jednorazowy helper `gh` (użytkownik zalogowany jako mafio69); zwykły `git push` pada na HTTPS bez credentialów.
-  - Lokalny Node 22: UI przez `node --test --experimental-test-isolation=none tests/ui/*.test.mjs`.
-  - Testowy stub DOM w `chat-search-filters.test.mjs` ma własny `Element` (nie ten z `chat-research.test.mjs`); `morePanel` musi startować z `hidden = true` (jak w markupie).
-  - Manualny test UI po deployu: czat → „Szukaj stron" → chipy/fraza/strona → karta zgody pokazuje podsumowanie; `?v=` podbity, więc twarde odświeżenie niepotrzebne.
+  - E2E lokalnie: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e` (`mail-trap.dom` z tej maszyny się nie rozwiązuje; Mailpit stoi na loopback).
+  - Push tylko przez jednorazowy helper `gh`; zwykły `git push` pada (HTTPS bez credentiali).
+  - Lokalny Node 22: `node --test --experimental-test-isolation=none tests/ui/*.test.mjs`.
+  - Tura w kompaktorze = wiadomość użytkownika (też wisząca bez odpowiedzi); N konfigurowalne, min. 1.

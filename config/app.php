@@ -22,6 +22,11 @@ return [
         'timezone' => 'Europe/Warsaw',
     ],
     'app_url' => 'http://localhost:8181',
+    'chat' => [
+        // Ile ostatnich tur rozmowy trafia do modelu w całości; starsze tury
+        // zostają jako przycięte wiadomości użytkownika (HistoryCompactor, T3.1).
+        'context_recent_turns' => 8,
+    ],
     // Reverse proxies whose X-Forwarded-For is trusted for the login limit (addresses or CIDR).
     // Empty: REMOTE_ADDR is used as is. Override with TRUSTED_PROXIES (comma-separated).
     'trusted_proxies' => [],

@@ -158,6 +158,7 @@ return function (ContainerBuilder $containerBuilder) {
                 modelCatalog: $c->get(\App\Service\ModelCatalogService::class),
                 research: $c->get(\App\Service\ResearchServiceInterface::class),
                 researchReply: $c->get(\App\Service\ResearchReplyGeneratorInterface::class),
+                historyCompactor: new \App\Service\HistoryCompactor((int) ($c->get('settings')['chat']['context_recent_turns'] ?? \App\Service\HistoryCompactor::DEFAULT_RECENT_TURNS)),
                 langfuse: $c->get(\App\Observability\LangfuseTrace::class),
                 chatUsageRepository: $c->get(\App\Repository\ChatUsageRepository::class),
             );

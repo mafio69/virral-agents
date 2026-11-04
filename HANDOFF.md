@@ -19,15 +19,17 @@ Szablon:
 
 ---
 
-## 2026-11-03 — T3.2 pomiar zrobiony (czeka na commit + push)
+## 2026-11-04 — fix Gemini MAX_TOKENS (czeka na commit + push)
 
-- **Stan:** develop zawiera T6.1+T6.2+T3.1 (wszystko pushnięte). T3.2 (#62-520) wykonane z właścicielem: A/B 12 pytań, ostatnia odpowiedź 1465/55 → 1331/61 (−134 tok. wej., −9,2%); wpisy STATUS+CHANGELOG **niezacommitowane**. Aplikacja lokalnie znowu na develop (bind-mount), kontener po restarcie z serii B.
-- **Nowy bug (priorytet 1 w STATUS):** Gemini 3.8 Flash → `finishReason ≠ STOP` (prawdopodobnie `MAX_TOKENS`: sztywny `maxOutputTokens=4096` u `GeminiProvider.php:132` współdzielony z tokenami myślenia) → cała odpowiedź odrzucana jako `invalid_response`. Naprawa: obsługa thinking (thinkingConfig / wyższy limit / akceptacja partial text przy `MAX_TOKENS` + testy na atrapie).
+- **Stan:** develop zawiera T6.1+T6.2+T3.1+T3.2-docs (pushnięte). Gałąź `fix/gemini-thinking-max-tokens` z pełną naprawą **niezacommitowaną** — walidacja zielona: PHPUnit 284/284 (1331 asercji), UI 107/107, E2E 5/5, formatter czysty.
+- **Zrobione:** `GeminiProvider` przy `finishReason: MAX_TOKENS` (tylko modele tekstowe) zwraca częściowy tekst + usage zamiast `invalid_response`; obrazy/SAFETY/puste odpowiedzi nadal odrzucane; `maxOutputTokens` tekstowy 4096→8192. Testy: partial+usage+limit, pusty MAX_TOKENS, SAFETY, asercja 8192. STATUS/CHANGELOG zaktualizowane (rotacja MCP oznaczona WSTRZYMANA — serwer `szukaj` nie działa; token serwerowy już podmieniony przez właściciela).
 - **Od czego zacząć:**
-  1. Commit dokumentów T3.2 (STATUS/CHANGELOG/HANDOFF), ff do develop (jesteśmy na develop — zwykły commit), push przez `git -c credential.helper='!gh auth git-credential' push origin develop`, `devbrain_todo_done` 520 + notatka.
-  2. Zaproponować właścicielowi zadanie DT na bug Gemini 3.8 i je zrobić (albo #62-486 E2.2 — też wysoki priorytet).
+  1. Commit na fix → ff do develop → push (`git -c credential.helper='!gh auth git-credential' push origin develop`).
+  2. Następne zadanie: #62-486 (E2.2, User-Agent/Accept-Language w `PublicWebPageFetcher` z config/DI) — plan w `TODO-zrodla.md`.
+  3. Gdy właściciel postawi `szukaj`: dokończyć rotację MCP (force-recreate app + `GET /api/search/status` zalogowanym + jedno wyszukanie), zdjąć „WSTRZYMANA" ze STATUS.
+  4. Po deployu: manualny test `gemini-3.8-flash` w UI (dłuższe pytanie — kiedyś padało na MAX_TOKENS).
 - **Pułapki:**
-  - Pomiar A/B odbywał się na `git switch --detach 276ef52` (A) i develop (B) + `sudo docker compose restart app` — kod jest bind-mountowany, opcache domyślnie waliduje pliki. Właściciel restartuje kontener (sudo jest jego).
-  - Właściciel nie może kopiować z terminala opencode → wszystko do skopiowania ląduje w pliku (ostatnio `var/t.txt`; do usunięcia razem z `var/TEST-T3.2-instrukcja.txt`).
-  - Wczytanie z bazy przez agenta odrzucone przez właściciela — licznik UI („wej./wyj.") wystarcza.
-  - Model w pomiarze niepotwierdzony nazwą (właściciel nie podał); założenie: ten sam w obu seriach (instrukcja to podkreślała).
+  - Właściciel nie kopiuje z terminala → wszystko do skopiowania w plikach w `var/` (stare: `var/t.txt`, `var/m.txt`, `var/rotacja-mcp.txt` — do usunięcia).
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`.
+  - `bin/check-mcp-search.php` nie wysyła tokenu po http do nazw sieciowych (tylko https/loopback) — weryfikacja wewnątrz kontenera app pada na ten guard; używać `/api/search/status` w przeglądarce zalogowanego użytkownika.
+  - Push przez jednorazowy helper `gh`; Node 22 lokalnie wymaga `--experimental-test-isolation=none`.

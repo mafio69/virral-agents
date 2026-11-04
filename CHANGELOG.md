@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-11-04 — Gemini: modele rozumujące przestają tracić całą odpowiedź (MAX_TOKENS)
+
+- Znaleziono podczas pomiaru T3.2: `gemini-3.8-flash` kończył odpowiedź `finishReason: MAX_TOKENS` (tokeny „myślenia" współdzielą budżet wyjściowy), a `GeminiProvider` odrzucał każdą odpowiedź z `finishReason ≠ STOP` → użytkownik dostawał „dostawca AI nie zwrócił poprawnej odpowiedzi" mimo wygenerowanego tekstu.
+- `GeminiProvider`: przy `MAX_TOKENS` **bez** generowania obrazów częściowy tekst + `usage` są zwracane jako odpowiedź; modele obrazowe pozostają rygorystyczne (obcięty obraz = uszkodzony); `SAFETY`/inne nadal → `invalid_response`; pusty tekst przy `MAX_TOKENS` → nadal błąd.
+- Limit `maxOutputTokens` dla odpowiedzi tekstowych 4096 → **8192** (tokeny myślenia zjadają budżet; obrazy bez zmian).
+- Testy: nowe `testThinkingModelMaxTokensKeepsPartialTextAnswer` (częściowy tekst + usage + limit 8192 w żądaniu), `testMaxTokensWithoutAnyTextIsStillRejected`; `SAFETY` dopięty do odrzuceń; asercja limitu 8192.
+- Walidacja: PHPUnit 284/284 (1331 asercji), UI 107/107, E2E 5/5, formatter czysty.
+- Wstrzymano: rotacja `MCP_AUTH_TOKEN` — serwer w repo `szukaj` jeszcze nie działa (właściciel wróci do tematu; token po stronie serwera już podmieniony).
+
 ## 2026-11-03 — #62-520 (T3.2): pomiar zysku kompaktu historii
 
 - Pomiar na identycznej rozmowie testowej (12 krótkich pytań, ten sam model w obu przebiegach): ostatnia odpowiedź przed T3.1 — `prompt_tokens` 1465 / `completion_tokens` 55; po T3.1 — 1331 / 61. Oszczędność **134 tokenów wejściowych (−9,2%)** już przy krótkiej rozmowie; zysk rośnie z długością tur, bo okno 8 pełnych tur utrzymuje stały rozmiar historii (bez T3.1 rośnie liniowo z każdą turą).

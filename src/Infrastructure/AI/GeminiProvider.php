@@ -129,7 +129,7 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         }
         $imageOutput = self::generatesImages($model);
         $body = $this->transport->request('POST', 'models/'.$model.':generateContent', [
-            'contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $imageOutput ? 8192 : 4096,
+            'contents' => $contents, 'generationConfig' => ['maxOutputTokens' => 8192,
                 ...($imageOutput ? ['responseModalities' => ['TEXT', 'IMAGE']] : [])],
             ...($system !== [] ? ['systemInstruction' => ['parts' => $system]] : []),
             ...($web ? ['tools' => [['functionDeclarations' => array_map(static function (array $tool): array {
@@ -144,7 +144,12 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         $text = [];
         $images = [];
         $candidate = $body['candidates'][0] ?? [];
-        if (isset($candidate['finishReason']) && $candidate['finishReason'] !== 'STOP') {
+        $finishReason = $candidate['finishReason'] ?? null;
+        // Thinking models spend output tokens on thoughts, so MAX_TOKENS can arrive with
+        // usable text — keeping the partial answer beats dropping the whole reply.
+        // Image output stays strict: a truncated image is a broken image.
+        if ($finishReason !== null && $finishReason !== 'STOP'
+            && !(!$imageOutput && $finishReason === 'MAX_TOKENS')) {
             throw new AiConnectionException('invalid_response');
         }
         $usage = isset($body['usageMetadata']) && is_array($body['usageMetadata']) ? [

@@ -19,17 +19,15 @@ Szablon:
 
 ---
 
-## 2026-11-04 — fix Gemini MAX_TOKENS (czeka na commit + push)
+## 2026-11-04 — koniec sesji; jutro #62-486 (E2.2)
 
-- **Stan:** develop zawiera T6.1+T6.2+T3.1+T3.2-docs (pushnięte). Gałąź `fix/gemini-thinking-max-tokens` z pełną naprawą **niezacommitowaną** — walidacja zielona: PHPUnit 284/284 (1331 asercji), UI 107/107, E2E 5/5, formatter czysty.
-- **Zrobione:** `GeminiProvider` przy `finishReason: MAX_TOKENS` (tylko modele tekstowe) zwraca częściowy tekst + usage zamiast `invalid_response`; obrazy/SAFETY/puste odpowiedzi nadal odrzucane; `maxOutputTokens` tekstowy 4096→8192. Testy: partial+usage+limit, pusty MAX_TOKENS, SAFETY, asercja 8192. STATUS/CHANGELOG zaktualizowane (rotacja MCP oznaczona WSTRZYMANA — serwer `szukaj` nie działa; token serwerowy już podmieniony przez właściciela).
-- **Od czego zacząć:**
-  1. Commit na fix → ff do develop → push (`git -c credential.helper='!gh auth git-credential' push origin develop`).
-  2. Następne zadanie: #62-486 (E2.2, User-Agent/Accept-Language w `PublicWebPageFetcher` z config/DI) — plan w `TODO-zrodla.md`.
-  3. Gdy właściciel postawi `szukaj`: dokończyć rotację MCP (force-recreate app + `GET /api/search/status` zalogowanym + jedno wyszukanie), zdjąć „WSTRZYMANA" ze STATUS.
-  4. Po deployu: manualny test `gemini-3.8-flash` w UI (dłuższe pytanie — kiedyś padało na MAX_TOKENS).
+- **Stan:** develop = `5fb0697` (pushnięty): T6.1+T6.2 (filtry wyszukiwania), T3.1+T3.2 (kompakt historii), fix Gemini MAX_TOKENS (częściowe odpowiedzi modeli rozumujących). DT: 519/520/524/525 done z notatkami; 513/514/515 odhaczone na prośbę właściciela (notatki nie weszły — WAF blokuje pythona, curl z polskimi znakami zwracał zły JSON; done flagi są).
+- **Jutro (zlecane przez właściciela): #62-486 (E2.2)** — realistyczny User-Agent i Accept-Language w `PublicWebPageFetcher`, wartości domyślne w `config/app.php` przez DI (bez sekretów); nadal bez cookies/JS/subresource. Plan + DoD w `TODO-zrodla.md` (E2.2). Branch `feature/T6-486`? — konwencja: `feature/E2.2` wg TODO-zrodla ("branch z origin/develop"). `[CLAIMED]` na DT przed startem.
+- **Po E2.2 w kolejce:** #62-490 (E3.1 ekstrakcja main/article — też fetcher), #62-542 (data/dzień tygodnia w prompcie systemowym — małe), #62-494 (SSE — duży, osobna sesja), T2.1–T2.3 (tryby narzędzi — świadoma decyzja właściciela o trybie auto).
+- **Wstrzymane (właściciel):** rotacja MCP — serwer w repo `szukaj` nie działa; po postawieniu: `sudo docker compose up -d --force-recreate app`, weryfikacja `GET /api/search/status` (zalogowany) + jedno wyszukanie; zdjąć „WSTRZYMANA" ze STATUS. Po deployu też: manualny test filtrów w UI i `gemini-3.8-flash`.
 - **Pułapki:**
-  - Właściciel nie kopiuje z terminala → wszystko do skopiowania w plikach w `var/` (stare: `var/t.txt`, `var/m.txt`, `var/rotacja-mcp.txt` — do usunięcia).
-  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`.
-  - `bin/check-mcp-search.php` nie wysyła tokenu po http do nazw sieciowych (tylko https/loopback) — weryfikacja wewnątrz kontenera app pada na ten guard; używać `/api/search/status` w przeglądarce zalogowanego użytkownika.
-  - Push przez jednorazowy helper `gh`; Node 22 lokalnie wymaga `--experimental-test-isolation=none`.
+  - Właściciel nie kopiuje z terminala → pliki pomocnicze w `var/` (`t.txt`, `m.txt`, `rotacja-mcp.txt`, `TEST-T3.2-instrukcja.txt` — do usunięcia).
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin develop`.
+  - DT przez curl z ASCII-only w notatkach (polskie znaki potrafią zwrócić -32700); python urllib dostaje 403 (WAF).
+  - Kolejka: po porządkach pozostały otwarte wysokie: 486, 490, 494, 495, 516–518, 542.

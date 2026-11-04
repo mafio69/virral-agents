@@ -19,6 +19,7 @@
 - **Po v1.0.0 (w `master`):** T1.0 Langfuse (OTLP, tokeny z dostawców), T1.1 zapis zużycia `chat_usage`, T1.2 licznik „wej. / wyj.” pod odpowiedzią, #14 `LANGFUSE_HOST` i `LANGFUSE_ENABLED`, PR #15 (nginx `agents.dom`, dokumentacja).
 - **T6.1 + T6.2 (2026-11-02, w `develop`):** filtry wyszukiwania zaawansowanego — backend `SearchQuery`/`SearchQueryBuilder`, kontrakt `web_search` dla modeli (`must_have`/`exclude`/`exact_phrase`/`sites`), chipy „Bez / Musi zawierać" + „Więcej opcji" w UI, podsumowanie filtrów na karcie zgody. #62-524 i #62-525 zamknięte na DT.
 - **T3.1 (2026-11-02):** `HistoryCompactor` — ostatnie 8 tur w całości (`context_recent_turns` w config/DI), starsze tylko przycięte pytania użytkownika. #62-519 zamknięte na DT.
+- **T3.2 (2026-11-03):** pomiar zysku kompaktu — identyczna rozmowa 12 krótkich pytań, ten sam model w obu przebiegach: ostatnia odpowiedź przed T3.1 **1465/55**, po T3.1 **1331/61** → **−134 tokenów wejściowych (−9,2%)** już przy krótkiej rozmowie; przy dłuższych odpowiedziach i 30+ turach zysk rośnie, bo limit 8 pełnych tur utrzymuje stały rozmiar historii. #62-520 zamknięte na DT.
 
 ## Otwarte
 
@@ -31,7 +32,7 @@
 
 ## Następny priorytet
 
-1. T3.2 (#62-520) — pomiar zysku kompaktu: ta sama rozmowa przed/po T3.1, `prompt_tokens` z `chat_usage`, liczby do STATUS (współpraca z właścicielem).
+1. Gemini 3.8 Flash (modele rozumujące): `finishReason ≠ STOP` (najpewniej `MAX_TOKENS` przy sztywnym `maxOutputTokens=4096` współdzielonym z tokenami „myślenia") → `invalid_response`; obsługa thinking/partial text w `GeminiProvider`.
 2. Rotacja tokenu MCP.
 3. `TRUSTED_PROXIES` dla Traefika.
 4. #62-494 — strumieniowanie odpowiedzi (SSE).

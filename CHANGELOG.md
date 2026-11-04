@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-11-03 — #62-520 (T3.2): pomiar zysku kompaktu historii
+
+- Pomiar na identycznej rozmowie testowej (12 krótkich pytań, ten sam model w obu przebiegach): ostatnia odpowiedź przed T3.1 — `prompt_tokens` 1465 / `completion_tokens` 55; po T3.1 — 1331 / 61. Oszczędność **134 tokenów wejściowych (−9,2%)** już przy krótkiej rozmowie; zysk rośnie z długością tur, bo okno 8 pełnych tur utrzymuje stały rozmiar historii (bez T3.1 rośnie liniowo z każdą turą).
+- Tylko dokument (bez zmian kodu): liczby wpisane do `STATUS.md`; #62-520 zamknięte na DT.
+- Przy okazji pomiaru zarejestrowano błąd produktowy: Gemini 3.8 Flash kończy odpowiedź `finishReason ≠ STOP` (model rozumujący vs sztywny `maxOutputTokens=4096`) → `invalid_response`; wpisane do STATUS jako następny priorytet.
+
 ## 2026-11-02 — #62-519 (T3.1): kompakt regułowy historii (HistoryCompactor)
 
 - Nowa klasa `App\Service\HistoryCompactor`: ostatnie `context_recent_turns` tur (domyślnie 8, nowe ustawienie `chat.context_recent_turns` w `config/app.php` przez DI) trafia do modelu w całości; starsze tury zostają wyłącznie jako wiadomości użytkownika przycięte do 300 znaków (bez obrazów), a starsze odpowiedzi AI wypadają. Tura liczy się od wiadomości użytkownika; wiadomość użytkownika bez odpowiedzi to osobna tura.

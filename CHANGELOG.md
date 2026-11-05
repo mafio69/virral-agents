@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-11-05 — #62-486 (E2.2): realistyczny User-Agent i Accept-Language w fetcherze
+
+- Portale informacyjne (np. Gazeta.pl) blokowały żądania z UA `VirralAgents-Research/1.0` kodem 403 → fetch źródeł dla trybu badania tracił całe strony.
+- `PublicWebPageFetcher`: UA i `Accept-Language` konfigurowalne z konstruktora (DI); nowa sekcja `research` w `config/app.php`: `fetch_user_agent` (Chrome na Windows) i `fetch_accept_language` (`pl-PL,pl;q=0.9,en;q=0.8`); pusty `Accept-Language` = nagłówka nie ma (kompatybilność wstecz).
+- Granice bez zmian: fetch nadal bez cookies, bez JS, bez subresource, pełna rewalidacja SSRF na każdym hopie.
+- Testy: `testConfiguredBrowserLikeHeadersAreSentAndDefaultsStayNeutral` (nagłówki konfigurowane widoczne w atrapie HTTP + neutralne domyślne).
+- Walidacja: PHPUnit 285/285 (1336 asercji), UI 107/107, E2E 5/5, formatter czysty.
+
 ## 2026-11-04 — Gemini: modele rozumujące przestają tracić całą odpowiedź (MAX_TOKENS)
 
 - Znaleziono podczas pomiaru T3.2: `gemini-3.8-flash` kończył odpowiedź `finishReason: MAX_TOKENS` (tokeny „myślenia" współdzielą budżet wyjściowy), a `GeminiProvider` odrzucał każdą odpowiedź z `finishReason ≠ STOP` → użytkownik dostawał „dostawca AI nie zwrócił poprawnej odpowiedzi" mimo wygenerowanego tekstu.

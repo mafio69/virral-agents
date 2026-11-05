@@ -19,15 +19,14 @@ Szablon:
 
 ---
 
-## 2026-11-04 — koniec sesji; jutro #62-486 (E2.2)
+## 2026-11-05 — E2.2 zrobione; następne #62-490 (E3.1)
 
-- **Stan:** develop = `5fb0697` (pushnięty): T6.1+T6.2 (filtry wyszukiwania), T3.1+T3.2 (kompakt historii), fix Gemini MAX_TOKENS (częściowe odpowiedzi modeli rozumujących). DT: 519/520/524/525 done z notatkami; 513/514/515 odhaczone na prośbę właściciela (notatki nie weszły — WAF blokuje pythona, curl z polskimi znakami zwracał zły JSON; done flagi są).
-- **Jutro (zlecane przez właściciela): #62-486 (E2.2)** — realistyczny User-Agent i Accept-Language w `PublicWebPageFetcher`, wartości domyślne w `config/app.php` przez DI (bez sekretów); nadal bez cookies/JS/subresource. Plan + DoD w `TODO-zrodla.md` (E2.2). Branch `feature/T6-486`? — konwencja: `feature/E2.2` wg TODO-zrodla ("branch z origin/develop"). `[CLAIMED]` na DT przed startem.
-- **Po E2.2 w kolejce:** #62-490 (E3.1 ekstrakcja main/article — też fetcher), #62-542 (data/dzień tygodnia w prompcie systemowym — małe), #62-494 (SSE — duży, osobna sesja), T2.1–T2.3 (tryby narzędzi — świadoma decyzja właściciela o trybie auto).
-- **Wstrzymane (właściciel):** rotacja MCP — serwer w repo `szukaj` nie działa; po postawieniu: `sudo docker compose up -d --force-recreate app`, weryfikacja `GET /api/search/status` (zalogowany) + jedno wyszukanie; zdjąć „WSTRZYMANA" ze STATUS. Po deployu też: manualny test filtrów w UI i `gemini-3.8-flash`.
+- **Stan:** develop = commit E2.2 (push). E2.2: fetcher z konfigurowalnym UA (Chrome) + Accept-Language z `config/app.php` (`research.fetch_user_agent`/`fetch_accept_language`) przez DI; domyślnie neutralny UA bez AL; bez cookies/JS dalej. Walidacja: PHPUnit 285/285, UI 107/107, E2E 5/5.
+- **Następne (kolejność uzgodniona z właścicielem):** #62-490 (E3.1) — ekstrakcja `main`/`article` + cięcie na granicy akapitów w `PublicWebPageFetcher` (plan w `TODO-zrodla.md`, E3.1); po nim #62-542 (data/dzień tygodnia w prompcie systemowym — małe).
+- **Wstrzymane (właściciel):** rotacja MCP — serwer w repo `szukaj` nie działa; po postawieniu: `sudo docker compose up -d --force-recreate app`, weryfikacja `GET /api/search/status` (zalogowany) + jedno wyszukanie; zdjąć „WSTRZYMANA" ze STATUS. Po deployu też: manualny test filtrów w UI, `gemini-3.8-flash` (fix MAX_TOKENS) i E2.2 na Gazeta.pl (właściciel).
 - **Pułapki:**
-  - Właściciel nie kopiuje z terminala → pliki pomocnicze w `var/` (`t.txt`, `m.txt`, `rotacja-mcp.txt`, `TEST-T3.2-instrukcja.txt` — do usunięcia).
+  - Właściciel nie kopiuje z terminala → pliki pomocnicze w `var/` (do sprzątania: `t.txt`, `m.txt`, `rotacja-mcp.txt`, `TEST-T3.2-instrukcja.txt`).
   - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
   - Push: `git -c credential.helper='!gh auth git-credential' push origin develop`.
-  - DT przez curl z ASCII-only w notatkach (polskie znaki potrafią zwrócić -32700); python urllib dostaje 403 (WAF).
-  - Kolejka: po porządkach pozostały otwarte wysokie: 486, 490, 494, 495, 516–518, 542.
+  - DT przez curl; notatki `devbrain_todo_note` bywają odrzucane `-32700` sporadycznie (serwer/WAF DevBrain — zgłoszone jako #62-543); done/claim działają stabilnie; python urllib → 403.
+  - Właściciel: „nie trać czasu na badanie kodu" — czytać tylko to, co konieczne do zadania.

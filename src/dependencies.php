@@ -174,7 +174,10 @@ return function (ContainerBuilder $containerBuilder) {
             return new \App\Service\SearchDiagnostics($c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get('settings')['search']['mcp_url']);
         },
         \App\Repository\ResearchRepositoryInterface::class => fn (ContainerInterface $c) => new \App\Repository\ResearchRepository($c->get(PDO::class), $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class)),
-        \App\Infrastructure\Search\WebPageFetcherInterface::class => fn () => new \App\Infrastructure\Search\PublicWebPageFetcher(),
+        \App\Infrastructure\Search\WebPageFetcherInterface::class => fn (ContainerInterface $c) => new \App\Infrastructure\Search\PublicWebPageFetcher(
+            userAgent: $c->get('settings')['research']['fetch_user_agent'] ?? 'VirralAgents-Research/1.0',
+            acceptLanguage: $c->get('settings')['research']['fetch_accept_language'] ?? '',
+        ),
         \App\Service\ResearchServiceInterface::class => fn (ContainerInterface $c) => new \App\Service\ResearchService($c->get(\App\Repository\ResearchRepositoryInterface::class), $c->get(ChatRepository::class), $c->get(\App\Infrastructure\Search\SearchClientInterface::class), $c->get(\App\Infrastructure\Search\WebPageFetcherInterface::class)),
         \App\Service\ResearchReplyGeneratorInterface::class => fn (ContainerInterface $c) => new \App\Service\ResearchReplyGenerator($c->get(\App\Service\ResearchServiceInterface::class), $c->get(\App\Service\ChatReplyGeneratorInterface::class)),
         \App\Controller\ChatController::class => function (ContainerInterface $c) {

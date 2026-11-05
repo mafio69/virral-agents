@@ -172,4 +172,21 @@ final class PublicWebPageFetcherTest extends TestCase
             }
         }
     }
+
+    public function testConfiguredBrowserLikeHeadersAreSentAndDefaultsStayNeutral(): void
+    {
+        $build = static function (?string $userAgent, ?string $acceptLanguage) use (&$history): PublicWebPageFetcher {
+            $handler = HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'text/plain'], 'fixture')]));
+            $handler->push(Middleware::history($history));
+            return new PublicWebPageFetcher(new Client(['handler' => $handler]), static fn () => ['93.184.216.34'], true, $userAgent ?? 'VirralAgents-Research/1.0', $acceptLanguage ?? '');
+        };
+        $history = [];
+        $build('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', 'pl-PL,pl;q=0.9,en;q=0.8')->fetch('https://example.org/a');
+        self::assertSame('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', $history[0]['request']->getHeaderLine('User-Agent'));
+        self::assertSame('pl-PL,pl;q=0.9,en;q=0.8', $history[0]['request']->getHeaderLine('Accept-Language'));
+        self::assertSame('text/html, text/plain', $history[0]['request']->getHeaderLine('Accept'));
+        $build(null, null)->fetch('https://example.org/b');
+        self::assertSame('VirralAgents-Research/1.0', $history[1]['request']->getHeaderLine('User-Agent'));
+        self::assertSame('', $history[1]['request']->getHeaderLine('Accept-Language'));
+    }
 }

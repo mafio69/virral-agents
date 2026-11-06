@@ -8,6 +8,24 @@ export function approveSearch(query, confirm = () => false) {
     return accepted === true ? { engine: 'mcp', query: text, approved: true, max_calls: 1 } : null;
 }
 
+/** Human-readable filter summary; the user never sees search syntax. */
+export function describeSearchFilters(search) {
+    const parts = [];
+    if (Array.isArray(search?.must_have) && search.must_have.length) {
+        parts.push(`Musi zawierać: ${search.must_have.join(', ')}`);
+    }
+    if (Array.isArray(search?.exclude) && search.exclude.length) {
+        parts.push(`Bez: ${search.exclude.join(', ')}`);
+    }
+    if (typeof search?.exact_phrase === 'string' && search.exact_phrase.trim()) {
+        parts.push(`Dokładna fraza: „${search.exact_phrase.trim()}”`);
+    }
+    if (Array.isArray(search?.sites) && search.sites.length) {
+        parts.push(`Strony: ${search.sites.join(', ')}`);
+    }
+    return parts.join(' · ');
+}
+
 /** Inline consent works in embedded browsers that suppress native confirm dialogs. */
 export function createSearchApproval({ panel, queryText, allow, deny }) {
     let pending = null;

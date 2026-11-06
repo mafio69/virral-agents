@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## 2026-11-05 — #62-486 (E2.2): realistyczny User-Agent i Accept-Language w fetcherze
+
+- Portale informacyjne (np. Gazeta.pl) blokowały żądania z UA `VirralAgents-Research/1.0` kodem 403 → fetch źródeł dla trybu badania tracił całe strony.
+- `PublicWebPageFetcher`: UA i `Accept-Language` konfigurowalne z konstruktora (DI); nowa sekcja `research` w `config/app.php`: `fetch_user_agent` (Chrome na Windows) i `fetch_accept_language` (`pl-PL,pl;q=0.9,en;q=0.8`); pusty `Accept-Language` = nagłówka nie ma (kompatybilność wstecz).
+- Granice bez zmian: fetch nadal bez cookies, bez JS, bez subresource, pełna rewalidacja SSRF na każdym hopie.
+- Testy: `testConfiguredBrowserLikeHeadersAreSentAndDefaultsStayNeutral` (nagłówki konfigurowane widoczne w atrapie HTTP + neutralne domyślne).
+- Walidacja: PHPUnit 285/285 (1336 asercji), UI 107/107, E2E 5/5, formatter czysty.
+
+## 2026-11-04 — Gemini: modele rozumujące przestają tracić całą odpowiedź (MAX_TOKENS)
+
+- Znaleziono podczas pomiaru T3.2: `gemini-3.8-flash` kończył odpowiedź `finishReason: MAX_TOKENS` (tokeny „myślenia" współdzielą budżet wyjściowy), a `GeminiProvider` odrzucał każdą odpowiedź z `finishReason ≠ STOP` → użytkownik dostawał „dostawca AI nie zwrócił poprawnej odpowiedzi" mimo wygenerowanego tekstu.
+- `GeminiProvider`: przy `MAX_TOKENS` **bez** generowania obrazów częściowy tekst + `usage` są zwracane jako odpowiedź; modele obrazowe pozostają rygorystyczne (obcięty obraz = uszkodzony); `SAFETY`/inne nadal → `invalid_response`; pusty tekst przy `MAX_TOKENS` → nadal błąd.
+- Limit `maxOutputTokens` dla odpowiedzi tekstowych 4096 → **8192** (tokeny myślenia zjadają budżet; obrazy bez zmian).
+- Testy: nowe `testThinkingModelMaxTokensKeepsPartialTextAnswer` (częściowy tekst + usage + limit 8192 w żądaniu), `testMaxTokensWithoutAnyTextIsStillRejected`; `SAFETY` dopięty do odrzuceń; asercja limitu 8192.
+- Walidacja: PHPUnit 284/284 (1331 asercji), UI 107/107, E2E 5/5, formatter czysty.
+- Wstrzymano: rotacja `MCP_AUTH_TOKEN` — serwer w repo `szukaj` jeszcze nie działa (właściciel wróci do tematu; token po stronie serwera już podmieniony).
+
+## 2026-11-03 — #62-520 (T3.2): pomiar zysku kompaktu historii
+
+- Pomiar na identycznej rozmowie testowej (12 krótkich pytań, ten sam model w obu przebiegach): ostatnia odpowiedź przed T3.1 — `prompt_tokens` 1465 / `completion_tokens` 55; po T3.1 — 1331 / 61. Oszczędność **134 tokenów wejściowych (−9,2%)** już przy krótkiej rozmowie; zysk rośnie z długością tur, bo okno 8 pełnych tur utrzymuje stały rozmiar historii (bez T3.1 rośnie liniowo z każdą turą).
+- Tylko dokument (bez zmian kodu): liczby wpisane do `STATUS.md`; #62-520 zamknięte na DT.
+- Przy okazji pomiaru zarejestrowano błąd produktowy: Gemini 3.8 Flash kończy odpowiedź `finishReason ≠ STOP` (model rozumujący vs sztywny `maxOutputTokens=4096`) → `invalid_response`; wpisane do STATUS jako następny priorytet.
+
+## 2026-11-02 — #62-519 (T3.1): kompakt regułowy historii (HistoryCompactor)
+
+- Nowa klasa `App\Service\HistoryCompactor`: ostatnie `context_recent_turns` tur (domyślnie 8, nowe ustawienie `chat.context_recent_turns` w `config/app.php` przez DI) trafia do modelu w całości; starsze tury zostają wyłącznie jako wiadomości użytkownika przycięte do 300 znaków (bez obrazów), a starsze odpowiedzi AI wypadają. Tura liczy się od wiadomości użytkownika; wiadomość użytkownika bez odpowiedzi to osobna tura.
+- Zachowane dotychczasowe reguły: mechaniczne wiadomości asystenta (`kind != message`, np. `approval_request`/`continuation`) nigdy nie trafiają do modelu; wygenerowane obrazy asystenta w oknie ostatnim mają tekst zastępczy; obrazy użytkownika w oknie ostatnim jako multimodalne części. `HistoryCompactor::modelContent()` przejmuje kształtowanie treści (wcześniej prywatny helper `ChatService`).
+- `ChatService::historyForModel()` deleguje do kompaktora (nowy parametr konstruktora z domyślną wartością — fixture'y bez zmian).
+- Testy: nowe `HistoryCompactorTest` (30 tur → 8 pełnych + przycięte starsze pytania; cięcie do 300 znaków; krótka historia bez zmian z obrazami; notice mechaniczne wypadają; stare obrazy użytkownika wypadają; wisząca wiadomość użytkownika jako tura; `recentTurns < 1` odrzucone).
+- Walidacja: PHPUnit 282/282 (1326 asercji), UI 107/107, E2E 5/5 (Mailpit loopback), formatter czysty. Pomiar realnego zysku tokenów — osobne zadanie T3.2 (#62-520).
+
+## 2026-11-02 — #62-525 (T6.2): filtry wyszukiwania w UI (chipy „Bez / Musi zawierać")
+
+- Nowy moduł `public/ui/chat/chat-search-filters.js` (`SearchFilters`): chipy słów wykluczonych i wymaganych (wpisz + Enter, klik = usuń), zwijane „Więcej opcji…" z dokładną frazą i stroną (domeną). Walidacja po stronie klienta dubluje backend (bez `-`/`+` na początku, bez cudzysłowu, ≤ 64 znaki, ≤ 10 tokenów); składnię wyszukiwarki użytkownik nigdy nie widzi.
+- `ResearchPanel` (`chat-research.js`) przyjmuje opcjonalny obiekt `filters`: klik „Szukaj stron…" dokleja `collect()` do `request` w `propose` (tokeny + fraza + domena), a `updateButton()` blokuje wejścia filtrów razem z polem zapytania.
+- `chat.html`: stała linia filtrów pod „Szukaj stron · ASK", style chipów, `?v=20261102-filters` na importach `chat-app.js` i `chat-research.js`.
+- Karta zgody (T6.1) pokazuje te filtry czytelnie przy Allow/Deny — zgoda dotyczy dokładnie tego, co poleci do wyszukiwarki.
+- Testy: nowe `tests/ui/chat-search-filters.test.mjs` (6 przypadków: chipy, usuwanie, walidacja, limity, `collect()`, „więcej opcji", `setEnabled`), rozszerzone `tests/ui/chat-research.test.mjs` (filtry w payloadzie `propose`).
+- Walidacja: PHPUnit 275/275 (1303 asercje), UI 107/107, formatter czysty, `composer validate --strict --no-check-publish` OK.
+
 ## 2026-11-01 — porządek gałęzi, pliki statyczne za nginx, weryfikacja
 
 - Gałęzie: `origin/develop` był 19 commitów za `master` (T1.0–T1.2 i #14 trafiły do `master`
@@ -37,6 +77,18 @@
 - Nie ruszane, do rozwazenia osobno: `TRUSTED_PROXIES` jest puste, wiec za Traefikiem limit
   nieudanych logowan liczy sie wspolnie dla wszystkich klientow (jeden koszyk zamiast per IP).
   Patrz `docs/KONFIGURACJA.md`, sekcja o limicie za reverse proxy.
+
+## 2026-11-02 — #62-524 (T6.1): filtry wyszukiwania zaawansowanego w backendzie
+
+- Nowe klasy: `App\Dto\Chat\SearchQuery` (DTO `query`/`exclude[]`/`mustHave[]`/`exactPhrase`/`sites[]` z walidacją i normalizacją: trim, zwijanie białych znaków, deduplikacja, domeny małymi literami) oraz `App\Dto\Chat\SearchQueryBuilder` (składanie jednego zapytania `query +słowo -słowo "fraza" site:domena`, limit 1000 B; celowo w przestrzeni Dto, żeby Dto nie importowało Infra).
+- `SearchOptions::$query` ma teraz typ `SearchQuery`; `fromInput()` przyjmuje dodatkowe klucze `exclude`, `must_have`, `exact_phrase`, `sites` (nieznane klucze nadal 422).
+- `ChatReplyGenerator` wysyła do MCP zapytanie złożone i dokładnie ono trafia do JSON z wynikami dla modelu.
+- `ResearchService`: prośby `kind:"search"` przyjmują te same filtry (zapisywane w stanie akcji w formie snake_case przez `toArray()`), a `decide()` składa zapytanie przed wywołaniem `SearchClientInterface::search()`.
+- Kontrakt narzędzia `web_search` dla modeli (`WebTools`) rozszerzony o opcjonalne `must_have`, `exclude`, `exact_phrase`, `sites` (opisy po polsku w schemacie; złe argumenty → `invalid_response`). `time_range`/`categories`/`language` świadomie poza zakresem — wymagają rozszerzenia serwera MCP w repo `szukaj` (#62-528).
+- UI: `chat-search.js` eksportuje `describeSearchFilters()` (czytelne podsumowanie filtrów), `chat-research.js` pokazuje je na karcie zgody — zgoda jest informowana także przy filtrowanych prośbach AI.
+- Bezpieczeństwo: token nie może zaczynać się od `-`/`+` ani zawierać cudzysłowu (brak wstrzykiwania operatorów); limit liczby tokenów liczony przed deduplikacją.
+- Testy: nowe `SearchQueryTest`, `SearchQueryBuilderTest`; rozszerzone `ChatSearchTest` (kompozycja + odrzucenia), `ResearchServiceTest` (filtry w prośbach i wykonaniu), `ResearchAgentTest` (filtry od dostawców, odrzucenie nieprawidłowych), `tests/ui/chat-search.test.mjs` (`describeSearchFilters`); zaktualizowane konstruktory w `SearchDiagnosticsTest`, `ProviderRoutingTest`.
+- Walidacja: PHPUnit 275/275 (1303 asercje), UI 100/100 (`--experimental-test-isolation=none` lokalnie), formatter czysty po `composer format`, `composer validate --strict --no-check-publish` OK.
 
 ## 2026-10-27 — T1.2: podglad liczby tokenow w UI pod odpowiedzia AI
 

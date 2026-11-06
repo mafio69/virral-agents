@@ -4,7 +4,8 @@ import { ChatApi } from './chat-api.js?v=20261025-clear';
 import { ChatController, handleComposerKey } from './chat-controller.js?v=20261025-clear';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
 import { ResearchModal } from './chat-research-modal.js?v=20261025-clear';
-import { ResearchPanel, continueResearch } from './chat-research.js?v=20261025-clear';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261102-filters';
+import { SearchFilters } from './chat-search-filters.js?v=20261102-filters';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
 import { appendMessageUsage } from './chat-usage.js?v=20261027-usage';
@@ -308,6 +309,12 @@ byId('chat-form').addEventListener('submit', event => {
 });
 researchPanel = new ResearchPanel(controller.api, {
     query: byId('search-query'), search: byId('search-send'), body: byId('research-body'), summary: byId('research-summary'),
+    filters: new SearchFilters({
+        excludeInput: byId('filter-exclude'), excludeChips: byId('chips-exclude'),
+        mustInput: byId('filter-must'), mustChips: byId('chips-must'),
+        phraseInput: byId('filter-phrase'), siteInput: byId('filter-site'),
+        moreToggle: byId('search-more'), morePanel: byId('search-more-panel'),
+    }),
     continueControl: byId('research-continue'), continueLabel: 'Kontynuuj',
     onState: state => researchModal.update(state),
     onContinuationChange: busy => { if (busy) researchModal.close(); researchContinuation = busy; render(controller.state); },

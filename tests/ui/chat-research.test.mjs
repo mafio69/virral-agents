@@ -25,6 +25,20 @@ test('search accepts query without model or message; proposal itself has no appr
     assert.deepEqual(calls[1], ['propose', 0, { request: { kind: 'search', query: 'Public query' } }]);
     assert.equal(calls.length, 2);
 });
+test('search proposal carries advanced filter tokens; the user never types syntax', async () => {
+    const calls = [];
+    const filters = {
+        collect: () => ({ must_have: ['twig'], exclude: ['legacy'], exact_phrase: 'kontroler yaml', sites: ['symfony.com'] }),
+        setEnabled: () => {},
+    };
+    const panel = fixture({ research: async (...args) => { calls.push(args); return state(); } }, { filters });
+    await panel.setScope(0);
+    panel.query.value = 'PHP router'; panel.query.handlers.input();
+    panel.search.handlers.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls[1], ['propose', 0, { request: { kind: 'search', query: 'PHP router',
+        must_have: ['twig'], exclude: ['legacy'], exact_phrase: 'kontroler yaml', sites: ['symfony.com'] } }]);
+});
 test('unread selections defer sending until each separate decision is resolved', async () => {
     const source = { id: 'a', url: 'https://example.org', title: 'Example', page: { status: 'unread' } };
     const action = { id: 'b', request: { kind: 'fetch', url: source.url }, origin: 'user', status: 'pending' };

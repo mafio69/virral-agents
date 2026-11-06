@@ -7,6 +7,7 @@ namespace Tests;
 use App\Dto\Chat\AddChatMessageInput;
 use App\Dto\Chat\CreateChatInput;
 use App\Dto\Chat\SearchOptions;
+use App\Dto\Chat\SearchQuery;
 use App\Exception\ValidationException;
 use App\Infrastructure\AI\AiClientInterface;
 use App\Infrastructure\AI\OvhAiClient;
@@ -43,8 +44,54 @@ final class ChatSearchTest extends ChatServiceTestCase
             }
         }
         $options = SearchOptions::fromInput([]);
-        self::assertSame(['off', 1, '', false], [$options->engine, $options->maxCalls, $options->query, $options->approved]);
-        self::assertSame('Public', SearchOptions::fromInput(['engine' => 'mcp', 'query' => '  Public ', 'approved' => true])->query);
+        self::assertSame(['off', 1, '', false], [$options->engine, $options->maxCalls, $options->query->query, $options->approved]);
+        self::assertSame('Public', SearchOptions::fromInput(['engine' => 'mcp', 'query' => '  Public ', 'approved' => true])->query->query);
+    }
+
+    public function testSearchFiltersAreComposedIntoTheQuerySentToMcp(): void
+    {
+        $options = SearchOptions::fromInput(['engine' => 'mcp', 'query' => ' Symfony router ', 'approved' => true,
+            'must_have' => [' twig '], 'exclude' => ['legacy', ''], 'exact_phrase' => ' konfiguracja  yaml ', 'sites' => ['SymFony.com']]);
+        $composed = 'Symfony router +twig -legacy "konfiguracja yaml" site:symfony.com';
+        $search = $this->createMock(SearchClientInterface::class);
+        $search->expects(self::once())->method('search')->with($composed, 5)->willReturn(['source' => 'searxng', 'results' => [
+            ['title' => 'Fixture', 'url' => 'https://symfony.com/doc', 'snippet' => 'Untrusted snippet'],
+        ]]);
+        $search->expects(self::once())->method('close');
+        $client = $this->createMock(AiClientInterface::class);
+        $client->expects(self::once())->method('generate')->willReturnCallback(static function (array $messages) use ($composed): string {
+            $searchMessage = $messages[count($messages) - 1]['content'];
+            $payload = substr($searchMessage, (int) strpos($searchMessage, '{'));
+            $data = json_decode($payload, true, 8, JSON_THROW_ON_ERROR);
+            self::assertSame($composed, $data['query']);
+            return 'Fixture answer';
+        });
+        $reply = (new ChatReplyGenerator($search))->generate($client, [], 'fixture', $options);
+        self::assertSame('ok', $reply->search['status']);
+    }
+
+    public function testSearchOptionsRejectInvalidFilters(): void
+    {
+        foreach ([
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'must_have' => ['-legacy']],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'must_have' => ['+legacy']],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'exclude' => ['tr"cker']],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'exclude' => array_fill(0, 11, 'x')],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'exact_phrase' => 'a"b'],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'sites' => ['https://example.com']],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'sites' => ['example.com/path']],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'sites' => array_fill(0, 6, 'example.com')],
+            ['engine' => 'mcp', 'query' => 'Public', 'approved' => true, 'must_have' => 'twig'],
+            ['exclude' => ['twig']],
+            ['engine' => 'mcp', 'query' => str_repeat('a', 1001), 'approved' => true],
+        ] as $input) {
+            try {
+                SearchOptions::fromInput($input);
+                self::fail('Invalid filters must be rejected: '.json_encode($input, JSON_UNESCAPED_SLASHES));
+            } catch (ValidationException) {
+                self::assertTrue(true);
+            }
+        }
     }
 
     public function testNormalChatDoesNotConnectToMcp(): void
@@ -81,7 +128,7 @@ final class ChatSearchTest extends ChatServiceTestCase
         });
         $service = ChatServiceFixture::create($this->chatRepository, $client, new NullLogger(), replyGenerator: new ChatReplyGenerator($search));
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Fixture', 'Qwen3.6-27B'));
-        $pair = $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, 'Private chat fixture', search: new SearchOptions('mcp', 1, 'Public query', true)));
+        $pair = $service->addMessage(new AddChatMessageInput($chat->id, $this->userId, 'Private chat fixture', search: new SearchOptions('mcp', 1, new SearchQuery('Public query'), true)));
         self::assertStringContainsString('https://example.org/source', $pair[1]['content']);
         self::assertSame('ok', $pair[1]['search']['status']);
         self::assertSame($pair[1]['content'], $service->getChatWithMessages($chat->id, $this->userId)->messages[1]['content']);
@@ -102,7 +149,7 @@ final class ChatSearchTest extends ChatServiceTestCase
             $search->expects(self::once())->method('close');
             $client = $this->createMock(AiClientInterface::class);
             $client->expects(self::never())->method('generate');
-            $reply = (new ChatReplyGenerator($search))->generate($client, [], 'fixture', new SearchOptions('mcp', 1, 'Public', true));
+            $reply = (new ChatReplyGenerator($search))->generate($client, [], 'fixture', new SearchOptions('mcp', 1, new SearchQuery('Public'), true));
             self::assertSame($status, $reply->search['status']);
             self::assertStringContainsString('zgody', $reply->text);
         }
@@ -115,6 +162,6 @@ final class ChatSearchTest extends ChatServiceTestCase
         $service = ChatServiceFixture::create($this->chatRepository, $this->createMock(OvhAiClient::class), new NullLogger(), replyGenerator: new ChatReplyGenerator($search));
         $chat = $service->createChat(new CreateChatInput($this->userId, 'Fixture', 'Qwen3.6-27B'));
         $this->expectException(\App\Exception\NotFoundException::class);
-        $service->addMessage(new AddChatMessageInput($chat->id, $this->userId + 1, 'Private', search: new SearchOptions('mcp', 1, 'Public', true)));
+        $service->addMessage(new AddChatMessageInput($chat->id, $this->userId + 1, 'Private', search: new SearchOptions('mcp', 1, new SearchQuery('Public'), true)));
     }
 }

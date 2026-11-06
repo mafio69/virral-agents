@@ -122,7 +122,7 @@ final class GeminiProviderTest extends TestCase
         self::assertCount(3, $body['contents']);
         self::assertSame('model', $body['contents'][1]['role']);
         self::assertSame(['mimeType' => 'image/webp', 'data' => 'YQ=='], $body['contents'][0]['parts'][1]['inlineData']);
-        self::assertSame(4096, $body['generationConfig']['maxOutputTokens']);
+        self::assertSame(8192, $body['generationConfig']['maxOutputTokens']);
         self::assertArrayNotHasKey('tools', $body);
         self::assertFalse($this->history[0]['options']['allow_redirects']);
     }
@@ -148,9 +148,30 @@ final class GeminiProviderTest extends TestCase
         }
     }
 
+    public function testThinkingModelMaxTokensKeepsPartialTextAnswer(): void
+    {
+        $provider = $this->provider([$this->response(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [
+            ['thought' => true, 'text' => 'reasoning fixture'], ['text' => 'Partial answer'],
+        ]]]], 'usageMetadata' => ['promptTokenCount' => 120, 'candidatesTokenCount' => 8192]])]);
+        $reply = $provider->generateReply([['role' => 'user', 'content' => 'Fixture']], 'gemini-3.8-flash');
+        self::assertSame('Partial answer', $reply->text);
+        self::assertSame(['prompt_tokens' => 120, 'completion_tokens' => 8192], $reply->usage);
+        $body = json_decode((string)$this->history[0]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame(8192, $body['generationConfig']['maxOutputTokens']);
+    }
+
+    public function testMaxTokensWithoutAnyTextIsStillRejected(): void
+    {
+        $this->expectException(AiConnectionException::class);
+        $this->provider([$this->response(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [
+            ['thought' => true, 'text' => 'only reasoning, budget exhausted'],
+        ]]]]])])->generateReply([['role' => 'user', 'content' => 'Fixture']], 'gemini-3.8-flash');
+    }
+
     public function testBlockedMissingAndNonTextResponsesAreRejected(): void
     {
         foreach ([['promptFeedback' => ['blockReason' => 'SAFETY']], ['candidates' => []],
+            ['candidates' => [['finishReason' => 'SAFETY', 'content' => ['parts' => [['text' => 'blocked']]]]]],
             ['candidates' => [['content' => ['parts' => [['functionCall' => ['name' => 'ignored']]]]]]]] as $body) {
             try {
                 $this->provider([$this->response($body)])->generate([['role' => 'user', 'content' => 'Fixture']], 'gemini-3-flash');

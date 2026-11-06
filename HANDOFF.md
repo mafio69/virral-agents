@@ -19,15 +19,14 @@ Szablon:
 
 ---
 
-## 2026-11-01 — porządek gałęzi, nginx/ACL, weryfikacja (Claude)
+## 2026-11-05 — E2.2 zrobione; następne #62-490 (E3.1)
 
-- **Gałąź:** `chore/agents-dom-status` z `origin/master` (lokalny `develop` przesunięty na `origin/master`, bez push). Zmiany niezacommitowane do akceptacji właściciela.
-- **Zrobione:** diagnoza i naprawa (przez właściciela, `setfacl`) plików statycznych za nginx; `.env` `660`; `server_name agents.dom`; wpisy CHANGELOG/REPO/STATUS, `docs/E2E.md`; pliki do `.local/karencja` (usunąć po 2026-11-08).
-- **Od czego zacząć:** po akceptacji commit i push `develop` + gałęzi, PR do `develop`; potem test wyszukiwania po konfiguracji MCP przez właściciela.
+- **Stan:** develop = commit E2.2 (push). E2.2: fetcher z konfigurowalnym UA (Chrome) + Accept-Language z `config/app.php` (`research.fetch_user_agent`/`fetch_accept_language`) przez DI; domyślnie neutralny UA bez AL; bez cookies/JS dalej. Walidacja: PHPUnit 285/285, UI 107/107, E2E 5/5.
+- **Następne (kolejność uzgodniona z właścicielem):** #62-490 (E3.1) — ekstrakcja `main`/`article` + cięcie na granicy akapitów w `PublicWebPageFetcher` (plan w `TODO-zrodla.md`, E3.1); po nim #62-542 (data/dzień tygodnia w prompcie systemowym — małe).
+- **Wstrzymane (właściciel):** rotacja MCP — serwer w repo `szukaj` nie działa; po postawieniu: `sudo docker compose up -d --force-recreate app`, weryfikacja `GET /api/search/status` (zalogowany) + jedno wyszukanie; zdjąć „WSTRZYMANA" ze STATUS. Po deployu też: manualny test filtrów w UI, `gemini-3.8-flash` (fix MAX_TOKENS) i E2.2 na Gazeta.pl (właściciel).
 - **Pułapki:**
-  - `MCP_SEARCH_URL` musi być `http://mcp-search:8000/mcp` (nie `szukaj:8000` — to SearXNG); token MCP do rotacji.
-  - Traefik (osobny projekt) w pętli restartów: port 443 zajęty przez Tailscale; tymczasowo aplikacja po IP `:8181`.
-  - Na serwerze `*.dom` się nie rozwiązuje — E2E z `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025`.
-  - Lokalny Node 22 nie zna `--test-isolation=none` (CI ma Node 24); ręcznie `--experimental-test-isolation=none`.
-  - Narzędzia Read/Edit agenta są ograniczone do `bin/` — edycje przez Bash.
-  - Podpis commitów zgodny z modelem (`GIT-FLOW.md`), np. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+  - Właściciel nie kopiuje z terminala → pliki pomocnicze w `var/` (do sprzątania: `t.txt`, `m.txt`, `rotacja-mcp.txt`, `TEST-T3.2-instrukcja.txt`).
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin develop`.
+  - DT przez curl; notatki `devbrain_todo_note` bywają odrzucane `-32700` sporadycznie (serwer/WAF DevBrain — zgłoszone jako #62-543); done/claim działają stabilnie; python urllib → 403.
+  - Właściciel: „nie trać czasu na badanie kodu" — czytać tylko to, co konieczne do zadania.

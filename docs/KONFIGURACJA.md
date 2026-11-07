@@ -20,6 +20,7 @@ src/settings.php pobiera tylko:
 - ANTHROPIC_API_KEY — bezpośrednie Anthropic Messages API.
 - GEMINI_KEY — bezpośrednie Google Gemini API.
 - OPENROUTER_API_KEY — OpenRouter (Chat Completions); opcjonalnie OPENROUTER_MODELS — identyfikatory modeli po przecinku, np. `anthropic/claude-sonnet-4.5,google/gemini-2.5-flash`. Bez tej listy widoczny jest cały katalog tekstowy.
+- DEEPSEEK_API_KEY — bezpośrednie DeepSeek API (format OpenAI). Opcjonalnie DEEPSEEK_BASE_URL (domyślnie `https://api.deepseek.com`); DEEPSEEK_BASE_URL_ANTHROPIC to tylko notatka o zapasowym endpoincie, nieużywana przez aplikację.
 - MCP_SEARCH_URL — adres serwera wyszukiwarki MCP, np. `https://szukaj.dom/mcp` (domyślnie `http://mcp-search:8000/mcp` w sieci Docker `ai`); MCP_AUTH_TOKEN — token Bearer, gdy serwer zwraca 401. Zdalne endpointy korzystające z `MCP_AUTH_TOKEN` muszą używać TLS (`https://`). Kod `unauthorized` oznacza brak lub zły token.
 - MAIL_DSN — transport poczty, jeśli zawiera poświadczenia lub prywatny adres. Gdy go nie ma, używana jest lokalna wartość z konfiguracji PHP.
 
@@ -48,7 +49,7 @@ Poniższy wariant dotyczy tylko instalacji używających dotenvx, dxrun i sudo;
 zachowaj wtedy tylko wymagane wartości wrażliwe:
 
 ```bash
-dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,OPEN_AI_KEY,ANTHROPIC_API_KEY,GEMINI_KEY,OPENROUTER_API_KEY,OPENROUTER_MODELS,MAIL_DSN docker compose up -d --force-recreate
+dxrun sudo --preserve-env=DB_HASH,USER_DATA_KEY,OVH_AI_ENDPOINTS_ACCESS_TOKEN,ZAI_API_KEY,OPEN_AI_KEY,ANTHROPIC_API_KEY,GEMINI_KEY,OPENROUTER_API_KEY,OPENROUTER_MODELS,DEEPSEEK_API_KEY,DEEPSEEK_BASE_URL,MAIL_DSN docker compose up -d --force-recreate
 ```
 
 Polecenie wykonuje właściciel. Zmiana ustawień tablicy PHP nie wymaga ponownego budowania obrazu. Zmiana Compose lub listy PHP-FPM wymaga odtworzenia kontenerów.

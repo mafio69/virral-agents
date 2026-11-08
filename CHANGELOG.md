@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-11-08 (2) — fixy z drugiego przeglądu (usage DeepSeek, Langfuse fallback, spójność docs)
+
+- **DeepSeek + usage:** `DeepSeekProvider` implementuje `MultimodalClientInterface` — `ChatReplyGenerator::reply()` woła teraz `generateReply()` i tokeny DeepSeeka nie giną w `chat_usage`; obrazy nadal niedostępne (katalog `supports_images=false`). Docstringi metod (bramka Docstring Coverage).
+- **Langfuse fallback:** `src/settings.php` realizuje udokumentowany łańcuch `LANGFUSE_HOST` → `LANGFUSE_BASE_URL` → `https://cloud.langfuse.com` (zgodnie z komentarzem Compose i `.env.example`); `docker/php-fpm-env.conf` dostaje `LANGFUSE_BASE_URL`/`LANGFUSE_RELEASE` (spójność EnvNames).
+- **Docs = implementacja tej linii:** README i `.env.example` nie oferują już nieistniejącego `bin/check-langfuse.php` (weryfikacja: log + panel Langfuse); REPO.md opisuje faktyczny `LangfuseTrace::span()` (płaski span `chat-turn-<n>`, wysyłka synchroniczna do 3 s, błędy tylko w logu) zamiast `chatReply()`/odroczonej wysyłki; STATUS: opis HistoryCompactora po T3.1, rzetelne zakresy pomiaru (wyjątek tury = brak tokenów i śladu), `invalid_response` zamiast `output_limit`, usunięty wpis o „czerwonym EmptyReplyTest" (dotyczył drugiej linii).
+- **run-workflow skill:** jawna zgoda użytkownika przed startem agentów workflow; `Script` inline domyślnie, `ScriptPath` tylko za zgodą na konkretną ścieżkę; fixy tego samego pliku sekwencyjnie przez `pipeline` (prompt z nazwą pliku), `parallel` tylko dla różnych plików.
+- Pominięte z przeglądu: „deepseek-flash obsługuje obrazy" (brak dowodu — katalog zostaje tekstowy), korekty mirrorowanych referencji Langfuse/CLI/komunikatora (dokumentacja zewnętrzna, niezweryfikowalna offline w tym zakresie).
+- Walidacja: PHPUnit 294/294 (1370 asercji), UI 109/109, formatter 0/183.
+
 ## 2026-11-08 — DeepSeek jako dostawca czatu (bezpośrednio, OpenAI-compatible)
 
 - Nowy `DeepSeekProvider` (`src/Infrastructure/AI/DeepSeekProvider.php`) na wspólnym `ProviderTransport`: `POST /chat/completions`, limit 4096 tokenów, narzędzia `web_search`/`web_fetch` w trybie ASK, pusta odpowiedź rozróżnia `output_limit` od `invalid_response`.

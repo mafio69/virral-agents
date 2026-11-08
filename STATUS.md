@@ -34,25 +34,24 @@
 
 ## Cel: MVP = wyszukiwarka + „odśnieżarka”
 
-„Odśnieżarka” — usprawnienia ograniczające efekt kuli śnieżnej w czacie (każda tura wysyła modelowi całą historię, więc rosną koszt, czas i ryzyko gubienia wątku). Stan wyjściowy: `ChatService::historyForModel()` przekazuje całą rozmowę bez limitu, łącznie z obrazami z dawnych tur; `chat_usage` zapisuje `prompt_tokens` każdej odpowiedzi.
+„Odśnieżarka” — usprawnienia ograniczające efekt kuli śnieżnej w czacie (każda tura wysyła modelowi historię, więc rosną koszt, czas i ryzyko gubienia wątku). Od T3.1 `ChatService::historyForModel()` używa `HistoryCompactora`: ostatnie 8 tur w całości, starsze tylko pytania użytkownika skrócone do 300 znaków (bez starych odpowiedzi i obrazów — historia dalej rośnie z liczbą tur, ale wolniej); `chat_usage` zapisuje `prompt_tokens` odpowiedzi, które zwróciły `usage`.
 
 **Wyszukiwarka (domknięcie):**
 1. Testy manualne z sekcji wyżej: MCP `szukaj` (ręczne wyszukanie + prośba AI z `/continue`) oraz #62-495.
 
 **Odśnieżarka (propozycja kolejności, każdy krok osobnym zadaniem — decyzja właściciela):**
-1. Pomiar — **kod gotowy**: każda tura ma tokeny w `chat_usage` i ślad `chat-reply` w Langfuse (także po wyszukaniu WWW i przy błędach). Do zrobienia: rozmowa testowa i sprawdzenie śladu w Langfuse przez właściciela. Punkt odniesienia z rozmowy 39 (przed poprawką): wejście 849 → 9645 tokenów w 8 turach.
+1. Pomiar — **kod gotowy**: tokeny lądują w `chat_usage`, gdy dostawca zwróci `usage`; udana tura zostawia ślad `chat-turn-<n>` w Langfuse (wyjątek w trakcie tury nie zostawia ani tokenów, ani śladu). Do zrobienia: rozmowa testowa i sprawdzenie śladu w Langfuse przez właściciela. Punkt odniesienia z rozmowy 39 (przed poprawką): wejście 849 → 9645 tokenów w 8 turach.
 2. Obrazy z dawnych tur nie są wysyłane ponownie (zastępuje je krótka notka).
-2a. **Treść pobranych źródeł** — pomiar z rozmowy 41 (`openai/gpt-4o`, 2026-11-01): zwykła tura ~1,4 tys. tokenów wejścia, kontynuacja badania z pobranymi stronami ~26–27 tys. (limit 100 tys. znaków kontekstu). Po odpowiedzi źródła nie wracają do historii. Kandydaci: niższy limit kontekstu badania, skracanie stron, streszczenie strony przed opracowaniem. Duży kontekst źródeł wyczerpał też limit odpowiedzi modelu rozumującego `gpt-5-nano` (rozmowa 40, teraz kod `output_limit`).
+2a. **Treść pobranych źródeł** — pomiar z rozmowy 41 (`openai/gpt-4o`, 2026-11-01): zwykła tura ~1,4 tys. tokenów wejścia, kontynuacja badania z pobranymi stronami ~26–27 tys. (limit 100 tys. znaków kontekstu). Po odpowiedzi źródła nie wracają do historii. Kandydaci: niższy limit kontekstu badania, skracanie stron, streszczenie strony przed opracowaniem. Duży kontekst źródeł wyczerpał też limit odpowiedzi modelu rozumującego `gpt-5-nano` (rozmowa 40; pusta odpowiedź to na tej linii kod `invalid_response`).
 3. Budżet historii: do modelu trafia tylko ostatnia część rozmowy mieszcząca się w limicie (pierwsza wiadomość użytkownika zawsze).
 4. Streszczenie starszej części rozmowy (szyfrowane, odświeżane po przekroczeniu budżetu).
 5. UI: wskaźnik rozmiaru kontekstu i propozycja „nowa rozmowa ze streszczeniem”.
 
 ## Następny priorytet
 
-1. Naprawa czerwonego `EmptyReplyTest` „Gemini" (`GeminiProvider` nie mapuje pustej odpowiedzi z `finishReason: MAX_TOKENS` na `output_limit`) — blokuje commit zgodnie z GIT-FLOW.
-2. DeepSeek: commit (po zgodzie właściciela), wklejenie `DEEPSEEK_API_KEY` do `.env`, odtworzenie kontenera i test manualny w czacie.
-3. MVP jak wyżej (najpierw domknięcie wyszukiwarki, potem odśnieżarka krok 1).
-4. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą; osobne zadanie: test E2E przepływu resetu przez `mail-trap.dom`.
-5. Pozostałe testy manualne z listy → PR `develop` → `master`, deploy na Optiplex i tag `v1.0.0`.
-6. Osobne zadanie: `bin/restore-dev-user.php` — `getenv(...) ?? default` nie działa (getenv zwraca `false`).
-7. Po MVP: #62-486 → #62-493 (jakość źródeł badania), #62-494 (SSE).
+1. DeepSeek: wklejenie `DEEPSEEK_API_KEY` do `.env`, odtworzenie kontenera i test manualny w czacie (testy jednostkowe 7/7 zielone; częściowe odpowiedzi Gemini `MAX_TOKENS` ma pokrycie w `GeminiProviderTest` — wpis o „czerwonym EmptyReplyTest" dotyczył drugiej, lokalnej linii kodu).
+2. MVP jak wyżej (najpierw domknięcie wyszukiwarki, potem odśnieżarka krok 1).
+3. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą; osobne zadanie: test E2E przepływu resetu przez `mail-trap.dom`.
+4. Pozostałe testy manualne z listy → PR `develop` → `master`, deploy na Optiplex i tag `v1.0.0`.
+5. Osobne zadanie: `bin/restore-dev-user.php` — `getenv(...) ?? default` nie działa (getenv zwraca `false`).
+6. Po MVP: #62-486 → #62-493 (jakość źródeł badania), #62-494 (SSE).

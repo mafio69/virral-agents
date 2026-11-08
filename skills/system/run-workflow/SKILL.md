@@ -10,12 +10,15 @@ A workflow is a short Python script that the `run_workflow` tool executes. The
 script decides which agents to start, in what order, and what to do with their
 results. Use it instead of many manual subagent calls when the orchestration
 itself is code: loops over a list, fan-out then aggregate, or staged pipelines.
+Start it only with the user's explicit consent for running workflow agents —
+never launch agents on your own initiative.
 
 ## Steps
 
-1.  Pass the script inline as `Script`, or write it to a file (for example in
-    the conversation scratch directory) and pass its absolute path as
-    `ScriptPath`. Set exactly one of them; a file is easier to fix and rerun.
+1.  Prefer passing the script inline as `Script`. Use `ScriptPath` (absolute
+    path to a file, e.g. in the conversation scratch directory) only with the
+    user's explicit permission for that specific path and action; a file is
+    easier to fix and rerun. Set exactly one of them.
 2.  Call `run_workflow(Script="...", Description="...")` or
     `run_workflow(ScriptPath="/abs/path/workflow.py", Description="...")`.
     `Description` is a one-line goal shown in the UI.
@@ -106,8 +109,11 @@ references it; every agent ends when the workflow ends.
 
 ```python
 reviewer = agent("You review Go code for correctness.", role="Reviewer")
-bugs = await reviewer("List the bugs in foo.go.", {"type": "array", "items": {"type": "string"}})
-fixes = await parallel(bugs, lambda b: agent(f"Fix: {b}", {"type": "string"}))
+bugs = await reviewer("List the bugs in foo.go with the exact lines.", {"type": "array", "items": {"type": "string"}})
+# All bugs target foo.go: run sequentially (pipeline) so fixes do not overwrite
+# one another, and name the target file in every prompt. Use parallel() only
+# when each agent edits a different file.
+fixes = await pipeline(bugs, lambda b: agent(f"Fix in foo.go: {b}", {"type": "string"}))
 ok = await reviewer(f"Fixes made: {fixes}. Are all your bugs fixed?", {"type": "boolean"})
 del reviewer
 ```

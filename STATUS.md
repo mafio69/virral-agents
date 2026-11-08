@@ -23,6 +23,7 @@
 - **Gemini thinking (2026-11-04):** `MAX_TOKENS` nie zabija już całej odpowiedzi — częściowy tekst + usage wracają do użytkownika; limit tekstowy 8192 tokenów; obrazy pozostają rygorystyczne.
 - **E2.2 (2026-11-05):** fetcher stron wysyła realistyczny User-Agent (Chrome) i `Accept-Language` z `config/app.php` (sekcja `research`, przez DI); domyślnie neutralny UA bez nagłówka języka. Fetch bez cookies/JS bez zmian. #62-486 zamknięte na DT.
 - **PR #16 review (2026-11-08, `fix/pr16-review`):** kwotowanie wielosłownych tokenów filtra, odrzucenie pustego `query` w `web_search`, odrzucenie uciętego (`MAX_TOKENS`) `functionCall` Gemini, `completion_tokens` z myślami, normalizacja+walidacja strony/frazy w UI, sprostowanie opisu T3.2, docstringi; `dev-start.sh` bez sudo (rootless).
+- **DeepSeek (PR #18, w `master`):** dostawca czatu `deepseek-flash`, `deepseek-v4-pro` (`DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`); skille agentów komunikator i Langfuse.
 - **E3.1 (2026-11-06):** fetcher wyciąga treść z `main`/`article`/`[role="main"]`, usuwa `aside`/`header`/`figure` i banery zgód, tnie 16 000 znaków na granicy akapitu. #62-490 zrobione (kod + testy); zamknięcie na DT i push — do potwierdzenia właściciela.
 
 ## Otwarte

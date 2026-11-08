@@ -98,6 +98,10 @@ return function (ContainerBuilder $containerBuilder) {
                     \App\Infrastructure\AI\OpenRouterProvider::BASE_URI,
                     $c->get('settings')['openrouter']['key'] ?? '',
                 ), \App\Infrastructure\AI\OpenRouterProvider::allowedModels($c->get('settings')['openrouter']['models'] ?? '')),
+                'deepseek' => new \App\Infrastructure\AI\DeepSeekProvider(new \App\Infrastructure\AI\ProviderTransport(
+                    $c->get('settings')['deepseek']['base_url'] ?? \App\Infrastructure\AI\DeepSeekProvider::BASE_URI,
+                    $c->get('settings')['deepseek']['key'] ?? '',
+                )),
             ]);
         },
         \App\Infrastructure\AI\AiClientFactoryInterface::class => function (ContainerInterface $c) {

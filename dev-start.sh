@@ -34,7 +34,8 @@ done
 # The selected mode wins over the calling shell and the environment file read by Compose.
 # Mail always uses MAIL_DSN from the environment (an external SMTP, also in dev).
 export APP_ENV="$mode"
-compose=(sudo --preserve-env=APP_ENV docker compose -f docker-compose.yml)
+# Rootless Docker: no sudo needed — the user daemon socket is used directly (DOCKER_HOST or rootless context).
+compose=(docker compose -f docker-compose.yml)
 if [[ "$mode" == prod ]]; then compose+=(-f docker-compose.prod.yml); fi
 run() {
     if "$dry_run"; then
@@ -52,7 +53,7 @@ if ! "$dry_run"; then
     sleep "${DEV_START_APP_WAIT:-2}"
     if ! "${compose[@]}" ps --status running --services | grep -qx app; then
         printf '%s\n' 'Kontener app nie działa (najczęściej błąd składni pliku środowiska lub migracji).' \
-            'Kod przyczyny: sudo docker compose logs --tail=20 app' >&2
+            'Kod przyczyny: docker compose logs --tail=20 app' >&2
         exit 1
     fi
 fi

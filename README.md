@@ -88,7 +88,7 @@ wpis w `CHANGELOG.md`, stan w `STATUS.md`, przekazanie w `HANDOFF.md`.
 
 ## Wymagania
 
-- Docker i Docker Compose (Docker wywoływany przez sudo w `dev-start.sh`)
+- Docker i Docker Compose w trybie rootless (daemon użytkownika, `dev-start.sh` działa bez sudo)
 - PHP 8.4 z `pdo_sqlite` i `sodium`, Composer — do testów i CLI poza kontenerem
 - Node.js — testy UI; opcjonalnie Playwright dla E2E
 - Zewnętrzna sieć Docker `ai` z kontenerem `mcp-search` (dla wyszukiwania WWW)

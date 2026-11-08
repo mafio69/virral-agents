@@ -34,7 +34,8 @@ return function (ContainerBuilder $containerBuilder) {
         'base_url' => rtrim($sensitiveValue('DEEPSEEK_BASE_URL', \App\Infrastructure\AI\DeepSeekProvider::BASE_URI), '/').'/',
     ];
     $settings['langfuse'] = [
-        'host' => $sensitiveValue('LANGFUSE_HOST', 'https://cloud.langfuse.com'),
+        // LANGFUSE_HOST wins; empty falls back to LANGFUSE_BASE_URL, then to the cloud default.
+        'host' => $sensitiveValue('LANGFUSE_HOST', $sensitiveValue('LANGFUSE_BASE_URL', 'https://cloud.langfuse.com')),
         'public_key' => $sensitiveValue('LANGFUSE_PUBLIC_KEY'),
         'secret_key' => $sensitiveValue('LANGFUSE_SECRET_KEY'),
         'enabled' => filter_var($sensitiveValue('LANGFUSE_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN),

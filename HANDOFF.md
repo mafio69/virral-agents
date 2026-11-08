@@ -19,15 +19,14 @@ Szablon:
 
 ---
 
-## 2026-11-08 — DeepSeek (niezacommitowane) + czerwony test Gemini
+## 2026-11-08 (2) — DeepSeek + fixy drugiego przeglądu na `feature/deepseek`
 
-- **Gałąź:** `develop` (ostatni `4987be3`).
-- **Zrobione w tej sesji (niezacommitowane):** integracja DeepSeek — `src/Infrastructure/AI/DeepSeekProvider.php`, wiring w `src/settings.php` + `src/dependencies.php` + `docker-compose.yml` + `docker/php-fpm-env.conf`, testy `tests/DeepSeekProviderTest.php` (7/7), docs (README, AI_PROVIDERS, KONFIGURACJA), rytuał końca (CHANGELOG/STATUS/REPO). Reset hasła z limitem `PasswordResetLimiter` został scalony wcześniej (`2b4f806`) — nie ruszać. Do tego: globalny config opencode ma `mcp.devbrain` (token z `nv.tmp`, poza repo).
-- **Od czego zacząć:** naprawa `EmptyReplyTest` „Gemini" (czerwony na develop: `GeminiProvider` przy pustej treści z `finishReason: MAX_TOKENS` ma rzucać `EmptyReply::exception(..., limitReached: true, candidatesTokenCount, thoughtsTokenCount)`; wzorzec mapowania w `EmptyReplyTest` wiersz ~55). Potem commit DeepSeek (tylko za zgodą właściciela) i test manualny po wklejeniu `DEEPSEEK_API_KEY` do `.env` + `--force-recreate app`.
+- **Gałąź:** `feature/deepseek` (744f866 DeepSeek, 212887e skille, 3f954e1 fix EmptyReply, + fixy drugiego przeglądu — patrz CHANGELOG 2026-11-08 (2)). Walidacja: PHPUnit 294/294, UI 109/109, formatter 0/183. PR #16 (fixy pierwszego przeglądu) scalony do mastera.
+- **Fixy drugiego przeglądu:** usage DeepSeek przez `MultimodalClientInterface`, fallback `LANGFUSE_BASE_URL` w settings + wpisy FPM, README/.env.example/REPO/STATUS zgodne z tą linią (bez `check-langfuse.php`, `span()` zamiast `chatReply()`), run-workflow skill (zgoda, ScriptPath, `pipeline` dla tego samego pliku), docstringi.
+- **WAŻNE — dwie linie historii:** lokalny `develop` (`bafac2d`: reset hasła, Langfuse z `chatReply()`/`EmptyReply`/`TokenUsage`, `bin/check-langfuse.php`) NIE jest pushnięty i częściowo koliduje z tą linią (inny API LangfuseTrace). Decyzja właściciela: scalić świadomie (portować `output_limit`/reset hasła jako zadania) albo porzucić. Nie mieszać automatycznie.
+- **Od czego zacząć:** push `feature/deepseek` za zgodą → obserwować CodeRabbit/CI; potem test manualny DeepSeeka (klucz w `.env`, `./dev-start.sh`, wybór połączenia w czacie).
 - **Pułapki:**
-  - `DEEPSEEK_BASE_URL_ANTHROPIC` w `.env.example` to celowo niespaiwana notatka właściciela (wyjście awaryjne) — nie podłączać.
-  - `GIT-FLOW.md` zawiera ręczną edycję właściciela („weewewew") — plik tylko dla człowieka, nie cofać bez zgody.
-  - `.env.example` ma notatki DeepSeek właściciela (komentarze + puste zmienne) — bezpieczne do commitu, ale to jego zmiana.
-  - Właściciel: „nie trać czasu na badanie kodu" — czytać tylko to, co konieczne do zadania.
-  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
-  - Push: `git -c credential.helper='!gh auth git-credential' push origin develop` (tylko za zgodą).
+  - Stash `stash@{0}`/`stash@{1}` to kopie robocze DeepSeeka — po scaleniu można dropnąć.
+  - `nv.tmp` (token DT) w `.gitignore`; nigdy nie commitować.
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin feature/deepseek` (tylko za zgodą).

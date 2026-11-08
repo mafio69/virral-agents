@@ -89,7 +89,8 @@ final class DeepSeekProvider implements ChatProviderInterface, WebToolClientInte
         }
         $text = $message['content'] ?? null;
         if (!is_string($text) || trim($text) === '') {
-            throw EmptyReply::fromChatCompletion($body);
+            // Empty answer with no text: closed reason, provider content never reaches logs.
+            throw new AiConnectionException('invalid_response');
         }
         return new AiReply($text, usage: $usage);
     }

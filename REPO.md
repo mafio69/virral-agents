@@ -16,7 +16,7 @@
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
-| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker rootless użytkownika, bez sudo |
+| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
 | Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
@@ -65,7 +65,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Wyszukiwanie zaawansowane | `SearchQuery` (query, `must_have`, `exclude`, `exact_phrase`, `sites`) + `SearchQueryBuilder` składają jeden string `query +słowo -słowo "fraza" site:domena` przed wywołaniem MCP; filtrami można ograniczyć wyszukiwanie z UI (chipy „Bez / Musi zawierać" + „Więcej opcji" w `SearchFilters`, doklejane przez `ResearchPanel` do `/api/research/actions`), z `search` w POST messages i z kontraktu modeli (`WebTools::definitions` web_search); model i JSON wyników widzą zapytanie złożone, karta zgody pokazuje filtry po polsku; operatorów nie da się wstrzyknąć (token nie zaczyna się od `-`/`+`, bez cudzysłowów) | `src/Dto/Chat/SearchQuery.php`, `SearchQueryBuilder.php`, `WebTools.php`, `chat-search-filters.js`, `describeSearchFilters` w `chat-search.js` |
 | Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, maks. 3 przekierowania (każdy hop: walidacja adresu, świeże DNS, publiczny IPv4, zakaz https→http), bez cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
 | Migracje | `bin/migrate.php` przed startem FPM; HTTP tylko `assertReady`. Inicjalizacja szyfrowania automatyczna wyłącznie dla pustej bazy | `docker/start-app.sh`, `DatabaseInitializer`, `MigrationRunner` |
-| Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków | `AiConnectionException`, `chat-api.js` |
+| Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków. Pusta odpowiedź: `output_limit` gdy dostawca zakończył na limicie wyjścia (modele rozumujące + duży kontekst źródeł), inaczej `invalid_response`; `AiConnectionException::$diagnostics` (kod zakończenia, tokeny wyjścia/rozumowania) tylko do logów i Langfuse | `AiConnectionException`, `EmptyReply`, `chat-api.js` |
 
 ## 5. Decyzje i pułapki
 
@@ -148,6 +148,37 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `EmailConfirmationRequiredException` jest mapowany na HTTP 403, kod `email_confirmation_required` i no-store. Nie powstaje nowa sesja ani cookie; błędne dane logowania nadal zwracają 401. Wylogowanie działa również dla starej sesji niepotwierdzonego konta.
 - Istniejący endpoint `/api/auth/verify-email` zatwierdza konto i unieważnia link przez usunięcie jego hasha. Błędny albo wykorzystany link zwraca 422.
 - Awaria SMTP nie usuwa utworzonego konta i nie omija wymogu potwierdzenia. Nie ma endpointu ponownej wysyłki; obsługa niedostarczonego lub utraconego linku wymaga osobnego zadania. Testy używają wyłącznie poczty atrapowej.
+
+### Reset zapomnianego hasła
+
+- `POST /api/auth/forgot-password` → `AuthService::forgotPassword()`: najpierw `PasswordResetLimiter` (3 prośby / 900 s osobno na e-mail i IP; ta sama tabela `login_attempts`, ale prefiksy HMAC `reset-limit/…`, więc nie zużywa limitu logowania i odwrotnie; prośba nie jest zwalniana). Dopiero potem wyszukanie konta. Odpowiedź jest identyczna dla istniejącego i nieistniejącego konta, a wynik wysyłki trafia wyłącznie do logu (nie zwracać pola `sent` — ujawnia istnienie konta).
+- Token: 32 losowe bajty hex w linku `/?reset_token=…`, w bazie tylko sha256 w `users.password_reset_token` + `password_reset_expires_at` (+1 h). Nowa prośba nadpisuje poprzedni token.
+- `POST /api/auth/reset-password` → `UserRepository::resetPasswordWithToken()`: jeden `UPDATE … WHERE id AND token AND expires_at > now` w transakcji; `rowCount() !== 1` = link już zużyty (wyścig dwóch żądań) → 422. Ten sam UPDATE czyści token, potwierdza niepotwierdzony e-mail (decyzja właściciela: link dowodzi dostępu do skrzynki) i usuwa wszystkie sesje użytkownika.
+- `landing.html` po odczytaniu tokenu usuwa go z paska adresu (`history.replaceState`). 429 pokazuje czas oczekiwania z `Retry-After`.
+- `LoginRateLimitException` przyjmuje opcjonalny komunikat; middleware mapuje oba limity na 429 + `Retry-After`.
+
+### DeepSeek (dostawca czatu, 2026-11-08)
+
+- `DeepSeekProvider` na wspólnym `ProviderTransport` (OpenAI-compatible, `Bearer`): `POST /chat/completions`, `max_tokens` 4096; narzędzia `web_search`/`web_fetch` w trybie ASK dla obu modeli. Selektor: `deepseek:<model>`.
+- Katalog jest **stały** (`deepseek-flash`, `deepseek-v4-pro`, tekst, bez obrazów) — DeepSeek nie wystawia metadanych możliwości, `listModels()` nie robi zapytania sieciowego (odmiennie niż OpenRouter).
+- Env: `DEEPSEEK_API_KEY` + opcjonalny `DEEPSEEK_BASE_URL` (domyślnie `https://api.deepseek.com`; `src/settings.php` normalizuje ukośnik końcowy, bo Guzzle rozwiązuje `base_uri` względnie). `DEEPSEEK_BASE_URL_ANTHROPIC` to niespaiwana notatka właściciela.
+- Pusta treść odpowiedzi → `EmptyReply::fromChatCompletion()` jak u pozostałych dostawców OpenAI-compatible.
+
+### Ślady Langfuse (obserwowalność czatu)
+
+- `LangfuseTrace::chatReply()` wysyła **jeden ślad na turę** przez OTLP/HTTP JSON (`/api/public/otel/v1/traces`, nagłówek `x-langfuse-ingestion-version: 4`, timeout 3 s, `http_errors: false`) i zwraca `trace_id`. Pod PHP-FPM wysyłka idzie po `fastcgi_finish_request()` (shutdown), więc Langfuse nie opóźnia odpowiedzi czatu; w CLI/testach od razu.
+- **Każda tura zostawia jeden wpis w logu**: `Langfuse trace sent` (trace_id, status), `Langfuse wyłączony — …` / `Langfuse włączony, ale brakuje ustawień — …` (lista **nazw** brakujących zmiennych), `Langfuse HTTP <kod>` lub `Langfuse error`. Błąd nigdy nie przerywa czatu.
+- **Pułapka (2026-11-01):** bez `LANGFUSE_ENABLED=true` wysyłka jest wyłączona — Compose domyślnie przekazuje `false`, a zmienna z kontenera ma pierwszeństwo przed `.env` (Dotenv immutable), więc po zmianie `.env` trzeba odtworzyć kontener. Adres: `LANGFUSE_HOST`, a gdy pusty — `LANGFUSE_BASE_URL` (nazwa z dokumentacji Langfuse), domyślnie `https://cloud.langfuse.com`. Opcjonalnie `LANGFUSE_RELEASE` → `langfuse.release`.
+- Weryfikacja end-to-end: `php bin/check-langfuse.php` (testowy ślad + odczyt przez `GET /api/public/v2/observations?traceId=…`), `--trace <id>` dla śladu z logu. Potwierdzone 2026-11-01 na Langfuse Cloud EU (v4.72.0).
+- Model v4: `langfuse.session.id`, `langfuse.user.id`, `langfuse.trace.name`, `langfuse.trace.tags`, `langfuse.trace.metadata.*`, `langfuse.environment`, `langfuse.release` są na **każdym** spanie — atrybuty tylko na korzeniu są niewidoczne przy filtrowaniu i agregacji obserwacji-dzieci (np. tokeny per użytkownik). Błąd: `langfuse.observation.level=ERROR` + `langfuse.observation.status_message`.
+- Układ śladu: korzeń `chat-reply` → opcjonalnie `tool` `web-search` (czas, status, liczba wyników) → `generation` `generate-reply` (model, tokeny). Nazwy są stałe (best practice Langfuse); numer tury i inne zmienne idą do `langfuse.trace.metadata.*` (turn, path, history_messages, history_chars, system_chars, tool_result_chars, prompt_tokens, reply_kind, sources_*, error_reason).
+- Atrybuty: `langfuse.session.id` = ID rozmowy, `langfuse.user.id` = wewnętrzne ID konta (nie e-mail), `langfuse.trace.tags` = ścieżka (`message`, `web-search`, `research`, `research-continuation`, `retry`), zasób `langfuse.environment` = `APP_ENV` (`dev`/`prod`).
+- Tokeny: `TokenUsage` zamienia `usage` dostawców na rozłączne kubełki Langfuse — `input` bez cache, `input_cached_tokens` osobno (OpenAI/OpenRouter/Z.ai/OVH wliczają cache do `prompt_tokens`, Anthropic nie). Wysyłane jako `langfuse.observation.usage_details` (JSON) i `gen_ai.usage.*`. `prompt_tokens` w metadanych = wartość „wej.” z UI czatu.
+- Nieudana odpowiedź AI też daje ślad: `langfuse.observation.level=ERROR`, status OTLP 2, kod przyczyny z `AiConnectionException` (inaczej `internal_error`). Gdy wyszukanie WWW zawiedzie lub nic nie zwróci, model nie jest wołany i ślad nie ma generacji.
+- **Zasada właściciela** (`docs/Prace_rozwojowe/AGENT_LANGFUSE.md`): nigdy nie wysyłamy treści promptów, odpowiedzi, zapytań ani wyników narzędzi — świadome odstępstwo od best practice „trace input/output”. Test `testNoPromptReplyOrToolContentIsSent` tego pilnuje.
+- Czasy spanów to czas uniksowy w ns (`microtime`), nie `hrtime()` (zegar monotoniczny z dowolnym początkiem dawał błędne daty).
+- Każdy klient AI ma `generateReply()` zwracające `AiReply` z `usage` (`MultimodalClientInterface`); `ChatReplyGenerator::reply()` używa go dla odpowiedzi bez narzędzi (np. po zebraniu źródeł). Wcześniej ta ścieżka wołała `generate()` i gubiła tokeny.
+- Skill agenta `langfuse` (github.com/langfuse/skills) bywa zainstalowany lokalnie w `.claude/skills/` — nie jest częścią repo.
 
 ### Panel testowy wyłącznie w development
 

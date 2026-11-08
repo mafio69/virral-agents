@@ -28,6 +28,11 @@ return function (ContainerBuilder $containerBuilder) {
     $settings['anthropic'] = ['key' => $sensitiveValue('ANTHROPIC_API_KEY')];
     $settings['google'] = ['key' => $sensitiveValue('GEMINI_KEY')];
     $settings['openrouter'] = ['key' => $sensitiveValue('OPENROUTER_API_KEY'), 'models' => $sensitiveValue('OPENROUTER_MODELS')];
+    // DEEPSEEK_BASE_URL is optional; the trailing slash is normalized for Guzzle base_uri resolution.
+    $settings['deepseek'] = [
+        'key' => $sensitiveValue('DEEPSEEK_API_KEY'),
+        'base_url' => rtrim($sensitiveValue('DEEPSEEK_BASE_URL', \App\Infrastructure\AI\DeepSeekProvider::BASE_URI), '/').'/',
+    ];
     $settings['langfuse'] = [
         'host' => $sensitiveValue('LANGFUSE_HOST', 'https://cloud.langfuse.com'),
         'public_key' => $sensitiveValue('LANGFUSE_PUBLIC_KEY'),

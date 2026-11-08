@@ -1,16 +1,14 @@
 # CHANGELOG
 
-## 2026-11-08 — fixy z przeglądu PR #16 (CodeRabbit) + start bez sudo (rootless)
+## 2026-11-08 — DeepSeek jako dostawca czatu (bezpośrednio, OpenAI-compatible)
 
-- **SearchQueryBuilder:** tokeny z spacjami (`must_have`/`exclude`) są teraz kwotowane (`+"twig -legacy"`), więc nie rozpadają się na osobne operatory wyszukiwania; testy multi-word w obu formach.
-- **WebTools:** `web_search` z pustym zapytaniem po normalizacji (sam whitespace) → `invalid_response` zamiast wyszukiwania z samymi filtrami; przypadki regresyjne w `ResearchAgentTest`.
-- **GeminiProvider:** odpowiedź z `finishReason: MAX_TOKENS` niosąca `functionCall` jest odrzucana (`invalid_response`) — ucięte przez limit wywołanie narzędzia nie może prosić o zgodę; odpowiedzi częściowe z tekstem nadal przechodzą. `completion_tokens` sumuje `candidatesTokenCount` + `thoughtsTokenCount` (myśli to rozliczane tokeny wyjściowe).
-- **UI (chat-search-filters):** `collect()` normalizuje frazę (usuwa owijające cudzysłowy) i stronę (URL → host, małe litery) zgodnie z regułami backendu; nieprawidłowa domena oznaczana inline (`aria-invalid`, `setCustomValidity`) i wyszukiwanie nie wychodzi z przeglądarki (`collect()` → `null`, komunikat z `onNotice`). Karta zgody pokazuje znormalizowane wartości.
-- **STATUS.md:** sprostowanie opisu T3.2 — historia po kompakcie nadal rośnie z liczbą tur (starsze pytania skracane do 300 znaków); usunięto nieprawdziwą tezę o stałym rozmiarze.
-- **Docstringi:** uzupełnione w nowych funkcjach PR (SearchQuery/SearchQueryBuilder/SearchOptions/WebTools/HistoryCompactor/chat-search-filters) — bramka Docstring Coverage.
-- **dev-start.sh:** Docker rootless użytkownika — brak `sudo` (socket `/run/user/1000/docker.sock`); testy `dev-start.test.mjs` przepięte z atrapy `sudo` na atrapę `docker`.
-- Pominięte z przeglądu (nitpicks, czysta czytelność bez zmiany zachowania): nazwane booleany w `SearchOptions`, rozbiór warunku w `SearchQuery::assertToken`, ekstrakcja pomocników w `HistoryCompactor::compact`.
-- Walidacja: PHPUnit 287/287 (1340 asercji), UI 109/109, formatter 0/181.
+- Nowy `DeepSeekProvider` (`src/Infrastructure/AI/DeepSeekProvider.php`) na wspólnym `ProviderTransport`: `POST /chat/completions`, limit 4096 tokenów, narzędzia `web_search`/`web_fetch` w trybie ASK, pusta odpowiedź rozróżnia `output_limit` od `invalid_response`.
+- Stały katalog dwóch modeli: `deepseek-flash`, `deepseek-v4-pro` (tekst, bez obrazów wejściowych — DeepSeek nie publikuje metadanych możliwości). Selektor: `deepseek:<model>`; bez klucza połączenie niewidoczne.
+- Środowisko: `DEEPSEEK_API_KEY` (wymagany) i `DEEPSEEK_BASE_URL` (opcjonalny, domyślnie `https://api.deepseek.com`, normalizacja ukośnika końcowego w `src/settings.php`), przekazane przez `docker-compose.yml` i `docker/php-fpm-env.conf`. `DEEPSEEK_BASE_URL_ANTHROPIC` pozostaje notatką właściciela w `.env.example` — celowo niespaiwana.
+- Dokumentacja: `README.md` (tabela integracji, funkcjonalności), `docs/AI_PROVIDERS.md`, `docs/KONFIGURACJA.md`.
+- Testy: `tests/DeepSeekProviderTest.php` — 7 testów na atrapach HTTP (katalog bez zapytania sieciowego, usage, tools+ASK, pusta treść, kody błędów 401/429/timeout, brak klucza, własny base URL).
+- Walidacja: formatter 0/198, PHP 346/347 (istniejący czerwony `EmptyReplyTest` „Gemini" — patrz STATUS), UI 110/110.
+- Porządki: usunięto 208 pustych linii z `bin/restore-dev-user.php` (bez zmiany logiki, formatter/`php -l` OK) oraz przypadkowy wpis „weewewew" z `GIT-FLOW.md`; scratch `.local/tmp/opencode.jsonc.bak` usunięty.
 
 ## 2026-11-05 — #62-486 (E2.2): realistyczny User-Agent i Accept-Language w fetcherze
 

@@ -19,14 +19,15 @@ Szablon:
 
 ---
 
-## 2026-11-08 — fixy przeglądu PR #16 na gałęzi `fix/pr16-review` (bez push)
+## 2026-11-08 — DeepSeek (niezacommitowane) + czerwony test Gemini
 
-- **Gałąź:** `fix/pr16-review` z `origin/develop` (`e94da73`). Commity: fixy review + `dev-start.sh` bez sudo (rootless). Walidacja: PHPUnit 287/287, UI 109/109, formatter 0/181; E2E niepowtórzone.
-- **Fixy z review (CodeRabbit):** kwotowanie wielosłownych tokenów (`SearchQueryBuilder`), pusty `query` → `invalid_response` (`WebTools`), ucięty `MAX_TOKENS` `functionCall` odrzucony + `completion_tokens` = kandydaci+myśli (`GeminiProvider`), normalizacja frazy/strony i walidacja inline w UI (`collect()` → `null`), sprostowanie T3.2 w STATUS, docstringi. Pominięte nitpicks (nazwane booleany, rozbiór `assertToken`, helpery w `HistoryCompactor`) — czysta czytelność, opisane w CHANGELOG.
-- **WAŻNE — rozejście historii:** LOKALNY `develop` (reset hasła, Langfuse, DeepSeek `bafac2d`) nigdy nie został pushnięty; `origin/develop` = T6.x/T3.x/E2.2 (PR #16). Te linie trzeba kiedyś scalić (rebase/merge + testy) — dopóki tego nie zrobiono, nie pracować równolegle na obu.
-- **Od czego zacząć:** push `fix/pr16-review` za zgodą właściciela (doda się do PR #16), obserwować CodeRabbit ponownie; potem scalenie lokalnego developa (decyzja właściciela).
+- **Gałąź:** `develop` (ostatni `4987be3`).
+- **Zrobione w tej sesji (niezacommitowane):** integracja DeepSeek — `src/Infrastructure/AI/DeepSeekProvider.php`, wiring w `src/settings.php` + `src/dependencies.php` + `docker-compose.yml` + `docker/php-fpm-env.conf`, testy `tests/DeepSeekProviderTest.php` (7/7), docs (README, AI_PROVIDERS, KONFIGURACJA), rytuał końca (CHANGELOG/STATUS/REPO). Reset hasła z limitem `PasswordResetLimiter` został scalony wcześniej (`2b4f806`) — nie ruszać. Do tego: globalny config opencode ma `mcp.devbrain` (token z `nv.tmp`, poza repo).
+- **Od czego zacząć:** naprawa `EmptyReplyTest` „Gemini" (czerwony na develop: `GeminiProvider` przy pustej treści z `finishReason: MAX_TOKENS` ma rzucać `EmptyReply::exception(..., limitReached: true, candidatesTokenCount, thoughtsTokenCount)`; wzorzec mapowania w `EmptyReplyTest` wiersz ~55). Potem commit DeepSeek (tylko za zgodą właściciela) i test manualny po wklejeniu `DEEPSEEK_API_KEY` do `.env` + `--force-recreate app`.
 - **Pułapki:**
-  - Rootless Docker: `dev-start.sh` bez sudo (socket `/run/user/1000/docker.sock`); `DOCKER_HOST` wróciło do `/etc/environment` u właściciela. Testy UI używają atrapy `docker`, nie prawdziwego daemona.
-  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --test-isolation=none`.
-  - `nv.tmp` (token DT) jest nieśledzony — nie commitować.
-  - Push: `git -c credential.helper='!gh auth git-credential' push origin fix/pr16-review` (tylko za zgodą).
+  - `DEEPSEEK_BASE_URL_ANTHROPIC` w `.env.example` to celowo niespaiwana notatka właściciela (wyjście awaryjne) — nie podłączać.
+  - `GIT-FLOW.md` zawiera ręczną edycję właściciela („weewewew") — plik tylko dla człowieka, nie cofać bez zgody.
+  - `.env.example` ma notatki DeepSeek właściciela (komentarze + puste zmienne) — bezpieczne do commitu, ale to jego zmiana.
+  - Właściciel: „nie trać czasu na badanie kodu" — czytać tylko to, co konieczne do zadania.
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin develop` (tylko za zgodą).

@@ -27,8 +27,10 @@ rozmowie kończy się czytelnym błędem braku konfiguracji.
 | Anthropic (Claude) | `ANTHROPIC_API_KEY` | czat (Messages API), obrazy wejściowe | `docs/AI_PROVIDERS.md` |
 | Google Gemini | `GEMINI_KEY` | czat, obrazy wejściowe, generowanie obrazów | `docs/AI_PROVIDERS.md` |
 | OpenRouter | `OPENROUTER_API_KEY`, opcjonalnie `OPENROUTER_MODELS` | setki modeli wielu firm przez jedno konto | [niżej](#podłączenie-openrouter), `docs/AI_PROVIDERS.md` |
+| DeepSeek | `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL` | czat (OpenAI-compatible): `deepseek-flash`, `deepseek-v4-pro` | `docs/AI_PROVIDERS.md` |
 | Wyszukiwarka MCP (SearXNG) | `MCP_SEARCH_URL` (np. `https://szukaj.dom/mcp`, domyślnie `http://mcp-search:8000/mcp`), `MCP_AUTH_TOKEN` (Bearer, gdy serwer go wymaga; zdalne endpointy z tokenem wymagają TLS) | wyszukiwanie WWW i badanie źródeł | `docs/MCP-USAGE.md`, `docs/instrukcja-integracji-mcp-search.md` |
 | Poczta SMTP | `MAIL_DSN` | potwierdzenie rejestracji | `docs/KONFIGURACJA.md` |
+| Langfuse (obserwowalność) | **`LANGFUSE_ENABLED=true`** (wymagane), `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` lub `LANGFUSE_HOST` (domyślnie EU cloud), opcjonalnie `LANGFUSE_RELEASE` | ślad każdej tury czatu: tokeny, model, czas, błędy — bez treści rozmów | [niżej](#podłączenie-langfuse), `REPO.md` |
 
 Klucze szyfrowania (`USER_DATA_KEY`, `DB_HASH`) są wymagane zawsze — `docs/OCHRONA_DANYCH.md`.
 
@@ -68,6 +70,17 @@ Co warto wiedzieć:
 - Brak środków lub limit zapytań (402/429) → komunikat o limicie dostawcy.
 - Wyszukiwanie WWW przez narzędzia działa tylko w modelach, które w OpenRouter obsługują `tools`.
 
+### Podłączenie Langfuse
+
+1. W Langfuse: projekt → **Settings → API Keys → Create new API key** (Secret Key widać tylko raz).
+2. W `.env`: `LANGFUSE_ENABLED=true`, oba klucze i adres z paska przeglądarki jako `LANGFUSE_BASE_URL`
+   (`https://cloud.langfuse.com` EU, `https://us.cloud.langfuse.com` US). **Bez `LANGFUSE_ENABLED=true` nic nie jest wysyłane.**
+3. Sprawdzenie bez uruchamiania czatu: `php bin/check-langfuse.php` — wysyła testowy ślad (tag `connection-check`)
+   i odczytuje go przez API Langfuse; kod wyjścia 0 = działa. Kluczy nie wypisuje.
+4. `./dev-start.sh` (kontener app musi dostać nowe zmienne), potem wiadomość w czacie. Każda tura zostawia w logu
+   jeden wpis: `Langfuse trace sent` (z `trace_id`), `Langfuse wyłączony …` albo `Langfuse HTTP …`.
+   Konkretny ślad z logu: `php bin/check-langfuse.php --trace <trace_id>`.
+
 ## Agenci AI pracujący nad kodem
 
 Zasady dla agentów (Claude Code, OpenCode i inni) są w `AGENTS.md` — w tym twardy zakaz
@@ -78,8 +91,8 @@ wpis w `CHANGELOG.md`, stan w `STATUS.md`, przekazanie w `HANDOFF.md`.
 
 ## Funkcjonalności
 
-- **Konto i bezpieczeństwo logowania** — rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (5 nieudanych prób / 15 min osobno na e-mail i IP, obsługa `TRUSTED_PROXIES` za reverse proxy), sesja w cookie HttpOnly (lub Bearer), wylogowanie unieważniające sesję po stronie serwera.
-- **Czat AI** — OVH AI Endpoints, Z.ai (GLM), OpenAI, Anthropic, Google Gemini i OpenRouter; wybór połączenia i modelu przy nowej rozmowie, analiza obrazów wejściowych (PNG/JPEG/WebP), generowanie obrazów Gemini, ponawianie nieudanej odpowiedzi (`Ponów`), Markdown oczyszczany przez DOMPurify.
+- **Konto i bezpieczeństwo logowania** — rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (5 nieudanych prób / 15 min osobno na e-mail i IP, obsługa `TRUSTED_PROXIES` za reverse proxy), sesja w cookie HttpOnly (lub Bearer), wylogowanie unieważniające sesję po stronie serwera, reset zapomnianego hasła linkiem e-mail ze strony logowania („Nie pamiętasz hasła?”).
+- **Czat AI** — OVH AI Endpoints, Z.ai (GLM), OpenAI, Anthropic, Google Gemini, OpenRouter i DeepSeek; wybór połączenia i modelu przy nowej rozmowie, analiza obrazów wejściowych (PNG/JPEG/WebP), generowanie obrazów Gemini, ponawianie nieudanej odpowiedzi (`Ponów`), Markdown oczyszczany przez DOMPurify.
 - **Wyszukiwanie WWW (ASK)** — zapytanie do serwera MCP (`web_search`, SearXNG z awaryjnym Perplexity) wyłącznie po jawnej zgodzie użytkownika (`Allow` / `Deny`) dla konkretnego zapytania — zarówno przy ręcznym wyszukiwaniu, jak i gdy o wyszukanie prosi model AI.
 - **Badanie źródeł** — wybór wyników checkboxami w oknie źródeł (do 20 stron), pobranie zaznaczonych stron jednym kliknięciem **„Kontynuuj”** przez bezpieczny fetcher (publiczne IPv4, ochrona SSRF, maks. 3 przekierowania, bez cookies i JS) i opracowanie ich treści przez model (`/continue`). Każda wymiana zdań ma własne, izolowane badanie — po wygenerowaniu odpowiedzi stan źródeł jest automatycznie czyszczony dla kolejnego pytania, a użytkownik może też wyczyścić wyniki ręcznie (**„Wyczyść wyniki”** w panelu bocznym lub **„Usuń wszystkie”** w oknie wyników).
 - **Ochrona danych** — szyfrowanie treści wiadomości, tytułów, obrazów, stanu badania, e-maili i zadań (XChaCha20-Poly1305 z powiązaniem kontekstu rekordu i właściciela), HMAC e-maili i IP, hashe tokenów sesji.
@@ -88,7 +101,7 @@ wpis w `CHANGELOG.md`, stan w `STATUS.md`, przekazanie w `HANDOFF.md`.
 
 ## Wymagania
 
-- Docker i Docker Compose w trybie rootless (daemon użytkownika, `dev-start.sh` działa bez sudo)
+- Docker i Docker Compose (Docker wywoływany przez sudo w `dev-start.sh`)
 - PHP 8.4 z `pdo_sqlite` i `sodium`, Composer — do testów i CLI poza kontenerem
 - Node.js — testy UI; opcjonalnie Playwright dla E2E
 - Zewnętrzna sieć Docker `ai` z kontenerem `mcp-search` (dla wyszukiwania WWW)
@@ -126,6 +139,8 @@ Wszystkie pod `/api`. Trasy oznaczone 🔒 wymagają sesji.
 | GET | `/auth/verify-email` | Potwierdzenie e-maila z linku |
 | POST | `/auth/login` | Logowanie (cookie + token); 403 bez potwierdzenia, 429 po limicie |
 | POST | `/auth/logout` | Wylogowanie (204) |
+| POST | `/auth/forgot-password` | Wysłanie linku resetującego hasło (zawsze ta sama odpowiedź); 429 po 3 prośbach / 15 min |
+| POST | `/auth/reset-password` | Ustawienie nowego hasła z jednorazowego linku (ważny 1 h); 422 dla złego, zużytego lub wygasłego linku |
 | GET 🔒 | `/auth/me` | Zalogowany użytkownik |
 | GET/POST 🔒 | `/tasks` | Lista / tworzenie zadań |
 | PUT/DELETE 🔒 | `/tasks/{id}` | Aktualizacja / usunięcie zadania |
@@ -158,7 +173,7 @@ src/
   Service/         Auth, Chat, ChatReplyGenerator, Research*, ModelCatalog, LoginAttemptLimiter, Task
   Repository/      dostęp do SQLite przez ProtectedStore (szyfrowanie pól)
   Infrastructure/  AI (dostawcy), Search (MCP, fetch stron), DataProtection, Database, Mail, Http, Secrets
-bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php, restoreDevPass.sh (dev: docs/DEV-ADMIN.md)
+bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php, check-langfuse.php, restoreDevPass.sh (dev: docs/DEV-ADMIN.md)
 config/app.php     jawne ustawienia (bez sekretów)
 docker/            Dockerfile, nginx, php-fpm-env.conf, start-app.sh
 tests/             PHPUnit, ui/ (node:test), e2e/ (Playwright), browser/ (routery atrap)

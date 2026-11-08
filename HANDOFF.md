@@ -19,14 +19,14 @@ Szablon:
 
 ---
 
-## 2026-11-05 — E2.2 zrobione; następne #62-490 (E3.1)
+## 2026-11-08 — fixy przeglądu PR #16 na gałęzi `fix/pr16-review` (bez push)
 
-- **Stan:** develop = commit E2.2 (push). E2.2: fetcher z konfigurowalnym UA (Chrome) + Accept-Language z `config/app.php` (`research.fetch_user_agent`/`fetch_accept_language`) przez DI; domyślnie neutralny UA bez AL; bez cookies/JS dalej. Walidacja: PHPUnit 285/285, UI 107/107, E2E 5/5.
-- **Następne (kolejność uzgodniona z właścicielem):** #62-490 (E3.1) — ekstrakcja `main`/`article` + cięcie na granicy akapitów w `PublicWebPageFetcher` (plan w `TODO-zrodla.md`, E3.1); po nim #62-542 (data/dzień tygodnia w prompcie systemowym — małe).
-- **Wstrzymane (właściciel):** rotacja MCP — serwer w repo `szukaj` nie działa; po postawieniu: `sudo docker compose up -d --force-recreate app`, weryfikacja `GET /api/search/status` (zalogowany) + jedno wyszukanie; zdjąć „WSTRZYMANA" ze STATUS. Po deployu też: manualny test filtrów w UI, `gemini-3.8-flash` (fix MAX_TOKENS) i E2.2 na Gazeta.pl (właściciel).
+- **Gałąź:** `fix/pr16-review` z `origin/develop` (`e94da73`). Commity: fixy review + `dev-start.sh` bez sudo (rootless). Walidacja: PHPUnit 287/287, UI 109/109, formatter 0/181; E2E niepowtórzone.
+- **Fixy z review (CodeRabbit):** kwotowanie wielosłownych tokenów (`SearchQueryBuilder`), pusty `query` → `invalid_response` (`WebTools`), ucięty `MAX_TOKENS` `functionCall` odrzucony + `completion_tokens` = kandydaci+myśli (`GeminiProvider`), normalizacja frazy/strony i walidacja inline w UI (`collect()` → `null`), sprostowanie T3.2 w STATUS, docstringi. Pominięte nitpicks (nazwane booleany, rozbiór `assertToken`, helpery w `HistoryCompactor`) — czysta czytelność, opisane w CHANGELOG.
+- **WAŻNE — rozejście historii:** LOKALNY `develop` (reset hasła, Langfuse, DeepSeek `bafac2d`) nigdy nie został pushnięty; `origin/develop` = T6.x/T3.x/E2.2 (PR #16). Te linie trzeba kiedyś scalić (rebase/merge + testy) — dopóki tego nie zrobiono, nie pracować równolegle na obu.
+- **Od czego zacząć:** push `fix/pr16-review` za zgodą właściciela (doda się do PR #16), obserwować CodeRabbit ponownie; potem scalenie lokalnego developa (decyzja właściciela).
 - **Pułapki:**
-  - Właściciel nie kopiuje z terminala → pliki pomocnicze w `var/` (do sprzątania: `t.txt`, `m.txt`, `rotacja-mcp.txt`, `TEST-T3.2-instrukcja.txt`).
-  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
-  - Push: `git -c credential.helper='!gh auth git-credential' push origin develop`.
-  - DT przez curl; notatki `devbrain_todo_note` bywają odrzucane `-32700` sporadycznie (serwer/WAF DevBrain — zgłoszone jako #62-543); done/claim działają stabilnie; python urllib → 403.
-  - Właściciel: „nie trać czasu na badanie kodu" — czytać tylko to, co konieczne do zadania.
+  - Rootless Docker: `dev-start.sh` bez sudo (socket `/run/user/1000/docker.sock`); `DOCKER_HOST` wróciło do `/etc/environment` u właściciela. Testy UI używają atrapy `docker`, nie prawdziwego daemona.
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --test-isolation=none`.
+  - `nv.tmp` (token DT) jest nieśledzony — nie commitować.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin fix/pr16-review` (tylko za zgodą).

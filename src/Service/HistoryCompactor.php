@@ -65,6 +65,7 @@ class HistoryCompactor
         return 0;
     }
 
+    /** Shapes one message for the model: plain text, or text+image parts when images exist. */
     public static function modelContent(string $text, array $images): string|array
     {
         if ($images === []) {

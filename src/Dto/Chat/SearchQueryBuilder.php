@@ -12,14 +12,16 @@ use App\Exception\ValidationException;
  */
 final class SearchQueryBuilder
 {
+    /** Composes the validated query into one engine string; multi-word tokens stay quoted terms. */
     public static function build(SearchQuery $query): string
     {
         $parts = [$query->query];
         foreach ($query->mustHave as $token) {
-            $parts[] = '+'.$token;
+            // Whitespace inside a token would split it into separate terms (operator injection).
+            $parts[] = '+'.(str_contains($token, ' ') ? '"'.$token.'"' : $token);
         }
         foreach ($query->exclude as $token) {
-            $parts[] = '-'.$token;
+            $parts[] = '-'.(str_contains($token, ' ') ? '"'.$token.'"' : $token);
         }
         if ($query->exactPhrase !== '') {
             $parts[] = '"'.$query->exactPhrase.'"';

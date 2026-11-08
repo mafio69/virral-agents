@@ -8,6 +8,7 @@ class Element {
     append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.children = children; }
     setAttribute(name, value) { this[name] = value; }
+    getAttribute(name) { return this[name]; }
     get textContent() { return this.tag === 'button' ? this._text : undefined; }
     set textContent(value) { this._text = value; }
 }
@@ -65,6 +66,24 @@ test('collect returns only non-empty filters with normalized phrase and site', (
     phraseInput.value = '  konfiguracja   yaml ';
     siteInput.value = ' SymFony.COM ';
     assert.deepEqual(panel.collect(), { exact_phrase: 'konfiguracja yaml', sites: ['symfony.com'] });
+});
+
+test('collect strips wrapping quotes from the phrase and the URL to its host', () => {
+    const { panel, phraseInput, siteInput } = filters();
+    phraseInput.value = ' "konfiguracja   yaml" ';
+    siteInput.value = 'https://Docs.Symfony.com/page?query=1';
+    assert.deepEqual(panel.collect(), { exact_phrase: 'konfiguracja yaml', sites: ['docs.symfony.com'] });
+    assert.equal(siteInput.getAttribute('aria-invalid'), 'false');
+});
+
+test('collect marks an invalid site inline and returns null', () => {
+    const { panel, siteInput } = filters();
+    siteInput.value = 'to nie jest domena';
+    assert.equal(panel.collect(), null);
+    assert.equal(siteInput.getAttribute('aria-invalid'), 'true');
+    siteInput.value = 'wikipedia.org';
+    assert.deepEqual(panel.collect(), { sites: ['wikipedia.org'] });
+    assert.equal(siteInput.getAttribute('aria-invalid'), 'false');
 });
 
 test('more options toggle opens and closes the panel', () => {

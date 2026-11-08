@@ -90,6 +90,7 @@ final readonly class SearchQuery
         return $result;
     }
 
+    /** True when any advanced filter is set (drives SearchOptions approval rules). */
     public function hasFilters(): bool
     {
         return $this->exclude !== [] || $this->mustHave !== [] || $this->exactPhrase !== '' || $this->sites !== [];

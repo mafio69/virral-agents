@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-11-08 — fixy z przeglądu PR #16 (CodeRabbit) + start bez sudo (rootless)
+
+- **SearchQueryBuilder:** tokeny z spacjami (`must_have`/`exclude`) są teraz kwotowane (`+"twig -legacy"`), więc nie rozpadają się na osobne operatory wyszukiwania; testy multi-word w obu formach.
+- **WebTools:** `web_search` z pustym zapytaniem po normalizacji (sam whitespace) → `invalid_response` zamiast wyszukiwania z samymi filtrami; przypadki regresyjne w `ResearchAgentTest`.
+- **GeminiProvider:** odpowiedź z `finishReason: MAX_TOKENS` niosąca `functionCall` jest odrzucana (`invalid_response`) — ucięte przez limit wywołanie narzędzia nie może prosić o zgodę; odpowiedzi częściowe z tekstem nadal przechodzą. `completion_tokens` sumuje `candidatesTokenCount` + `thoughtsTokenCount` (myśli to rozliczane tokeny wyjściowe).
+- **UI (chat-search-filters):** `collect()` normalizuje frazę (usuwa owijające cudzysłowy) i stronę (URL → host, małe litery) zgodnie z regułami backendu; nieprawidłowa domena oznaczana inline (`aria-invalid`, `setCustomValidity`) i wyszukiwanie nie wychodzi z przeglądarki (`collect()` → `null`, komunikat z `onNotice`). Karta zgody pokazuje znormalizowane wartości.
+- **STATUS.md:** sprostowanie opisu T3.2 — historia po kompakcie nadal rośnie z liczbą tur (starsze pytania skracane do 300 znaków); usunięto nieprawdziwą tezę o stałym rozmiarze.
+- **Docstringi:** uzupełnione w nowych funkcjach PR (SearchQuery/SearchQueryBuilder/SearchOptions/WebTools/HistoryCompactor/chat-search-filters) — bramka Docstring Coverage.
+- **dev-start.sh:** Docker rootless użytkownika — brak `sudo` (socket `/run/user/1000/docker.sock`); testy `dev-start.test.mjs` przepięte z atrapy `sudo` na atrapę `docker`.
+- Pominięte z przeglądu (nitpicks, czysta czytelność bez zmiany zachowania): nazwane booleany w `SearchOptions`, rozbiór warunku w `SearchQuery::assertToken`, ekstrakcja pomocników w `HistoryCompactor::compact`.
+- Walidacja: PHPUnit 287/287 (1340 asercji), UI 109/109, formatter 0/181.
+
 ## 2026-11-05 — #62-486 (E2.2): realistyczny User-Agent i Accept-Language w fetcherze
 
 - Portale informacyjne (np. Gazeta.pl) blokowały żądania z UA `VirralAgents-Research/1.0` kodem 403 → fetch źródeł dla trybu badania tracił całe strony.

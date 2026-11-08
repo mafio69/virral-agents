@@ -55,7 +55,13 @@ export class ResearchPanel {
                 return;
             }
             // Filters travel as tokens; the backend composes the final query string.
-            const request = { kind: 'search', query: text, ...(this.filters ? this.filters.collect() : {}) };
+            const filters = this.filters ? this.filters.collect() : {};
+            if (filters === null) {
+                // Invalid filter input was flagged inline; nothing leaves the browser.
+                this.onNotice('Popraw filtr „Strona” — podaj domenę, np. wikipedia.org.');
+                return;
+            }
+            const request = { kind: 'search', query: text, ...filters };
             void this.run('propose', { request }).then(ok => {
                 if (ok) {
                     this.onNotice('Sprawdź dokładne zapytanie poniżej i wybierz Allow lub Deny.');

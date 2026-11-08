@@ -9,6 +9,7 @@ export function approveSearch(query, confirm = () => false) {
 }
 
 /** Human-readable filter summary; the user never sees search syntax. */
+/** Human-readable summary of the filters for the consent card. */
 export function describeSearchFilters(search) {
     const parts = [];
     if (Array.isArray(search?.must_have) && search.must_have.length) {

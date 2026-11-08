@@ -11,6 +11,7 @@ use App\Exception\ValidationException;
 
 final class WebTools
 {
+    /** Tool declarations for providers (ASK flow: every call needs user consent). */
     public static function definitions(): array
     {
         return [
@@ -27,11 +28,13 @@ final class WebTools
         ];
     }
 
+    /** OpenAI-compatible (function-calling) shape of the tool declarations. */
     public static function compat(): array
     {
         return array_map(static fn (array $tool): array => ['type' => 'function', 'function' => $tool], self::definitions());
     }
 
+    /** Parses a model tool call into a pending search/fetch action; malformed input is rejected. */
     public static function request(string $name, mixed $arguments): array
     {
         if (is_string($arguments)) {
@@ -48,6 +51,10 @@ final class WebTools
             }
             try {
                 $query = SearchQuery::fromArray($arguments);
+                // Filters cannot stand alone: a whitespace-only base query is malformed tool input.
+                if ($query->query === '') {
+                    throw new AiConnectionException('invalid_response');
+                }
                 SearchQueryBuilder::build($query);
             } catch (ValidationException) {
                 throw new AiConnectionException('invalid_response');

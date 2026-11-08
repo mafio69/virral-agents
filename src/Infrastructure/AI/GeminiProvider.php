@@ -129,7 +129,7 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         }
         $imageOutput = self::generatesImages($model);
         $body = $this->transport->request('POST', 'models/'.$model.':generateContent', [
-            'contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $imageOutput ? 8192 : 4096,
+            'contents' => $contents, 'generationConfig' => ['maxOutputTokens' => 8192,
                 ...($imageOutput ? ['responseModalities' => ['TEXT', 'IMAGE']] : [])],
             ...($system !== [] ? ['systemInstruction' => ['parts' => $system]] : []),
             ...($web ? ['tools' => [['functionDeclarations' => array_map(static function (array $tool): array {
@@ -144,12 +144,18 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         $text = [];
         $images = [];
         $candidate = $body['candidates'][0] ?? [];
-        if (isset($candidate['finishReason']) && $candidate['finishReason'] !== 'STOP') {
+        $finishReason = $candidate['finishReason'] ?? null;
+        // Thinking models spend output tokens on thoughts, so MAX_TOKENS can arrive with
+        // usable text — keeping the partial answer beats dropping the whole reply.
+        // Image output stays strict: a truncated image is a broken image.
+        if ($finishReason !== null && $finishReason !== 'STOP'
+            && !(!$imageOutput && $finishReason === 'MAX_TOKENS')) {
             throw new AiConnectionException('invalid_response');
         }
         $usage = isset($body['usageMetadata']) && is_array($body['usageMetadata']) ? [
             'prompt_tokens' => $body['usageMetadata']['promptTokenCount'] ?? 0,
-            'completion_tokens' => $body['usageMetadata']['candidatesTokenCount'] ?? 0,
+            // Thoughts are billed output tokens too; record them together so usage is not undercounted.
+            'completion_tokens' => ($body['usageMetadata']['candidatesTokenCount'] ?? 0) + ($body['usageMetadata']['thoughtsTokenCount'] ?? 0),
         ] : null;
         $parts = $candidate['content']['parts'] ?? [];
         if (!is_array($parts) || !array_is_list($parts)) {
@@ -163,6 +169,10 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
                 continue;
             }
             if ($web && isset($part['functionCall'])) {
+                // A MAX_TOKENS finish can truncate the call arguments; only a complete call may ask for consent.
+                if ($finishReason === 'MAX_TOKENS') {
+                    throw new AiConnectionException('invalid_response');
+                }
                 $call = $part['functionCall'];
                 return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['args'] ?? null), usage: $usage);
             }

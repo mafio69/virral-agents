@@ -19,15 +19,14 @@ Szablon:
 
 ---
 
-## 2026-11-01 — porządek gałęzi, nginx/ACL, weryfikacja (Claude)
+## 2026-11-08 — fixy przeglądu PR #16 na gałęzi `fix/pr16-review` (bez push)
 
-- **Gałąź:** `chore/agents-dom-status` z `origin/master` (lokalny `develop` przesunięty na `origin/master`, bez push). Zmiany niezacommitowane do akceptacji właściciela.
-- **Zrobione:** diagnoza i naprawa (przez właściciela, `setfacl`) plików statycznych za nginx; `.env` `660`; `server_name agents.dom`; wpisy CHANGELOG/REPO/STATUS, `docs/E2E.md`; pliki do `.local/karencja` (usunąć po 2026-11-08).
-- **Od czego zacząć:** po akceptacji commit i push `develop` + gałęzi, PR do `develop`; potem test wyszukiwania po konfiguracji MCP przez właściciela.
+- **Gałąź:** `fix/pr16-review` z `origin/develop` (`e94da73`). Commity: fixy review + `dev-start.sh` bez sudo (rootless). Walidacja: PHPUnit 287/287, UI 109/109, formatter 0/181; E2E niepowtórzone.
+- **Fixy z review (CodeRabbit):** kwotowanie wielosłownych tokenów (`SearchQueryBuilder`), pusty `query` → `invalid_response` (`WebTools`), ucięty `MAX_TOKENS` `functionCall` odrzucony + `completion_tokens` = kandydaci+myśli (`GeminiProvider`), normalizacja frazy/strony i walidacja inline w UI (`collect()` → `null`), sprostowanie T3.2 w STATUS, docstringi. Pominięte nitpicks (nazwane booleany, rozbiór `assertToken`, helpery w `HistoryCompactor`) — czysta czytelność, opisane w CHANGELOG.
+- **WAŻNE — rozejście historii:** LOKALNY `develop` (reset hasła, Langfuse, DeepSeek `bafac2d`) nigdy nie został pushnięty; `origin/develop` = T6.x/T3.x/E2.2 (PR #16). Te linie trzeba kiedyś scalić (rebase/merge + testy) — dopóki tego nie zrobiono, nie pracować równolegle na obu.
+- **Od czego zacząć:** push `fix/pr16-review` za zgodą właściciela (doda się do PR #16), obserwować CodeRabbit ponownie; potem scalenie lokalnego developa (decyzja właściciela).
 - **Pułapki:**
-  - `MCP_SEARCH_URL` musi być `http://mcp-search:8000/mcp` (nie `szukaj:8000` — to SearXNG); token MCP do rotacji.
-  - Traefik (osobny projekt) w pętli restartów: port 443 zajęty przez Tailscale; tymczasowo aplikacja po IP `:8181`.
-  - Na serwerze `*.dom` się nie rozwiązuje — E2E z `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025`.
-  - Lokalny Node 22 nie zna `--test-isolation=none` (CI ma Node 24); ręcznie `--experimental-test-isolation=none`.
-  - Narzędzia Read/Edit agenta są ograniczone do `bin/` — edycje przez Bash.
-  - Podpis commitów zgodny z modelem (`GIT-FLOW.md`), np. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+  - Rootless Docker: `dev-start.sh` bez sudo (socket `/run/user/1000/docker.sock`); `DOCKER_HOST` wróciło do `/etc/environment` u właściciela. Testy UI używają atrapy `docker`, nie prawdziwego daemona.
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --test-isolation=none`.
+  - `nv.tmp` (token DT) jest nieśledzony — nie commitować.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin fix/pr16-review` (tylko za zgodą).

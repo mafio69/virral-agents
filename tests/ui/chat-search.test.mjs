@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { approveSearch, canSearch, bindSearchControls, createSearchApproval } from '../../public/ui/chat/chat-search.js';
+import { approveSearch, canSearch, bindSearchControls, createSearchApproval, describeSearchFilters } from '../../public/ui/chat/chat-search.js';
 import { ChatApi } from '../../public/ui/chat/chat-api.js';
 import { ChatController } from '../../public/ui/chat/chat-controller.js';
 import { chatFixture } from './chat-fixture.mjs';
@@ -159,6 +159,15 @@ test('a changed conversation invalidates a pending consent', async () => {
     await pending;
     assert.equal(sends, 0);
     assert.match(controller.state.notice, /ponownie/);
+});
+
+test('filter summary is human-readable and hides search syntax', () => {
+    assert.equal(describeSearchFilters({}), '');
+    assert.equal(describeSearchFilters({ query: 'PHP' }), '');
+    assert.equal(describeSearchFilters({ query: 'PHP', must_have: ['twig'], exclude: ['legacy'] }), 'Musi zawierać: twig · Bez: legacy');
+    assert.equal(describeSearchFilters({ query: 'PHP', exact_phrase: '  kontroler yaml  ', sites: ['symfony.com'] }),
+        'Dokładna fraza: „kontroler yaml” · Strony: symfony.com');
+    assert.equal(describeSearchFilters(null), '');
 });
 
 test('search activity runs while awaiting a reply and stops on completion or failure', async () => {

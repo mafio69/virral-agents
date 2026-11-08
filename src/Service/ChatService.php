@@ -29,6 +29,7 @@ final readonly class ChatService
         private readonly ModelCatalogInterface $modelCatalog,
         private readonly ResearchServiceInterface $research,
         private readonly ResearchReplyGeneratorInterface $researchReply,
+        private readonly HistoryCompactor $historyCompactor = new HistoryCompactor(),
         private readonly ?\App\Observability\LangfuseTrace $langfuse = null,
         private readonly ?\App\Repository\ChatUsageRepository $chatUsageRepository = null,
     ) {
@@ -319,22 +320,7 @@ final readonly class ChatService
     /** @param list<array{id: int, role: string, content: string, kind?: string, images?: list<string>}> $messages */
     private function historyForModel(array $messages): array
     {
-        $history = [];
-        foreach ($messages as $msg) {
-            // Mechanical assistant notices never reach the model; user instructions always do.
-            if ($msg['role'] === 'assistant' && ($msg['kind'] ?? 'message') !== 'message') {
-                continue;
-            }
-            $history[] = [
-                'role' => $msg['role'],
-                // Generated assistant images are displayed from storage, not replayed without Gemini thought signatures.
-                'content' => match (true) {
-                    $msg['role'] === 'assistant' && !empty($msg['images']) => $msg['content'] ?: 'Wygenerowano obraz w poprzedniej odpowiedzi.',
-                    default => $this->modelContent($msg['content'], $msg['images'] ?? []),
-                },
-            ];
-        }
-        return $history;
+        return $this->historyCompactor->compact($messages);
     }
 
     private function resolveModel(?string $model): string
@@ -358,14 +344,7 @@ final readonly class ChatService
 
     private function modelContent(string $text, array $images): string|array
     {
-        if ($images === []) {
-            return $text;
-        }
-        $parts = [['type' => 'text', 'text' => $text !== '' ? $text : 'Opisz ten obraz.']];
-        foreach ($images as $image) {
-            $parts[] = ['type' => 'image_url', 'image_url' => ['url' => $image]];
-        }
-        return $parts;
+        return HistoryCompactor::modelContent($text, $images);
     }
 
     /**

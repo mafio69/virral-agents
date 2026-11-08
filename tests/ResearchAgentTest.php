@@ -41,6 +41,40 @@ final class ResearchAgentTest extends TestCase
         self::assertSame(['kind' => 'fetch', 'url' => 'https://example.org/page'], $reply->webRequest);
     }
 
+    public function testWebSearchToolAcceptsAdvancedFiltersFromTheModel(): void
+    {
+        $body = ['output' => [['type' => 'function_call', 'name' => 'web_search',
+            'arguments' => '{"query":"PHP router","must_have":["twig"],"exclude":["legacy"],"exact_phrase":"kontroler yaml","sites":["SymFony.com"]}']]];
+        $http = new Client(['base_uri' => 'https://fixture.example/', 'handler' => HandlerStack::create(new MockHandler([new Response(200, [], json_encode($body))]))]);
+        $provider = new OpenAiProvider(new ProviderTransport('https://fixture.example/', 'dummy-fixture', http: $http));
+        $reply = $provider->generateWebReply([['role' => 'user', 'content' => 'Fixture question']], 'gpt-6-astra');
+        self::assertSame(['kind' => 'search', 'query' => 'PHP router', 'must_have' => ['twig'],
+            'exclude' => ['legacy'], 'exact_phrase' => 'kontroler yaml', 'sites' => ['symfony.com']], $reply->webRequest);
+    }
+
+    public function testWebSearchToolRejectsInvalidFilterArguments(): void
+    {
+        foreach ([
+            '{"query":"PHP","must_have":["-legacy"]}',
+            '{"query":"PHP","sites":["https://example.com"]}',
+            '{"query":"PHP","unknown":1}',
+            '{"query":"PHP","must_have":"twig"}',
+            '{"must_have":["twig"]}',
+            '{"query":"   ","must_have":["twig"]}',
+            '{"query":""}',
+        ] as $arguments) {
+            $body = ['output' => [['type' => 'function_call', 'name' => 'web_search', 'arguments' => $arguments]]];
+            $http = new Client(['base_uri' => 'https://fixture.example/', 'handler' => HandlerStack::create(new MockHandler([new Response(200, [], json_encode($body))]))]);
+            $provider = new OpenAiProvider(new ProviderTransport('https://fixture.example/', 'dummy-fixture', http: $http));
+            try {
+                $provider->generateWebReply([['role' => 'user', 'content' => 'Fixture']], 'gpt-6-astra');
+                self::fail('Invalid tool arguments must be rejected: '.$arguments);
+            } catch (\App\Exception\AiConnectionException) {
+                self::assertTrue(true);
+            }
+        }
+    }
+
     public function testAgentProposalIsPersistedAsPendingNotExecuted(): void
     {
         $research = $this->createMock(ResearchServiceInterface::class);

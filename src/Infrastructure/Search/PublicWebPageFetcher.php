@@ -18,8 +18,13 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
     private const MAX_REDIRECTS = 3;
     private const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
 
-    public function __construct(private ?ClientInterface $http = null, private ?\Closure $resolve = null, private bool $useStreams = false)
-    {
+    public function __construct(
+        private ?ClientInterface $http = null,
+        private ?\Closure $resolve = null,
+        private bool $useStreams = false,
+        private string $userAgent = 'VirralAgents-Research/1.0',
+        private string $acceptLanguage = '',
+    ) {
     }
 
     public function fetch(string $url): array
@@ -134,10 +139,20 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             throw self::failure('timeout');
         }
         $port = parse_url($url, PHP_URL_PORT) ?? (parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80);
+        $headers = [
+            'Accept' => 'text/html, text/plain',
+            'Accept-Encoding' => 'identity',
+            // Realistic browser headers avoid blanket 403 blocks on news portals (E2.2);
+            // the fetcher still never sends cookies nor executes scripts.
+            'User-Agent' => $this->userAgent,
+        ];
+        if ($this->acceptLanguage !== '') {
+            $headers['Accept-Language'] = $this->acceptLanguage;
+        }
         $options = [
             'allow_redirects' => false, 'http_errors' => false, 'cookies' => false, 'proxy' => '', 'verify' => true,
             'connect_timeout' => min(5, $remaining), 'timeout' => $remaining, 'read_timeout' => 10, 'stream' => true, 'decode_content' => false,
-            'headers' => ['Accept' => 'text/html, text/plain', 'Accept-Encoding' => 'identity', 'User-Agent' => 'VirralAgents-Research/1.0'],
+            'headers' => $headers,
         ];
         $requestUrl = $url;
         $streams = $this->useStreams || !extension_loaded('curl');

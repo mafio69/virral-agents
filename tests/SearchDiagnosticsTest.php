@@ -11,6 +11,7 @@ use App\Infrastructure\Search\SearchException;
 use App\Service\ChatReplyGenerator;
 use App\Service\SearchDiagnostics;
 use App\Dto\Chat\SearchOptions;
+use App\Dto\Chat\SearchQuery;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
@@ -37,7 +38,7 @@ final class SearchDiagnosticsTest extends TestCase
         ]);
         $model = $this->createMock(AiClientInterface::class);
         $model->expects(self::never())->method('generate');
-        $reply = (new ChatReplyGenerator($search, $logger))->generate($model, [], 'fixture', new SearchOptions('mcp', 1, 'Public fixture query', true));
+        $reply = (new ChatReplyGenerator($search, $logger))->generate($model, [], 'fixture', new SearchOptions('mcp', 1, new SearchQuery('Public fixture query'), true));
         self::assertSame(['status' => 'unavailable', 'reason' => 'dns_failed', 'stage' => 'initialize'], $reply->search);
         self::assertStringContainsString('Przepraszamy, wyszukiwanie WWW jest chwilowo niedostępne', $reply->text);
         self::assertStringNotContainsString('MCP_AUTH_TOKEN', $reply->text);
@@ -54,7 +55,7 @@ final class SearchDiagnosticsTest extends TestCase
         );
         $model = $this->createMock(AiClientInterface::class);
         $model->expects(self::never())->method('generate');
-        $reply = (new ChatReplyGenerator(null, $logger))->generate($model, [], 'fixture', new SearchOptions('mcp', 1, 'Public fixture query', true));
+        $reply = (new ChatReplyGenerator(null, $logger))->generate($model, [], 'fixture', new SearchOptions('mcp', 1, new SearchQuery('Public fixture query'), true));
         self::assertSame(['status' => 'unavailable', 'reason' => 'missing_configuration', 'stage' => 'definition'], $reply->search);
         self::assertSame(
             'Wyszukiwanie WWW nie jest skonfigurowane w tej instalacji. Nie uzyskano źródeł i nie przygotowano odpowiedzi na ich podstawie.',

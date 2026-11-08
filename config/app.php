@@ -22,6 +22,17 @@ return [
         'timezone' => 'Europe/Warsaw',
     ],
     'app_url' => 'http://localhost:8181',
+    'chat' => [
+        // Ile ostatnich tur rozmowy trafia do modelu w całości; starsze tury
+        // zostają jako przycięte wiadomości użytkownika (HistoryCompactor, T3.1).
+        'context_recent_turns' => 8,
+    ],
+    'research' => [
+        // Nagłówki fetchera stron (E2.2): realistyczny UA omija blokady 403 portali,
+        // Accept-Language jak w przeglądarce. Fetch pozostaje bez cookies i bez JS.
+        'fetch_user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+        'fetch_accept_language' => 'pl-PL,pl;q=0.9,en;q=0.8',
+    ],
     // Reverse proxies whose X-Forwarded-For is trusted for the login limit (addresses or CIDR).
     // Empty: REMOTE_ADDR is used as is. Override with TRUSTED_PROXIES (comma-separated).
     'trusted_proxies' => [],

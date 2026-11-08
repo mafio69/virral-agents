@@ -16,7 +16,7 @@
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
-| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
+| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker rootless użytkownika, bez sudo |
 | Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
@@ -60,7 +60,9 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Szyfrowanie danych | `ProtectedStore` szyfruje pola z `ProtectedFields` i wiąże szyfrogram z tabelą/polem/ID/właścicielem; bez `USER_DATA_KEY` lub znacznika migracji aplikacja zwraca 503 | `src/Infrastructure/DataProtection`, `docs/OCHRONA_DANYCH.md` |
 | Wybór modelu | `ModelSelector` rozdziela `provider:model`; rozmowa jest związana z dostawcą — zmiana dostawcy wymaga nowej rozmowy (historia nie jest przekazywana innemu dostawcy) | `src/Dto/Chat/ModelSelector.php`, `ProviderRegistry` |
 | Zapis odpowiedzi | wiadomość użytkownika jest zapisywana **przed** wywołaniem AI; po błędzie UI odczytuje rozmowę zamiast ponownie wysyłać POST (ochrona przed duplikatem) | `ChatService::addMessage`, `chat-controller.js` |
+| Kompakt historii | `HistoryCompactor` (T3.1): ostatnie `context_recent_turns` tur (domyślnie 8, `config/app.php` → DI) trafia do modelu w całości; starsze tury tylko jako wiadomości użytkownika przycięte do 300 znaków (bez obrazów), starsze odpowiedzi AI i mechaniczne notice wypadają; reguły `kind != message` i obrazów w oknie ostatnim zachowane; tura liczy się od wiadomości użytkownika | `src/Service/HistoryCompactor.php`, `ChatService::historyForModel` |
 | Zgoda na WWW (ASK) | każde wyszukanie i fetch wymaga jawnej decyzji; zgoda jest jednorazowa i nie przechodzi na kolejną wiadomość; model nie może sam uruchomić sieci (prośby AI tworzą tylko oczekującą decyzję) | `ResearchService`, `ChatReplyGenerator`, `chat-search.js` |
+| Wyszukiwanie zaawansowane | `SearchQuery` (query, `must_have`, `exclude`, `exact_phrase`, `sites`) + `SearchQueryBuilder` składają jeden string `query +słowo -słowo "fraza" site:domena` przed wywołaniem MCP; filtrami można ograniczyć wyszukiwanie z UI (chipy „Bez / Musi zawierać" + „Więcej opcji" w `SearchFilters`, doklejane przez `ResearchPanel` do `/api/research/actions`), z `search` w POST messages i z kontraktu modeli (`WebTools::definitions` web_search); model i JSON wyników widzą zapytanie złożone, karta zgody pokazuje filtry po polsku; operatorów nie da się wstrzyknąć (token nie zaczyna się od `-`/`+`, bez cudzysłowów) | `src/Dto/Chat/SearchQuery.php`, `SearchQueryBuilder.php`, `WebTools.php`, `chat-search-filters.js`, `describeSearchFilters` w `chat-search.js` |
 | Fetch stron | tylko publiczny IPv4 (ochrona SSRF, połączenie przypięte do IP), HTML/tekst, maks. 3 przekierowania (każdy hop: walidacja adresu, świeże DNS, publiczny IPv4, zakaz https→http), bez cookies i JS. Błąd ma kod z zamkniętej listy `SearchException::FETCH_REASONS` (etap `fetch`), zapisywany w `page.reason`, widoczny w UI i w evidence dla modelu; nigdy treść odpowiedzi serwera | `PublicWebPageFetcher`, `PublicWebUrl`, `chat-research.js` |
 | Migracje | `bin/migrate.php` przed startem FPM; HTTP tylko `assertReady`. Inicjalizacja szyfrowania automatyczna wyłącznie dla pustej bazy | `docker/start-app.sh`, `DatabaseInitializer`, `MigrationRunner` |
 | Błędy dostawców | UI pokazuje komunikaty z zamkniętej listy kodów (`X-AI-Error`), nigdy treści odpowiedzi dostawcy ani wyjątków | `AiConnectionException`, `chat-api.js` |
@@ -86,7 +88,9 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
   - logowanie: 5 nieudanych prób / 900 s osobno dla IP i e-maila (`LoginAttemptLimiter`); hasło min. 10 znaków;
   - obraz wejściowy: max 512 KiB po stronie serwera (`ChatImageValidator::MAX_BYTES`), przeglądarka skaluje do 1600 px; obraz generowany Gemini: max 8 MiB;
   - MCP: odpowiedź max 1 MiB, timeout 45 s; wspierane wersje protokołu w `McpSearchClient::SUPPORTED_PROTOCOLS`;
+  - filtry wyszukiwania: token 1–64 znaki, maks. 10 `must_have` + 10 `exclude` (przed deduplikacją), fraza ≤ 100 znaków, maks. 5 domen, złożone zapytanie ≤ 1000 B (`SearchQuery`);
   - fetch: 1 MiB / 16 000 znaków na stronę; badanie: 20 źródeł, 100 000 znaków kontekstu, 80 zapamiętanych wykluczeń;
+  - kompakt historii: `context_recent_turns` = 8 pełnych tur (config/DI), starsze wiadomości użytkownika cięte do 300 znaków (`HistoryCompactor`);
   - AI: OVH `ovh_ai.timeout` 120 s (`config/app.php`), katalog modeli 30 s.
 - **Dane runtime:** `var/database/app.sqlite`, `var/logs/` — poza Git, przetrwają restart kontenera (bind mount katalogu repo).
 - **Języki:** rozmowa/dokumentacja projektowa po polsku; nazwy w kodzie po angielsku; komunikaty UI obecnie po polsku bezpośrednio w JS/HTML (brak warstwy i18n).

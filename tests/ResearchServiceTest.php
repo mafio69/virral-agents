@@ -221,4 +221,46 @@ final class ResearchServiceTest extends ChatServiceTestCase
         self::assertSame([], $cleared['sources']);
         self::assertSame([], $cleared['actions']);
     }
+
+    public function testSearchRequestKeepsFiltersAndExecutesComposedQuery(): void
+    {
+        $search = $this->createMock(SearchClientInterface::class);
+        $search->expects(self::once())->method('search')
+            ->with('PHP router +twig -legacy "kontroler yaml" site:symfony.com', 10)
+            ->willReturn($this->results('filtered', 2));
+        $fetch = $this->createMock(WebPageFetcherInterface::class);
+        $service = $this->service($search, $fetch);
+        $state = $service->propose($this->userId, 0, ['kind' => 'search', 'query' => ' PHP router ', 'must_have' => ['twig'],
+            'exclude' => ['legacy'], 'exact_phrase' => 'kontroler yaml', 'sites' => ['symfony.com']]);
+        self::assertSame(
+            ['kind' => 'search', 'query' => 'PHP router', 'must_have' => ['twig'],
+            'exclude' => ['legacy'], 'exact_phrase' => 'kontroler yaml', 'sites' => ['symfony.com']],
+            $this->pending($state)[0]['request']
+        );
+        $state = $service->decide($this->userId, 0, $this->pending($state)[0]['id'], true);
+        self::assertCount(2, $state['results']);
+    }
+
+    public function testSearchRequestRejectsInvalidFilters(): void
+    {
+        $search = $this->createMock(SearchClientInterface::class);
+        $search->expects(self::never())->method('search');
+        $fetch = $this->createMock(WebPageFetcherInterface::class);
+        $service = $this->service($search, $fetch);
+        foreach ([
+            ['kind' => 'search', 'query' => ''],
+            ['kind' => 'search', 'query' => '   '],
+            ['kind' => 'search', 'query' => 'Public', 'must_have' => ['-nope']],
+            ['kind' => 'search', 'query' => 'Public', 'sites' => ['example.com/path']],
+            ['kind' => 'search', 'query' => 'Public', 'unknown' => 'x'],
+            ['kind' => 'fetch', 'url' => 'https://example.org/x', 'must_have' => ['y']],
+        ] as $request) {
+            try {
+                $service->propose($this->userId, 0, $request);
+                self::fail('Invalid search request must be rejected: '.json_encode($request));
+            } catch (ValidationException) {
+                self::assertTrue(true);
+            }
+        }
+    }
 }

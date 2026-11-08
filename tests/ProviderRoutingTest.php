@@ -119,7 +119,7 @@ final class ProviderRoutingTest extends TestCase
                 $provider,
                 [['role' => 'user', 'content' => 'Private fixture question']],
                 $model,
-                new \App\Dto\Chat\SearchOptions('mcp', 1, 'Public query', true)
+                new \App\Dto\Chat\SearchOptions('mcp', 1, new \App\Dto\Chat\SearchQuery('Public query'), true)
             );
             self::assertStringContainsString('https://example.org/source', $reply->text);
             $payload = json_decode((string)$requests[0]['request']->getBody(), true);

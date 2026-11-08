@@ -16,7 +16,7 @@
 | Cel | Polecenie | Istotna uwaga |
 |---|---|---|
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
-| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
+| Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker rootless użytkownika, bez sudo |
 | Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |

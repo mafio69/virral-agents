@@ -152,12 +152,25 @@ final class GeminiProviderTest extends TestCase
     {
         $provider = $this->provider([$this->response(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [
             ['thought' => true, 'text' => 'reasoning fixture'], ['text' => 'Partial answer'],
-        ]]]], 'usageMetadata' => ['promptTokenCount' => 120, 'candidatesTokenCount' => 8192]])]);
+        ]]]], 'usageMetadata' => ['promptTokenCount' => 120, 'candidatesTokenCount' => 8192, 'thoughtsTokenCount' => 512]])]);
         $reply = $provider->generateReply([['role' => 'user', 'content' => 'Fixture']], 'gemini-3.8-flash');
         self::assertSame('Partial answer', $reply->text);
-        self::assertSame(['prompt_tokens' => 120, 'completion_tokens' => 8192], $reply->usage);
+        // Thoughts are billed output tokens: both counters land in completion_tokens.
+        self::assertSame(['prompt_tokens' => 120, 'completion_tokens' => 8704], $reply->usage);
         $body = json_decode((string)$this->history[0]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
         self::assertSame(8192, $body['generationConfig']['maxOutputTokens']);
+    }
+
+    public function testTruncatedToolCallOnMaxTokensIsRejected(): void
+    {
+        try {
+            $this->provider([$this->response(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [
+                ['functionCall' => ['name' => 'web_search', 'args' => ['query' => 'Public fixture']]],
+            ]]]]])])->generateWebReply([['role' => 'user', 'content' => 'Find']], 'gemini-3-flash');
+            self::fail('A MAX_TOKENS-truncated tool call must be rejected');
+        } catch (AiConnectionException $error) {
+            self::assertSame('invalid_response', $error->reason);
+        }
     }
 
     public function testMaxTokensWithoutAnyTextIsStillRejected(): void

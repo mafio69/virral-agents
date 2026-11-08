@@ -12,6 +12,7 @@ docs/Prace_rozwojowe/
 /.idea/
 /.phpunit.cache/
 /.env.*
+/nv.tmp
 /Design/*.zip
 /public/ui/favicons.zip
 /secret/2026-10-15_01-04.png

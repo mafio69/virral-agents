@@ -154,7 +154,8 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
         }
         $usage = isset($body['usageMetadata']) && is_array($body['usageMetadata']) ? [
             'prompt_tokens' => $body['usageMetadata']['promptTokenCount'] ?? 0,
-            'completion_tokens' => $body['usageMetadata']['candidatesTokenCount'] ?? 0,
+            // Thoughts are billed output tokens too; record them together so usage is not undercounted.
+            'completion_tokens' => ($body['usageMetadata']['candidatesTokenCount'] ?? 0) + ($body['usageMetadata']['thoughtsTokenCount'] ?? 0),
         ] : null;
         $parts = $candidate['content']['parts'] ?? [];
         if (!is_array($parts) || !array_is_list($parts)) {
@@ -168,6 +169,10 @@ final class GeminiProvider implements ChatProviderInterface, MultimodalClientInt
                 continue;
             }
             if ($web && isset($part['functionCall'])) {
+                // A MAX_TOKENS finish can truncate the call arguments; only a complete call may ask for consent.
+                if ($finishReason === 'MAX_TOKENS') {
+                    throw new AiConnectionException('invalid_response');
+                }
                 $call = $part['functionCall'];
                 return new \App\Dto\AI\AiReply('', webRequest: WebTools::request($call['name'] ?? '', $call['args'] ?? null), usage: $usage);
             }

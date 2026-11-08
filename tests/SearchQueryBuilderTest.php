@@ -35,6 +35,15 @@ final class SearchQueryBuilderTest extends TestCase
         self::assertSame('site:example.com', SearchQueryBuilder::build(new SearchQuery(sites: ['example.com'])));
     }
 
+    public function testMultiWordTokensStaySingleQuotedTerms(): void
+    {
+        // A space inside a token must not split it into two operators.
+        self::assertSame(
+            'Symfony +"twig -legacy" -"old docs"',
+            SearchQueryBuilder::build(new SearchQuery('Symfony', exclude: ['old docs'], mustHave: ['twig -legacy'])),
+        );
+    }
+
     public function testRejectsQueryLongerThanTheContractLimit(): void
     {
         $longBase = str_repeat('a', 990);

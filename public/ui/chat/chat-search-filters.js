@@ -1,6 +1,12 @@
 const MAX_TOKENS = 10;
 const TOKEN_PATTERN = /^[\p{L}\p{N}][^"\x00-\x1F\x7F]*$/u;
+// Same host shape the backend accepts (src/Dto/Chat/SearchQuery::assertSite).
+const SITE_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
 
+// Accepts a pasted URL or path; the backend only ever sees the host part.
+const normalizeSite = value => value.trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, '').split(/[/?#]/)[0];
+
+/** Token chip with a click-to-remove affordance. */
 const chip = (text, onRemove) => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -28,6 +34,7 @@ export class SearchFilters {
         });
     }
 
+    /** Enter adds the input value as a chip; invalid tokens are ignored. */
     bindTokens(input, current, chips, replace) {
         input.addEventListener('keydown', event => {
             if (event.key !== 'Enter') {
@@ -44,6 +51,7 @@ export class SearchFilters {
         });
     }
 
+    /** Re-renders the chip list after tokens change. */
     renderChips(current, chips, replace) {
         chips.replaceChildren(...current().map(token => chip(token, () => {
             replace(current().filter(item => item !== token));
@@ -51,7 +59,9 @@ export class SearchFilters {
         })));
     }
 
-    /** Non-empty filter keys only; merged into the search request by ResearchPanel. */
+    /** Non-empty filter keys only; merged into the search request by ResearchPanel.
+     *  Values are normalized like the backend does, so what the consent card shows
+     *  is exactly what will be sent. Returns null when the site stays invalid. */
     collect() {
         const filters = {};
         if (this.mustHave.length) {
@@ -60,17 +70,26 @@ export class SearchFilters {
         if (this.exclude.length) {
             filters.exclude = [...this.exclude];
         }
-        const phrase = this.phraseInput.value.trim().replace(/\s+/g, ' ');
+        const phrase = this.phraseInput.value.trim().replace(/\s+/g, ' ').replace(/^"(.*)"$/, '$1');
         if (phrase) {
             filters.exact_phrase = phrase;
         }
-        const site = this.siteInput.value.trim().toLowerCase();
-        if (site) {
+        this.siteInput.setCustomValidity?.('');
+        this.siteInput.setAttribute('aria-invalid', 'false');
+        if (this.siteInput.value.trim() !== '') {
+            const site = normalizeSite(this.siteInput.value);
+            if (!SITE_PATTERN.test(site)) {
+                this.siteInput.setCustomValidity?.('Podaj domenę, np. wikipedia.org');
+                this.siteInput.setAttribute('aria-invalid', 'true');
+                this.siteInput.reportValidity?.();
+                return null;
+            }
             filters.sites = [site];
         }
         return filters;
     }
 
+    /** Disables or enables every filter input. */
     setEnabled(disabled) {
         for (const input of this.inputs) {
             input.disabled = disabled;

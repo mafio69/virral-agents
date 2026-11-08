@@ -21,6 +21,7 @@ final readonly class SearchOptions
         }
     }
 
+    /** Parses and validates the search section of a chat message request. */
     public static function fromInput(mixed $input): self
     {
         if (!is_array($input) || (array_is_list($input) && $input !== [])

@@ -60,6 +60,8 @@ final class ResearchAgentTest extends TestCase
             '{"query":"PHP","unknown":1}',
             '{"query":"PHP","must_have":"twig"}',
             '{"must_have":["twig"]}',
+            '{"query":"   ","must_have":["twig"]}',
+            '{"query":""}',
         ] as $arguments) {
             $body = ['output' => [['type' => 'function_call', 'name' => 'web_search', 'arguments' => $arguments]]];
             $http = new Client(['base_uri' => 'https://fixture.example/', 'handler' => HandlerStack::create(new MockHandler([new Response(200, [], json_encode($body))]))]);

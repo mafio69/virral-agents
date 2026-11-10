@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-11 — kontenery wstają same po awarii i restarcie serwera
+
+- **`restart: unless-stopped`** dla `app` i `nginx` w `docker-compose.yml`. Wcześniej brak polityki restartu: po restarcie serwera (10.11) oba kontenery zostały w stanie `Exited (255)`, a `agents.dom` zwracał 502 przez ~31 h. Uruchomione ponownie `./prod-start.sh` (APP_ENV=prod); działający `nginx` dostał politykę przez `docker update` (skrypt celowo go nie przebudowuje). Kontrola: `:8181` 200, `agents.dom` 200.
+
 ## 2026-11-08 (2) — fixy z drugiego przeglądu (usage DeepSeek, Langfuse fallback, spójność docs)
 
 - **DeepSeek + usage:** `DeepSeekProvider` implementuje `MultimodalClientInterface` — `ChatReplyGenerator::reply()` woła teraz `generateReply()` i tokeny DeepSeeka nie giną w `chat_usage`; obrazy nadal niedostępne (katalog `supports_images=false`). Docstringi metod (bramka Docstring Coverage).

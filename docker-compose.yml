@@ -4,6 +4,7 @@ services:
       context: ./docker
       dockerfile: Dockerfile
     container_name: slim_ovh_ai_app
+    restart: unless-stopped # wstaje sam po awarii i po restarcie serwera
     user: "1000:1000" # UID:GID procesu; ustawienia instalacji, bez .env
     working_dir: /var/www
     command: ["sh", "docker/start-app.sh"]
@@ -44,6 +45,7 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: slim_ovh_ai_nginx
+    restart: unless-stopped # wstaje sam po awarii i po restarcie serwera
     ports:
       - "${APP_HOST_PORT:-8181}:80"
     volumes:

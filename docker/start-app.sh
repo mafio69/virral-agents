@@ -2,4 +2,4 @@
 set -eu
 
 php bin/migrate.php
-exec php-fpm
+exec php-fpm --allow-to-run-as-root

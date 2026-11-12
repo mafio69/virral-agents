@@ -34,6 +34,17 @@ done
 # The selected mode wins over the calling shell and the environment file read by Compose.
 # Mail always uses MAIL_DSN from the environment (an external SMTP, also in dev).
 export APP_ENV="$mode"
+# Rootless Docker maps container UID 0 to the host user; on rootful Docker UID 0 would be real root.
+default_app_id=1000
+default_nginx_worker=nginx
+security_options="$(docker info --format '{{.SecurityOptions}}' 2>/dev/null || true)"
+if [[ "$security_options" == *rootless* ]]; then
+    default_app_id=0
+    default_nginx_worker=root
+fi
+export APP_UID="${APP_UID:-$default_app_id}"
+export APP_GID="${APP_GID:-$default_app_id}"
+export NGINX_WORKER_USER="${NGINX_WORKER_USER:-$default_nginx_worker}"
 # Rootless Docker: no sudo needed — the user daemon socket is used directly (DOCKER_HOST or rootless context).
 compose=(docker compose -f docker-compose.yml)
 if [[ "$mode" == prod ]]; then compose+=(-f docker-compose.prod.yml); fi
@@ -75,4 +86,12 @@ else
         exit 1
     fi
 fi
-printf '%s\n' 'Aplikacja: http://localhost:8181'
+app_port="${APP_HOST_PORT:-8182}"
+if ! "$dry_run"; then
+    # Compose may take the port from the environment file, so ask for the published one.
+    published_address="$("${compose[@]}" port nginx 80 2>/dev/null || true)"
+    if [[ -n "$published_address" ]]; then
+        app_port="${published_address##*:}"
+    fi
+fi
+printf 'Aplikacja: http://localhost:%s\n' "$app_port"

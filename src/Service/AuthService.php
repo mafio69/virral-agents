@@ -81,7 +81,11 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         $hours = $input->rememberMe ? 720 : 24;
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$hours hours"));
 
-        $this->userRepository->createSession((int)$user['id'], $token, $expiresAt);
+        if (!$this->userRepository->createSessionIfPasswordUnchanged((int)$user['id'], $user['password_hash'], $token, $expiresAt)) {
+            // A password reset committed between the credential check and this session creation.
+            $this->logger->warning('Login failed: password changed during sign-in');
+            throw new UnauthorizedException('Invalid credentials');
+        }
 
         $this->loginLimiter->release($attemptId);
         return new LoginResult((int)$user['id'], $token, $expiresAt);
@@ -148,20 +152,32 @@ final readonly class AuthService implements SessionAuthenticatorInterface
             .'<p><a href="'.$link.'">'.$link.'</a></p>'
             .'<p>Jeśli to nie Ty wysłałeś prośbę, możesz zignorować tę wiadomość.</p>';
 
-        try {
-            $this->mailService->send($input->email, 'Reset hasła w Virral Agents', $body);
-        } catch (\Throwable $e) {
-            $this->logger->warning('Password reset delivery failed', [
-                'user_id' => $user['id'],
-                'type' => get_class($e),
-                'origin' => basename($e->getFile()).':'.$e->getLine(),
-                'line' => $e->getLine(),
-                'code' => $e->getCode(),
-            ]);
-            return false;
+        $userId = (int)$user['id'];
+        $email = $input->email;
+        $deliver = function () use ($userId, $email, $body): void {
+            try {
+                $this->mailService->send($email, 'Reset hasła w Virral Agents', $body);
+                $this->logger->info('Password reset email sent');
+            } catch (\Throwable $e) {
+                $this->logger->warning('Password reset delivery failed', [
+                    'user_id' => $userId,
+                    'type' => get_class($e),
+                    'origin' => basename($e->getFile()).':'.$e->getLine(),
+                    'line' => $e->getLine(),
+                    'code' => $e->getCode(),
+                ]);
+            }
+        };
+
+        if (\PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg') {
+            // CLI/tests: deliver synchronously so the caller observes the mail.
+            $deliver();
+        } else {
+            // FPM: deliver after the response is flushed (public/index.php calls fastcgi_finish_request),
+            // so an existing and a missing account answer with the same timing (no enumeration signal).
+            register_shutdown_function($deliver);
         }
 
-        $this->logger->info('Password reset email sent');
         return true;
     }
 

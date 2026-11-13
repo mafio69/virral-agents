@@ -58,3 +58,9 @@ $routes = require __DIR__ . '/../src/routes.php';
 $routes($app);
 
 $app->run();
+
+// Flush the response now, so deferred mail (password reset) is delivered after the
+// client has received the answer — the response time stops depending on account existence.
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}

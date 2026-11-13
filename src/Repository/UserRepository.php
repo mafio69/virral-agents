@@ -58,6 +58,36 @@ final readonly class UserRepository
         ]);
     }
 
+    /**
+     * Creates a session only while the password hash is still the one the caller verified,
+     * closing the race where a password reset commits between verification and session creation.
+     *
+     * @return bool false when the password changed in the meantime (the login must be rejected)
+     */
+    public function createSessionIfPasswordUnchanged(int $userId, string $expectedHash, string $token, string $expiresAt): bool
+    {
+        $started = false;
+        try {
+            $this->pdo->exec('BEGIN IMMEDIATE');
+            $started = true;
+            $stmt = $this->pdo->prepare('SELECT password_hash FROM users WHERE id = :id');
+            $stmt->execute(['id' => $userId]);
+            $current = $stmt->fetchColumn();
+            if (!is_string($current) || !hash_equals($expectedHash, $current)) {
+                $this->pdo->exec('ROLLBACK');
+                return false;
+            }
+            $this->createSession($userId, $token, $expiresAt);
+            $this->pdo->exec('COMMIT');
+            return true;
+        } catch (\Throwable $e) {
+            if ($started) {
+                $this->pdo->exec('ROLLBACK');
+            }
+            throw $e;
+        }
+    }
+
     public function findSessionByToken(string $token): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM sessions WHERE token = :token AND expires_at > :now');
@@ -145,8 +175,11 @@ final readonly class UserRepository
     public function resetPasswordWithToken(int $userId, string $token, string $passwordHash): bool
     {
         $now = date('Y-m-d H:i:s');
-        $this->pdo->beginTransaction();
+        $started = false;
         try {
+            // BEGIN IMMEDIATE serializes the reset with login's session creation (createSessionIfPasswordUnchanged).
+            $this->pdo->exec('BEGIN IMMEDIATE');
+            $started = true;
             $stmt = $this->pdo->prepare(
                 'UPDATE users SET password_hash = :hash, password_reset_token = NULL, password_reset_expires_at = NULL,'
                 .' email_confirmed_at = COALESCE(email_confirmed_at, :confirmed_at), email_verification_token = NULL'
@@ -160,18 +193,18 @@ final readonly class UserRepository
                 'now' => $now,
             ]);
             if ($stmt->rowCount() !== 1) {
-                $this->pdo->rollBack();
+                $this->pdo->exec('ROLLBACK');
                 return false;
             }
 
             $sessionStmt = $this->pdo->prepare('DELETE FROM sessions WHERE user_id = :user_id');
             $sessionStmt->execute(['user_id' => $userId]);
 
-            $this->pdo->commit();
+            $this->pdo->exec('COMMIT');
             return true;
         } catch (\Throwable $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            if ($started) {
+                $this->pdo->exec('ROLLBACK');
             }
             throw $e;
         }

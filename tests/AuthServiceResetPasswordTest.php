@@ -198,4 +198,27 @@ final class AuthServiceResetPasswordTest extends TestCase
         $this->expectException(ValidationException::class);
         $this->authService->resetPassword(new ResetPasswordInput($resetToken, 'newpassword456'));
     }
+
+    public function testSessionCreationIsRejectedAfterPasswordChanged(): void
+    {
+        $userId = $this->userRepository->createUser('user@example.com', 'old-hash');
+
+        self::assertTrue($this->userRepository->createSessionIfPasswordUnchanged(
+            $userId,
+            'old-hash',
+            'session-1',
+            '2030-01-01 00:00:00'
+        ));
+
+        // A concurrent reset replaces the hash; a stale verification must not create a session.
+        $this->pdo->exec("UPDATE users SET password_hash = 'changed-hash' WHERE id = $userId");
+        self::assertFalse($this->userRepository->createSessionIfPasswordUnchanged(
+            $userId,
+            'old-hash',
+            'session-2',
+            '2030-01-01 00:00:00'
+        ));
+
+        self::assertSame(1, (int)$this->pdo->query('SELECT COUNT(*) FROM sessions')->fetchColumn());
+    }
 }

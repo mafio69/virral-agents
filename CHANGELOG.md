@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-11-09 — role użytkowników (admin/user) — fundament uprawnień (Faza 1)
+
+- Migracja: kolumna `users.role` (`TEXT NOT NULL DEFAULT 'user'`); jednorazowo najwcześniejsze konto = `admin` (właściciel).
+- Rejestracja: pierwszy użytkownik = `admin`, kolejni zawsze `user` (nigdy admin) — zabezpieczenie przed przypadkowym nadaniem pełnych uprawnień przy przyszłym dodawaniu kont.
+- `AuthService::roleOf()` i `currentUser()` zwracają rolę; `AuthMiddleware` dokłada `role` do requestu.
+- Test: pierwszy zarejestrowany = admin, kolejny = user (fizyczny test na SQLite w pamięci).
+
 ## 2026-11-09 — reset zapomnianego hasła linkiem e-mail (port z linii archiwalnej)
 
 - Przeniesienie ficzera resetu hasła z `backup/old-develop` (commit `2b4f806`) na `feature/password-reset-port`:

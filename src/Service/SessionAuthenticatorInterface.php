@@ -7,4 +7,6 @@ namespace App\Service;
 interface SessionAuthenticatorInterface
 {
     public function validateToken(string $token): int;
+
+    public function roleOf(int $userId): string;
 }

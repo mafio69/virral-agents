@@ -151,17 +151,24 @@ SQL;
         $this->addColumnIfNotExists('users', 'email_confirmed_at', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'password_reset_token', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'password_reset_expires_at', 'TEXT DEFAULT NULL');
+        if ($this->addColumnIfNotExists('users', 'role', "TEXT NOT NULL DEFAULT 'user'")) {
+            // One-time: the pre-existing owner (earliest account) becomes admin; later accounts keep 'user'.
+            $this->pdo->exec("UPDATE users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM users)");
+        }
         $this->addColumnIfNotExists('chats', 'model', "TEXT DEFAULT '".\App\Infrastructure\AI\OvhModelDefaults::MODEL."'");
         $this->addColumnIfNotExists('chat_messages', 'kind', "TEXT NOT NULL DEFAULT 'message'");
     }
 
-    private function addColumnIfNotExists(string $table, string $column, string $definition): void
+    private function addColumnIfNotExists(string $table, string $column, string $definition): bool
     {
         $stmt = $this->pdo->query("PRAGMA table_info($table)");
         $columns = $stmt->fetchAll(PDO::FETCH_COLUMN, 1);
 
         if (!in_array($column, $columns, true)) {
             $this->pdo->exec("ALTER TABLE $table ADD COLUMN $column $definition");
+            return true;
         }
+
+        return false;
     }
 }

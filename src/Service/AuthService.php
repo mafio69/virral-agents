@@ -107,12 +107,22 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         return (int)$user['id'];
     }
 
+    public function roleOf(int $userId): string
+    {
+        $user = $this->userRepository->findById($userId);
+        if ($user === null) {
+            throw new UnauthorizedException('Invalid or expired token');
+        }
+
+        return (string)($user['role'] ?? 'user');
+    }
+
     public function logout(string $token): void
     {
         $this->userRepository->deleteSession($token);
     }
 
-    /** @return array{id: int, email: string} */
+    /** @return array{id: int, email: string, role: string} */
     public function currentUser(int $userId): array
     {
         $user = $this->userRepository->findById($userId);
@@ -120,7 +130,7 @@ final readonly class AuthService implements SessionAuthenticatorInterface
             throw new UnauthorizedException('Invalid or expired token');
         }
 
-        return ['id' => (int)$user['id'], 'email' => (string)$user['email']];
+        return ['id' => (int)$user['id'], 'email' => (string)$user['email'], 'role' => (string)($user['role'] ?? 'user')];
     }
 
     public function verifyEmail(VerifyEmailInput $input): void

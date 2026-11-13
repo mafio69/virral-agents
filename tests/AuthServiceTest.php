@@ -85,6 +85,15 @@ class AuthServiceTest extends TestCase
         $this->assertNotEquals('password123', $user['password_hash']);
     }
 
+    public function testFirstRegisteredUserIsAdminAndLaterUsersAreNot(): void
+    {
+        $this->authService->register(new RegisterInput('admin@example.com', 'password123'));
+        $this->assertSame('admin', $this->users->findByEmail('admin@example.com')['role']);
+
+        $this->authService->register(new RegisterInput('member@example.com', 'password123'));
+        $this->assertSame('user', $this->users->findByEmail('member@example.com')['role']);
+    }
+
     public function testRegisterDuplicateEmail(): void
     {
         $input = new RegisterInput('test@example.com', 'password123');

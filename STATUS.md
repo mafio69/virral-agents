@@ -9,14 +9,13 @@
 
 ---
 
-**Ostatnia aktualizacja:** 2026-11-08
-**Gałąź:** `develop` (DeepSeek — niezacommitowane w katalogu roboczym; reset hasła i ślady Langfuse scalone lokalnie 2026-11-01, bez push). Otwarty PR #10 `develop` → `master`.
-**Ostatnia walidacja (2026-11-08):** formatter 0/198, PHPUnit 346/347 (1 czerwony: `EmptyReplyTest` „Gemini" — `output_limit` vs `invalid_response`, istniejący, blokuje commit), UI 110/110.
-**Ostatnia pełna walidacja (2026-10-26):** `composer check-all` — formatter 0/168, PHP 239/239 (1148 asercji), UI 93/93; Composer strict/platform-reqs OK; E2E 5/5; testy manualne czatu i badania źródeł w przeglądarce potwierdzone przez właściciela.
+**Ostatnia aktualizacja:** 2026-11-09
+**Gałąź:** `feature/password-reset-port` (reset hasła). DeepSeek i rootless scalone do mastera (PR #18, #21); PR #22 `develop` → `master` otwarty (MERGEABLE).
+**Ostatnia walidacja (2026-11-09):** formatter 0/191, PHPUnit 317/317 (1423 asercji), UI 112/112.
 
 ## Gotowe (w develop / release/v1.0.0)
 
-- **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, CLI resetu hasła.
+- **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, reset zapomnianego hasła linkiem e-mail ze strony logowania (limit prób, token ważny 1 h).
 - **Ochrona danych:** szyfrowanie pól (XChaCha20-Poly1305, `USER_DATA_KEY`), HMAC e-maila, hashe tokenów, migracja CLI `bin/protect-user-data.php`.
 - **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek (`deepseek-flash`, `deepseek-v4-pro`; `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`). Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny).
 - **Obsługa błędów i logowanie (`Mariusz\Logger\DualLogger`):** wspólne mapowanie wyjątków w `src/middleware.php`; użytkownik nigdy nie widzi surowych błędów debugowania, kodów `HTTP 5xx` ani wewnętrznych nazw zmiennych — zawsze otrzymuje przyjazny komunikat z przeprosinami. Miejsca przechwycenia wyjątków (`middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`) logują bogaty kontekst diagnostyczny (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `reason`, `stage`, `sqlstate`, `driver_code`).
@@ -49,9 +48,9 @@
 
 ## Następny priorytet
 
-1. DeepSeek: wklejenie `DEEPSEEK_API_KEY` do `.env`, odtworzenie kontenera i test manualny w czacie (testy jednostkowe 7/7 zielone; częściowe odpowiedzi Gemini `MAX_TOKENS` ma pokrycie w `GeminiProviderTest` — wpis o „czerwonym EmptyReplyTest" dotyczył drugiej, lokalnej linii kodu).
-2. MVP jak wyżej (najpierw domknięcie wyszukiwarki, potem odśnieżarka krok 1).
-3. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą; osobne zadanie: test E2E przepływu resetu przez `mail-trap.dom`.
-4. Pozostałe testy manualne z listy → PR `develop` → `master`, deploy na Optiplex i tag `v1.0.0`.
+1. Scalanie PR #22 (`develop` → `master`) i PR resetu hasła (`feature/password-reset-port` → `develop`).
+2. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą; osobne zadanie: test E2E przepływu resetu przez `mail-trap.dom`.
+3. MVP: domknięcie wyszukiwarki (testy manualne MCP `szukaj` + #62-495), potem odśnieżarka krok 1.
+4. Pozostałe testy manualne z listy → deploy na Optiplex i tag `v1.0.0`.
 5. Osobne zadanie: `bin/restore-dev-user.php` — `getenv(...) ?? default` nie działa (getenv zwraca `false`).
 6. Po MVP: #62-486 → #62-493 (jakość źródeł badania), #62-494 (SSE).

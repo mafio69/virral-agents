@@ -149,6 +149,8 @@ SQL;
         $this->addColumnIfNotExists('users', 'email_ciphertext', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'email_verification_token', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('users', 'email_confirmed_at', 'TEXT DEFAULT NULL');
+        $this->addColumnIfNotExists('users', 'password_reset_token', 'TEXT DEFAULT NULL');
+        $this->addColumnIfNotExists('users', 'password_reset_expires_at', 'TEXT DEFAULT NULL');
         $this->addColumnIfNotExists('chats', 'model', "TEXT DEFAULT '".\App\Infrastructure\AI\OvhModelDefaults::MODEL."'");
         $this->addColumnIfNotExists('chat_messages', 'kind', "TEXT NOT NULL DEFAULT 'message'");
     }

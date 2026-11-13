@@ -58,6 +58,36 @@ final readonly class UserRepository
         ]);
     }
 
+    /**
+     * Creates a session only while the password hash is still the one the caller verified,
+     * closing the race where a password reset commits between verification and session creation.
+     *
+     * @return bool false when the password changed in the meantime (the login must be rejected)
+     */
+    public function createSessionIfPasswordUnchanged(int $userId, string $expectedHash, string $token, string $expiresAt): bool
+    {
+        $started = false;
+        try {
+            $this->pdo->exec('BEGIN IMMEDIATE');
+            $started = true;
+            $stmt = $this->pdo->prepare('SELECT password_hash FROM users WHERE id = :id');
+            $stmt->execute(['id' => $userId]);
+            $current = $stmt->fetchColumn();
+            if (!is_string($current) || !hash_equals($expectedHash, $current)) {
+                $this->pdo->exec('ROLLBACK');
+                return false;
+            }
+            $this->createSession($userId, $token, $expiresAt);
+            $this->pdo->exec('COMMIT');
+            return true;
+        } catch (\Throwable $e) {
+            if ($started) {
+                $this->pdo->exec('ROLLBACK');
+            }
+            throw $e;
+        }
+    }
+
     public function findSessionByToken(string $token): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM sessions WHERE token = :token AND expires_at > :now');
@@ -108,5 +138,75 @@ final readonly class UserRepository
             'UPDATE users SET email_confirmed_at = :now, email_verification_token = NULL WHERE id = :id'
         );
         $stmt->execute(['now' => date('Y-m-d H:i:s'), 'id' => $userId]);
+    }
+
+    public function setPasswordResetToken(int $userId, string $token, string $expiresAt): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE users SET password_reset_token = :token, password_reset_expires_at = :expires_at WHERE id = :id'
+        );
+        $stmt->execute([
+            'token' => hash('sha256', $token),
+            'expires_at' => $expiresAt,
+            'id' => $userId,
+        ]);
+    }
+
+    public function findByPasswordResetToken(string $token): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM users WHERE password_reset_token = :token AND password_reset_expires_at > :now'
+        );
+        $stmt->execute([
+            'token' => hash('sha256', $token),
+            'now' => date('Y-m-d H:i:s'),
+        ]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ? $this->decodeUser($result) : null;
+    }
+
+    /**
+     * Sets the new password only while the token is still current, clears it and revokes all sessions.
+     * The reset link proves access to the mailbox, so it also confirms an unconfirmed e-mail.
+     *
+     * @return bool false when the token was already used or expired in the meantime
+     */
+    public function resetPasswordWithToken(int $userId, string $token, string $passwordHash): bool
+    {
+        $now = date('Y-m-d H:i:s');
+        $started = false;
+        try {
+            // BEGIN IMMEDIATE serializes the reset with login's session creation (createSessionIfPasswordUnchanged).
+            $this->pdo->exec('BEGIN IMMEDIATE');
+            $started = true;
+            $stmt = $this->pdo->prepare(
+                'UPDATE users SET password_hash = :hash, password_reset_token = NULL, password_reset_expires_at = NULL,'
+                .' email_confirmed_at = COALESCE(email_confirmed_at, :confirmed_at), email_verification_token = NULL'
+                .' WHERE id = :id AND password_reset_token = :token AND password_reset_expires_at > :now'
+            );
+            $stmt->execute([
+                'hash' => $passwordHash,
+                'confirmed_at' => $now,
+                'id' => $userId,
+                'token' => hash('sha256', $token),
+                'now' => $now,
+            ]);
+            if ($stmt->rowCount() !== 1) {
+                $this->pdo->exec('ROLLBACK');
+                return false;
+            }
+
+            $sessionStmt = $this->pdo->prepare('DELETE FROM sessions WHERE user_id = :user_id');
+            $sessionStmt->execute(['user_id' => $userId]);
+
+            $this->pdo->exec('COMMIT');
+            return true;
+        } catch (\Throwable $e) {
+            if ($started) {
+                $this->pdo->exec('ROLLBACK');
+            }
+            throw $e;
+        }
     }
 }

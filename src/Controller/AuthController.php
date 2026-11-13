@@ -6,8 +6,10 @@ namespace App\Controller;
 
 use App\Exception\UnauthorizedException;
 use App\Infrastructure\Http\JsonResponder;
+use App\Mapper\Auth\ForgotPasswordInputMapper;
 use App\Mapper\Auth\LoginInputMapper;
 use App\Mapper\Auth\RegisterInputMapper;
+use App\Mapper\Auth\ResetPasswordInputMapper;
 use App\Mapper\Auth\VerifyEmailInputMapper;
 use App\Service\AuthService;
 use Psr\Http\Message\ResponseInterface;
@@ -22,6 +24,8 @@ final class AuthController
         private readonly \App\Http\SessionTokenResolver $sessionTokens,
         private readonly string $environment = 'prod',
         private readonly \App\Http\ClientIpResolver $clientIp = new \App\Http\ClientIpResolver(),
+        private readonly ForgotPasswordInputMapper $forgotPasswordInputMapper = new ForgotPasswordInputMapper(),
+        private readonly ResetPasswordInputMapper $resetPasswordInputMapper = new ResetPasswordInputMapper(),
     ) {
     }
 
@@ -94,4 +98,28 @@ final class AuthController
         return JsonResponder::respond($response, $user);
     }
 
+    public function forgotPassword(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $data = (array)$request->getParsedBody();
+        $input = $this->forgotPasswordInputMapper->map($data);
+
+        // The delivery result is only logged: exposing it would reveal whether the account exists.
+        $this->authService->forgotPassword($input, $this->clientIp->resolve($request));
+
+        return JsonResponder::respond($response, [
+            'message' => 'Jeśli konto istnieje, link do zresetowania hasła został wysłany.',
+        ]);
+    }
+
+    public function resetPassword(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $data = (array)$request->getParsedBody();
+        $input = $this->resetPasswordInputMapper->map($data);
+
+        $this->authService->resetPassword($input);
+
+        return JsonResponder::respond($response, [
+            'message' => 'Hasło zostało pomyślnie zmienione. Możesz się teraz zalogować.',
+        ]);
+    }
 }

@@ -130,13 +130,18 @@ return function (ContainerBuilder $containerBuilder) {
             $c->get(\App\Repository\LoginAttemptRepositoryInterface::class),
             $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
         ),
+        \App\Service\PasswordResetLimiter::class => fn (ContainerInterface $c) => new \App\Service\PasswordResetLimiter(
+            $c->get(\App\Repository\LoginAttemptRepositoryInterface::class),
+            $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
+        ),
         AuthService::class => function (ContainerInterface $c) {
             return new AuthService(
                 userRepository: $c->get(UserRepository::class),
                 mailService: $c->get(MailService::class),
-                appUrl: $c->get('settings')['app_url'] ?? 'http://localhost:8181',
+                appUrl: $c->get('settings')['app_url'],
                 logger: $c->get(LoggerInterface::class),
                 loginLimiter: $c->get(\App\Service\LoginAttemptLimiterInterface::class),
+                passwordResetLimiter: $c->get(\App\Service\PasswordResetLimiter::class),
             );
         },
         \App\Observability\LangfuseTrace::class => function (ContainerInterface $c) {

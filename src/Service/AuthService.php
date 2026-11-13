@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\Auth\ForgotPasswordInput;
 use App\Dto\Auth\LoginInput;
 use App\Dto\Auth\LoginResult;
 use App\Dto\Auth\RegisterInput;
+use App\Dto\Auth\ResetPasswordInput;
 use App\Dto\Auth\VerifyEmailInput;
 use App\Exception\EmailConfirmationRequiredException;
 use App\Exception\UnauthorizedException;
@@ -23,6 +25,7 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         private readonly string $appUrl,
         private readonly LoggerInterface $logger,
         private LoginAttemptLimiterInterface $loginLimiter,
+        private PasswordResetLimiter $passwordResetLimiter,
     ) {
     }
 
@@ -78,7 +81,11 @@ final readonly class AuthService implements SessionAuthenticatorInterface
         $hours = $input->rememberMe ? 720 : 24;
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$hours hours"));
 
-        $this->userRepository->createSession((int)$user['id'], $token, $expiresAt);
+        if (!$this->userRepository->createSessionIfPasswordUnchanged((int)$user['id'], $user['password_hash'], $token, $expiresAt)) {
+            // A password reset committed between the credential check and this session creation.
+            $this->logger->warning('Login failed: password changed during sign-in');
+            throw new UnauthorizedException('Invalid credentials');
+        }
 
         $this->loginLimiter->release($attemptId);
         return new LoginResult((int)$user['id'], $token, $expiresAt);
@@ -123,6 +130,73 @@ final readonly class AuthService implements SessionAuthenticatorInterface
             throw new ValidationException('Invalid verification token');
         }
         $this->userRepository->verifyEmail((int)$user['id']);
+    }
+
+    public function forgotPassword(ForgotPasswordInput $input, string $clientIp = 'unknown'): bool
+    {
+        // The limit applies before the lookup, so blocked responses do not reveal whether the account exists.
+        $this->passwordResetLimiter->reserve($input->email, $clientIp);
+        $user = $this->userRepository->findByEmail($input->email);
+        if (!$user) {
+            $this->logger->info('Password reset requested for non-existent email');
+            return true;
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $this->userRepository->setPasswordResetToken((int)$user['id'], $token, $expiresAt);
+
+        $link = $this->appUrl.'/?reset_token='.$token;
+        $body = '<p>Otrzymaliśmy prośbę o zresetowanie hasła.</p>'
+            .'<p>Kliknij w poniższy link, aby ustawić nowe hasło (link jest ważny przez 1 godzinę):</p>'
+            .'<p><a href="'.$link.'">'.$link.'</a></p>'
+            .'<p>Jeśli to nie Ty wysłałeś prośbę, możesz zignorować tę wiadomość.</p>';
+
+        $userId = (int)$user['id'];
+        $email = $input->email;
+        $deliver = function () use ($userId, $email, $body): void {
+            try {
+                $this->mailService->send($email, 'Reset hasła w Virral Agents', $body);
+                $this->logger->info('Password reset email sent');
+            } catch (\Throwable $e) {
+                $this->logger->warning('Password reset delivery failed', [
+                    'user_id' => $userId,
+                    'type' => get_class($e),
+                    'origin' => basename($e->getFile()).':'.$e->getLine(),
+                    'line' => $e->getLine(),
+                    'code' => $e->getCode(),
+                ]);
+            }
+        };
+
+        if (\PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg') {
+            // CLI/tests: deliver synchronously so the caller observes the mail.
+            $deliver();
+        } else {
+            // FPM: deliver after the response is flushed (public/index.php calls fastcgi_finish_request),
+            // so an existing and a missing account answer with the same timing (no enumeration signal).
+            register_shutdown_function($deliver);
+        }
+
+        return true;
+    }
+
+    public function resetPassword(ResetPasswordInput $input): void
+    {
+        $user = $this->userRepository->findByPasswordResetToken($input->token);
+        if (!$user) {
+            $this->logger->warning('Password reset failed: invalid or expired token');
+            throw new ValidationException('Nieprawidłowy lub wygasły link resetowania hasła.');
+        }
+
+        $passwordHash = password_hash($input->password, PASSWORD_DEFAULT);
+        // A concurrent request may have consumed the same token in the meantime.
+        if (!$this->userRepository->resetPasswordWithToken((int)$user['id'], $input->token, $passwordHash)) {
+            $this->logger->warning('Password reset failed: token already used');
+            throw new ValidationException('Nieprawidłowy lub wygasły link resetowania hasła.');
+        }
+
+        $this->logger->info('Password successfully reset');
     }
 
     private function requireConfirmedEmail(array $user): void

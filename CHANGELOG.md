@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-11-09 — zarządzanie dostawcami AI (admin-only) — Faza 2
+
+- `AdminOnlyMiddleware` — nie-admin dostaje 404 (endpointy niewidoczne); role w request z Fazy 1.
+- Endpointy admin: `GET/POST/PUT/DELETE /api/ai-providers`, `POST/DELETE /api/ai-models`.
+- Sekrety: API nigdy nie zwraca klucza (tylko `has_secret`), plaintext szyfrowany w bazie (`SecretService`).
+- `AiProviderService` + `AiAdminController` + mappery walidujące (nazwa, URL http(s), klucz, id modelu).
+- Testy HTTP: admin zarządza dostawcami + sekret niewidoczny w odpowiedzi, nie-admin 404, brak sesji 401.
+
 ## 2026-11-09 — role użytkowników (admin/user) — fundament uprawnień (Faza 1)
 
 - Migracja: kolumna `users.role` (`TEXT NOT NULL DEFAULT 'user'`); jednorazowo najwcześniejsze konto = `admin` (właściciel).

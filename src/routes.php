@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controller\AuthController;
+use App\Controller\AiAdminController;
 use App\Controller\ChatController;
 use App\Controller\TaskController;
 use Slim\App;
@@ -72,6 +73,16 @@ return function (App $app) {
             $group->put('/research/sources', [ChatController::class, 'researchSelect']);
             $group->post('/research/prepare', [ChatController::class, 'researchPrepare']);
         })->add(\App\Middleware\AuthMiddleware::class);
+
+        // Admin-only: AI provider/model management (AuthMiddleware sets `role`, AdminOnlyMiddleware checks it).
+        $group->group('', function (RouteCollectorProxy $group) {
+            $group->get('/ai-providers', [AiAdminController::class, 'listProviders']);
+            $group->post('/ai-providers', [AiAdminController::class, 'createProvider']);
+            $group->put('/ai-providers/{id}', [AiAdminController::class, 'updateProvider']);
+            $group->delete('/ai-providers/{id}', [AiAdminController::class, 'deleteProvider']);
+            $group->post('/ai-models', [AiAdminController::class, 'createModel']);
+            $group->delete('/ai-models/{id}', [AiAdminController::class, 'deleteModel']);
+        })->add(\App\Middleware\AdminOnlyMiddleware::class)->add(\App\Middleware\AuthMiddleware::class);
 
         $group->get('/ai-connections', [ChatController::class, 'listConnections']);
         $group->get('/ai-models', [ChatController::class, 'listModels']);

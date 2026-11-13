@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-11-09 — reset zapomnianego hasła linkiem e-mail (port z linii archiwalnej)
+
+- Przeniesienie ficzera resetu hasła z `backup/old-develop` (commit `2b4f806`) na `feature/password-reset-port`:
+  - `POST /api/auth/forgot-password` — neutralna odpowiedź (bez ujawniania istnienia konta), token 64 hex ważny 1 h, limit 3 prośby / 15 min osobno na e-mail i IP (`PasswordResetLimiter`, prefiksy HMAC `reset-limit/`, wspólna tabela `login_attempts`).
+  - `POST /api/auth/reset-password` — `UserRepository::resetPasswordWithToken()`: jeden `UPDATE … WHERE id AND token AND expires_at > now`, `rowCount() !== 1` = link zużyty/wyścig → 422; czyści token, potwierdza e-mail i usuwa wszystkie sesje.
+  - UI `landing.html`: „Nie pamiętasz hasła?" + „Ustaw nowe hasło", token z URL (`/?reset_token=…`) + `history.replaceState`; 429 pokazuje `Retry-After`.
+  - `LoginRateLimitException` z opcjonalnym komunikatem → middleware 429 + `Retry-After`.
+- Testy: `AuthServiceResetPasswordTest`, `AuthResetPasswordApiTest`, `PasswordResetLimiterTest`, przypadek 429 w `AuthHttpTest`, testy UI landinga.
+- Walidacja: PHPUnit 317/317 (1423 asercji), UI 112/112, formatter 0/191.
+
 ## 2026-11-08 (2) — fixy z drugiego przeglądu (usage DeepSeek, Langfuse fallback, spójność docs)
 
 - **DeepSeek + usage:** `DeepSeekProvider` implementuje `MultimodalClientInterface` — `ChatReplyGenerator::reply()` woła teraz `generateReply()` i tokeny DeepSeeka nie giną w `chat_usage`; obrazy nadal niedostępne (katalog `supports_images=false`). Docstringi metod (bramka Docstring Coverage).

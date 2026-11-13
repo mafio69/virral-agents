@@ -28,6 +28,11 @@ function withFakeDocker(body, exitCode = 0, appRunning = true) {
     }
 }
 
+// The script probes `docker info` to detect rootless; tests care only about compose operations.
+function composeCalls(log) {
+    return readFileSync(log, 'utf8').trim().split('\n').filter(line => line.includes('|compose '));
+}
+
 test('dev-start defaults to dev, starts only the application stack and never uses sudo', () => {
     const result = preview([], { APP_ENV: 'prod' });
     assert.equal(result.status, 0, result.stderr);
@@ -66,7 +71,7 @@ test('selected mode is exported to Compose even when the shell says otherwise', 
             env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, APP_ENV: 'prod', DEV_START_APP_WAIT: '0' },
         });
         assert.equal(result.status, 0, result.stderr);
-        const calls = readFileSync(log, 'utf8').trim().split('\n');
+        const calls = composeCalls(log);
         assert.ok(calls.every(line => line.startsWith('dev|compose -f docker-compose.yml')));
     });
 });
@@ -78,7 +83,7 @@ test('startup failure stops the script before touching nginx', () => {
             env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, DEV_START_APP_WAIT: '0' },
         });
         assert.equal(result.status, 17);
-        const calls = readFileSync(log, 'utf8').trim().split('\n');
+        const calls = composeCalls(log);
         assert.equal(calls.length, 1);
         assert.match(calls[0], /up -d app$/);
         assert.doesNotMatch(calls[0], /nginx/);
@@ -92,12 +97,13 @@ test('successful production start preserves nginx and reloads it', () => {
             env: { PATH: directory + ':/usr/bin:/bin', START_SCRIPT_LOG: log, DEV_START_APP_WAIT: '0' },
         });
         assert.equal(result.status, 0, result.stderr);
-        const calls = readFileSync(log, 'utf8').trim().split('\n');
-        assert.equal(calls.length, 4);
+        const calls = composeCalls(log);
+        assert.equal(calls.length, 5);
         assert.match(calls[0], /^prod\|.*-f docker-compose.prod.yml up -d app$/);
         assert.match(calls[1], /ps --status running --services$/);
         assert.match(calls[2], /up -d --no-deps --no-recreate nginx$/);
         assert.match(calls[3], /exec -T nginx nginx -s reload$/);
+        assert.match(calls[4], /port nginx 80$/);
         assert.doesNotMatch(result.stdout, /Mailpit/);
     });
 });
@@ -110,7 +116,7 @@ test('an app that exits after start stops the script before nginx with a clear h
         });
         assert.equal(result.status, 1);
         assert.match(result.stderr, /Kontener app nie działa/);
-        const calls = readFileSync(log, 'utf8').trim().split('\n');
+        const calls = composeCalls(log);
         assert.equal(calls.length, 2);
         assert.doesNotMatch(calls.join('\n'), /nginx/);
     }, 0, false);

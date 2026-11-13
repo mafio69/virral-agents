@@ -401,7 +401,12 @@ async function resetPassword() {
       show(el, r.data?.message || 'Hasło zostało zmienione. Możesz się zalogować.', 'success');
       document.getElementById('reset-password').value = '';
       document.getElementById('reset-password-confirm').value = '';
-      setTimeout(() => showForm('login'), 2000);
+      setTimeout(() => {
+        // Only switch to login if the user is still on the reset form.
+        if (!document.getElementById('reset-form').classList.contains('hidden')) {
+          showForm('login');
+        }
+      }, 2000);
     } else {
       show(el, r.status === 422 ? (r.data?.error || 'Nieprawidłowy lub wygasły link.') : 'Wystąpił błąd. Spróbuj ponownie.', 'error');
     }

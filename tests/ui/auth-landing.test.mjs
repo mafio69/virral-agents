@@ -17,11 +17,12 @@ async function fixture({ blockedStorage = false, restoreCookie = false, search =
     const buttons = new Map(['register', 'login', 'forgot', 'reset'].map(name => [name, { disabled: false }]));
     const requests = [];
     const historyCalls = [];
+    const timers = [];
     const location = { hash: '', search, pathname: '/' };
     const context = vm.createContext({
         URLSearchParams,
         history: { replaceState: (...args) => historyCalls.push(args) },
-        setTimeout: () => {},
+        setTimeout: (cb) => { timers.push(cb); },
         document: { cookie: '', body: { dataset: {} }, getElementById: id => elements.get(id) || null,
             querySelector: selector => buttons.get(['register', 'forgot', 'reset'].find(name => selector.includes(name)) ?? 'login') },
         localStorage: { getItem: () => { if (blockedStorage) throw new Error('Storage disabled'); return null; },
@@ -41,7 +42,7 @@ async function fixture({ blockedStorage = false, restoreCookie = false, search =
     vm.runInContext(script, context);
     await new Promise(resolve => setImmediate(resolve));
     requests.length = 0;
-    return { context, elements, buttons, requests, historyCalls };
+    return { context, elements, buttons, requests, historyCalls, timers };
 }
 
 test('registration and login views open without missing DOM elements', async () => {
@@ -191,6 +192,22 @@ test('reset link opens the new password form and removes the token from the addr
     assert.equal(requests[0].url, '/api/auth/reset-password');
     assert.deepEqual(JSON.parse(requests[0].options.body), { token, password: 'fixture-new-password' });
     assert.match(elements.get('reset-result').textContent, /Hasło zostało pomyślnie zmienione/);
+});
+
+test('reset redirect timer does not switch forms after navigation', async () => {
+    const { context, elements, timers } = await fixture({
+        search: '?reset_token=' + 'a'.repeat(64),
+        response: { ok: true, status: 200, data: { message: 'Hasło zostało pomyślnie zmienione.' } },
+    });
+    elements.get('reset-password').value = 'fixture-new-password';
+    elements.get('reset-password-confirm').value = 'fixture-new-password';
+    await vm.runInContext('resetPassword()', context);
+    assert.equal(timers.length, 1);
+    vm.runInContext("showForm('register')", context);
+    assert.equal(elements.get('register-form').classList.contains('hidden'), false);
+    timers[0]();
+    assert.equal(elements.get('register-form').classList.contains('hidden'), false);
+    assert.equal(elements.get('login-form').classList.contains('hidden'), true);
 });
 
 test('mismatched new passwords are rejected without a request', async () => {

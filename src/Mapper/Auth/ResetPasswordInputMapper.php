@@ -21,6 +21,10 @@ final readonly class ResetPasswordInputMapper
         if (!is_string($password) || mb_strlen($password, 'UTF-8') < 10) {
             throw new ValidationException('Password must be at least 10 characters');
         }
+        if (strlen($password) > 72) {
+            // bcrypt truncates at 72 bytes; a longer password would silently lose its tail and match a different password with the same prefix.
+            throw new ValidationException('Password must be at most 72 bytes');
+        }
 
         return new ResetPasswordInput($token, $password);
     }

@@ -67,4 +67,13 @@ final class AuthResetPasswordApiTest extends TestCase
             'password' => 'short',
         ]);
     }
+
+    public function testResetMapperPasswordOverBcryptLimitThrows(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->resetMapper->map([
+            'token' => str_repeat('b', 64),
+            'password' => str_repeat('a', 73),
+        ]);
+    }
 }

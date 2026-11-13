@@ -86,7 +86,7 @@ else
         exit 1
     fi
 fi
-app_port="${APP_HOST_PORT:-8182}"
+app_port="${APP_HOST_PORT:-8181}"
 if ! "$dry_run"; then
     # Compose may take the port from the environment file, so ask for the published one.
     published_address="$("${compose[@]}" port nginx 80 2>/dev/null || true)"

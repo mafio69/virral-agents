@@ -138,7 +138,7 @@ return function (ContainerBuilder $containerBuilder) {
             return new AuthService(
                 userRepository: $c->get(UserRepository::class),
                 mailService: $c->get(MailService::class),
-                appUrl: $c->get('settings')['app_url'] ?? 'http://localhost:8181',
+                appUrl: $c->get('settings')['app_url'],
                 logger: $c->get(LoggerInterface::class),
                 loginLimiter: $c->get(\App\Service\LoginAttemptLimiterInterface::class),
                 passwordResetLimiter: $c->get(\App\Service\PasswordResetLimiter::class),

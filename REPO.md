@@ -164,6 +164,12 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - Env: `DEEPSEEK_API_KEY` + opcjonalny `DEEPSEEK_BASE_URL` (domyślnie `https://api.deepseek.com`; `src/settings.php` normalizuje ukośnik końcowy, bo Guzzle rozwiązuje `base_uri` względnie). `DEEPSEEK_BASE_URL_ANTHROPIC` to niespaiwana notatka właściciela.
 - Pusta treść odpowiedzi bez wywołania narzędzia → `invalid_response` jak u pozostałych dostawców OpenAI-compatible tej linii. W trybie badania `content: null` z `tool_calls` to poprawne żądanie zgody, nie błąd — zwraca `webRequest`.
 
+### Role i zarządzanie dostawcami AI (2026-11-09)
+
+- **Role:** `users.role` (`admin`/`user`, domyślnie `user`). Pierwszy użytkownik = `admin` (w `UserRepository::createUser`), kolejni zawsze `user`; migracja jednorazowo awansuje najwcześniejsze konto. `AuthMiddleware` dokłada `role` do requestu; `AdminOnlyMiddleware` zwraca **404** nie-adminowi (endpointy admin niewidoczne). Endpointy admin: `GET/POST/PUT/DELETE /api/ai-providers`, `POST/DELETE /api/ai-models` — po `AuthMiddleware`, potem `AdminOnlyMiddleware`.
+- **Sekret dostawcy:** nigdy w odpowiedzi API (tylko `has_secret: bool`); plaintext szyfrowany w bazie przez `SecretService` (sodium, `DB_HASH`), odszyfrowywany wyłącznie w `AiClientFactory`.
+- **Pułapka (ważna):** `DI\Bridge\Slim\ControllerInvoker` **nie rzutuje** stringowych argumentów trasy `{id}` na typ int; parametr kontrolera `int $id` przy `declare(strict_types=1)` rzuca `TypeError`. Poprawny wzór: `(int)$request->getAttribute('id')` (tak robi `AiAdminController`). `TaskController::update/delete` nadal ma `int $id` — latentny bug, do naprawy.
+
 ### Ślady Langfuse (obserwowalność czatu)
 
 - `ChatService` (ścieżki wiadomości i kontynuacji badania) woła `LangfuseTrace::span()` — **jeden płaski span `chat-turn-<n>` na udaną turę** przez OTLP/HTTP JSON (`/api/public/otel/v1/traces`, Basic auth, `x-langfuse-ingestion-version: 4`). Atrybuty: `service.name`, `session.id` (ID rozmowy), `gen_ai.request.model`, `gen_ai.usage.input/output_tokens`, `chat.turn`, `chat.history_messages`, `chat.history_chars` + `chat.*` z `$extra`. Treść promptów i odpowiedzi nigdy nie jest wysyłana.

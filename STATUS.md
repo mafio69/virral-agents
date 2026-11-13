@@ -10,12 +10,14 @@
 ---
 
 **Ostatnia aktualizacja:** 2026-11-09
-**Gałąź:** `feature/password-reset-port` (reset hasła). DeepSeek i rootless scalone do mastera (PR #18, #21); PR #22 `develop` → `master` otwarty (MERGEABLE).
-**Ostatnia walidacja (2026-11-09):** formatter 0/191, PHPUnit 317/317 (1423 asercji), UI 112/112.
+**Gałąź:** `develop` (DeepSeek + reset hasła + role + CRUD dostawców scalone; master = `15e2ac8` po PR #24).
+**Ostatnia walidacja (2026-11-09):** formatter 0/200, PHPUnit 323/323 (1451 asercji), UI 113/113.
 
 ## Gotowe (w develop / release/v1.0.0)
 
 - **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, reset zapomnianego hasła linkiem e-mail ze strony logowania (limit prób, token ważny 1 h).
+- **Role i uprawnienia:** `users.role` (`admin`/`user`); pierwszy użytkownik = admin, kolejni = user (nigdy admin); `AuthMiddleware` dokłada `role`, `AdminOnlyMiddleware` zwraca 404 nie-adminowi.
+- **Zarządzanie dostawcami AI (admin-only):** `GET/POST/PUT/DELETE /api/ai-providers`, `POST/DELETE /api/ai-models`; sekret dostawcy nigdy nie jest zwracany (tylko `has_secret`), plaintext szyfrowany w bazie (`SecretService`).
 - **Ochrona danych:** szyfrowanie pól (XChaCha20-Poly1305, `USER_DATA_KEY`), HMAC e-maila, hashe tokenów, migracja CLI `bin/protect-user-data.php`.
 - **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek (`deepseek-flash`, `deepseek-v4-pro`; `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`). Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny).
 - **Obsługa błędów i logowanie (`Mariusz\Logger\DualLogger`):** wspólne mapowanie wyjątków w `src/middleware.php`; użytkownik nigdy nie widzi surowych błędów debugowania, kodów `HTTP 5xx` ani wewnętrznych nazw zmiennych — zawsze otrzymuje przyjazny komunikat z przeprosinami. Miejsca przechwycenia wyjątków (`middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`) logują bogaty kontekst diagnostyczny (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `reason`, `stage`, `sqlstate`, `driver_code`).
@@ -48,9 +50,10 @@
 
 ## Następny priorytet
 
-1. Scalanie PR #22 (`develop` → `master`) i PR resetu hasła (`feature/password-reset-port` → `develop`).
-2. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą; osobne zadanie: test E2E przepływu resetu przez `mail-trap.dom`.
-3. MVP: domknięcie wyszukiwarki (testy manualne MCP `szukaj` + #62-495), potem odśnieżarka krok 1.
-4. Pozostałe testy manualne z listy → deploy na Optiplex i tag `v1.0.0`.
-5. Osobne zadanie: `bin/restore-dev-user.php` — `getenv(...) ?? default` nie działa (getenv zwraca `false`).
-6. Po MVP: #62-486 → #62-493 (jakość źródeł badania), #62-494 (SSE).
+1. **Faza 4:** UI panel „Dostawcy AI" (dodawanie/edycja/usuwanie, maskowane pole klucza) na endpointach z Fazy 2.
+2. **Faza 3:** generalizacja rejestru db — dostawcy z UX widoczni i wybieralni w czacie (nachodzi na #62-497).
+3. Naprawa `TaskController` — `int $id` w `update`/`delete` nie rzutuje argumentu trasy (`TypeError` w strict mode); wzór: `(int)$request->getAttribute('id')`.
+4. **Faza 5 (później):** memory per `dostawca:model`.
+5. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą + E2E przez `mail-trap.dom`.
+6. MVP: domknięcie wyszukiwarki (testy manualne MCP `szukaj` + #62-495), potem odśnieżarka krok 1.
+7. Pozostałe testy manualne → deploy na Optiplex i tag `v1.0.0`.

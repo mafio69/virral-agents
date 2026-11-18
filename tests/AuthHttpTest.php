@@ -307,6 +307,20 @@ final class AuthHttpTest extends TestCase
         ])->getStatusCode());
     }
 
+    public function testRegistrationRejectsPasswordOverBcryptLimitInBytes(): void
+    {
+        // 37 two-byte characters = 74 bytes: within any character limit, but beyond bcrypt's 72 bytes.
+        foreach ([str_repeat('a', 73), str_repeat('ą', 37)] as $password) {
+            self::assertSame(422, $this->request('POST', '/api/auth/register', [
+                'email' => 'over@example.invalid', 'password' => $password,
+            ])->getStatusCode());
+        }
+        self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn());
+        self::assertSame(201, $this->request('POST', '/api/auth/register', [
+            'email' => 'edge@example.invalid', 'password' => str_repeat('ą', 36),
+        ])->getStatusCode());
+    }
+
     public function testSuccessfulLoginDoesNotConsumeFailureBudget(): void
     {
         $this->registerConfirmed();

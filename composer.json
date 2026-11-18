@@ -33,7 +33,7 @@
     "test": "phpunit --colors=always",
     "lint": "php-cs-fixer fix --config=php-cs-fixer.php --dry-run --diff --using-cache=no --sequential",
     "format": "php-cs-fixer fix --config=php-cs-fixer.php --using-cache=no --sequential",
-    "test-ui": "node --test --test-isolation=none tests/ui/*.test.mjs",
+    "test-ui": "sh bin/test-ui.sh",
     "check-all": [
       "@lint",
       "@test",

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-11-19 — limit 72 B hasła przy rejestracji, testy UI na Node 22, porządki w gałęziach
+
+- **Rejestracja (PR #28):** `RegisterInputMapper` odrzuca hasło dłuższe niż 72 bajty (422), tak jak `ResetPasswordInputMapper` — bcrypt przycina hasło do 72 B, więc dłuższe hasło po cichu traciło końcówkę. Test `AuthHttpTest::testRegistrationRejectsPasswordOverBcryptLimitInBytes` (37 × `ą` = 74 B odrzucone, 36 × `ą` = 72 B przyjęte). Wykryte w przeglądzie resetu hasła.
+- **Testy UI (PR #29):** `composer test-ui` woła `bin/test-ui.sh`, który dobiera flagę do wersji Node: `--test-isolation=none` (Node ≥ 23.6, CI: 24) albo `--experimental-test-isolation=none` (Node 22). Wcześniej na Node 22 `composer check-all` przerywało się na `node: bad option`. Opis w `REPO.md`.
+- **Dokumentacja (PR #26):** stany ✅/🟡/❌ zadań E1–E3 w `TODO-zrodla.md` według kodu; `HANDOFF.md`/`STATUS.md` zaktualizowane po porządkach gałęzi.
+- **Porządki w gałęziach:** usunięty stary `stash@{0}` (konfiguracja Dockera z czasów PR #8 — m.in. usuwała OpenRouter i zmieniała nazwę serwisu `app`), lokalna `backup/E3.1-…` (cofała zmiany z `master`; potrzebne testy już były w `feature/E3.1`) oraz scalone lub porzucone gałęzie zadaniowe (lokalnie i na GitHubie) — na origin zostały tylko `master` i `develop`.
+- Scalone do `develop`: #25 (restart kontenerów, konflikt z rootless rozwiązany: `restart` + `user`/`command` z `develop`), #27 (E3.1).
+- Walidacja (`develop` + E3.1): formatter 0/200, PHPUnit 328/328 (1469 asercji), UI 113/113.
+
 ## 2026-11-11 — kontenery wstają same po awarii i restarcie serwera
 
 - **`restart: unless-stopped`** dla `app` i `nginx` w `docker-compose.yml`. Wcześniej brak polityki restartu: po restarcie serwera (10.11) oba kontenery zostały w stanie `Exited (255)`, a `agents.dom` zwracał 502 przez ~31 h. Uruchomione ponownie `./prod-start.sh` (APP_ENV=prod); działający `nginx` dostał politykę przez `docker update` (skrypt celowo go nie przebudowuje). Kontrola: `:8181` 200, `agents.dom` 200.

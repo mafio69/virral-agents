@@ -78,7 +78,7 @@ Infrastructure: AI providers (OVH, Z.ai, OpenAI, Anthropic, Gemini), McpSearchCl
 | Reverse proxy | limit logowań liczy `REMOTE_ADDR`, a dla zaufanych peerów z `TRUSTED_PROXIES` adres klienta z `X-Forwarded-For` od prawej | bez `TRUSTED_PROXIES` nagłówek `X-Forwarded-For` jest ignorowany; ustaw adresy/CIDR zaufanego reverse proxy w środowisku |
 | Szyfrowanie | szyfrowane są wybrane pola, nie cały plik SQLite | metadane (czasy, ID, liczba wiadomości) pozostają jawne; dostawca AI widzi treść rozmowy |
 | Git | gałęzie z `develop`, push tylko `develop`, `master` tylko przez PR | patrz `GIT-FLOW.md`; nie scalać lokalnie do `master` |
-| Testy UI | `node --test --test-isolation=none` | w ograniczonym środowisku agenta izolacja procesów zawodzi |
+| Testy UI | `composer test-ui` (`bin/test-ui.sh`: `node --test` bez izolacji procesów) | w ograniczonym środowisku agenta izolacja procesów zawodzi; skrypt wybiera `--test-isolation=none` (Node ≥ 23.6, CI: 24) albo `--experimental-test-isolation=none` (Node 22) |
 | Uprawnienia plików | ACL repo ma `other::---`; nginx (uid 101 w kontenerze) ma osobny wpis: `u:101:x` na katalogu repo i `u:101:rX` (także domyślny) na `public/` | bez tego CSS/JS trafiają do PHP (404/503) i czat nie działa, choć `/chat` zwraca 200; nie nadawać `o+r` — `.env` musi mieć `660` |
 
 ## 6. Stałe operacyjne

@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../../public/ui/landing.html', import.meta.url), 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
-async function fixture({ blockedStorage = false, restoreCookie = false, response = { ok: true, status: 201, data: { confirmation_sent: false } } } = {}) {
+async function fixture({ blockedStorage = false, restoreCookie = false, search = '', response = { ok: true, status: 201, data: { confirmation_sent: false } } } = {}) {
     const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map(([, id]) => {
         const classes = new Set(['hidden']);
         return [id, { value: '', textContent: '', disabled: false, checked: false, className: '', attributes: {},
@@ -14,15 +14,21 @@ async function fixture({ blockedStorage = false, restoreCookie = false, response
             classList: { add: (...names) => names.forEach(name => classes.add(name)),
                 remove: (...names) => names.forEach(name => classes.delete(name)), contains: name => classes.has(name) } }];
     }));
-    const buttons = new Map(['register', 'login'].map(name => [name, { disabled: false }]));
+    const buttons = new Map(['register', 'login', 'forgot', 'reset'].map(name => [name, { disabled: false }]));
     const requests = [];
+    const historyCalls = [];
+    const timers = [];
+    const location = { hash: '', search, pathname: '/' };
     const context = vm.createContext({
+        URLSearchParams,
+        history: { replaceState: (...args) => historyCalls.push(args) },
+        setTimeout: (cb) => { timers.push(cb); },
         document: { cookie: '', body: { dataset: {} }, getElementById: id => elements.get(id) || null,
-            querySelector: selector => buttons.get(selector.includes('register') ? 'register' : 'login') },
+            querySelector: selector => buttons.get(['register', 'forgot', 'reset'].find(name => selector.includes(name)) ?? 'login') },
         localStorage: { getItem: () => { if (blockedStorage) throw new Error('Storage disabled'); return null; },
             removeItem: () => { if (blockedStorage) throw new Error('Storage disabled'); },
             setItem: () => { if (blockedStorage) throw new Error('Storage disabled'); } },
-        location: { hash: '' }, window: { addEventListener() {} },
+        location, window: { location, addEventListener() {} },
         fetch: async (url, options) => {
             requests.push({ url, options });
             const result = url.endsWith('/me')
@@ -36,7 +42,7 @@ async function fixture({ blockedStorage = false, restoreCookie = false, response
     vm.runInContext(script, context);
     await new Promise(resolve => setImmediate(resolve));
     requests.length = 0;
-    return { context, elements, buttons, requests };
+    return { context, elements, buttons, requests, historyCalls, timers };
 }
 
 test('registration and login views open without missing DOM elements', async () => {
@@ -169,4 +175,56 @@ test('mail delivery failure explains that confirmation still blocks login', asyn
     await vm.runInContext('register()', context);
     assert.match(elements.get('reg-result').textContent, /Logowanie wymaga potwierdzenia adresu/);
     assert.doesNotMatch(elements.get('reg-result').textContent, /Możesz przejść do logowania/);
+});
+
+test('reset link opens the new password form and removes the token from the address bar', async () => {
+    const token = 'a'.repeat(64);
+    const { context, elements, historyCalls, requests } = await fixture({
+        search: '?reset_token=' + token,
+        response: { ok: true, status: 200, data: { message: 'Hasło zostało pomyślnie zmienione.' } },
+    });
+    assert.equal(elements.get('reset-form').classList.contains('hidden'), false);
+    assert.deepEqual(historyCalls, [[null, '', '/']]);
+    elements.get('reset-password').value = 'fixture-new-password';
+    elements.get('reset-password-confirm').value = 'fixture-new-password';
+    await vm.runInContext('resetPassword()', context);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/api/auth/reset-password');
+    assert.deepEqual(JSON.parse(requests[0].options.body), { token, password: 'fixture-new-password' });
+    assert.match(elements.get('reset-result').textContent, /Hasło zostało pomyślnie zmienione/);
+});
+
+test('reset redirect timer does not switch forms after navigation', async () => {
+    const { context, elements, timers } = await fixture({
+        search: '?reset_token=' + 'a'.repeat(64),
+        response: { ok: true, status: 200, data: { message: 'Hasło zostało pomyślnie zmienione.' } },
+    });
+    elements.get('reset-password').value = 'fixture-new-password';
+    elements.get('reset-password-confirm').value = 'fixture-new-password';
+    await vm.runInContext('resetPassword()', context);
+    assert.equal(timers.length, 1);
+    vm.runInContext("showForm('register')", context);
+    assert.equal(elements.get('register-form').classList.contains('hidden'), false);
+    timers[0]();
+    assert.equal(elements.get('register-form').classList.contains('hidden'), false);
+    assert.equal(elements.get('login-form').classList.contains('hidden'), true);
+});
+
+test('mismatched new passwords are rejected without a request', async () => {
+    const { context, elements, requests } = await fixture({ search: '?reset_token=' + 'b'.repeat(64) });
+    elements.get('reset-password').value = 'fixture-new-password';
+    elements.get('reset-password-confirm').value = 'fixture-other-password';
+    await vm.runInContext('resetPassword()', context);
+    assert.equal(requests.length, 0);
+    assert.match(elements.get('reset-result').textContent, /Hasła nie są identyczne/);
+});
+
+test('rate-limited reset request shows a retry message', async () => {
+    const { context, elements, buttons } = await fixture({
+        response: { ok: false, status: 429, data: { error: 'Rate limited' }, headers: { 'Retry-After': '120' } },
+    });
+    elements.get('forgot-email').value = 'fixture@example.invalid';
+    await vm.runInContext('forgotPassword()', context);
+    assert.match(elements.get('forgot-result').textContent, /Zbyt wiele prób wysłania linku\. Spróbuj ponownie za 2 min\./);
+    assert.equal(buttons.get('forgot').disabled, false);
 });

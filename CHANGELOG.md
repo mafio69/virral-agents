@@ -4,6 +4,31 @@
 
 - **`restart: unless-stopped`** dla `app` i `nginx` w `docker-compose.yml`. Wcześniej brak polityki restartu: po restarcie serwera (10.11) oba kontenery zostały w stanie `Exited (255)`, a `agents.dom` zwracał 502 przez ~31 h. Uruchomione ponownie `./prod-start.sh` (APP_ENV=prod); działający `nginx` dostał politykę przez `docker update` (skrypt celowo go nie przebudowuje). Kontrola: `:8181` 200, `agents.dom` 200.
 
+## 2026-11-09 — zarządzanie dostawcami AI (admin-only) — Faza 2
+
+- `AdminOnlyMiddleware` — nie-admin dostaje 404 (endpointy niewidoczne); role w request z Fazy 1.
+- Endpointy admin: `GET/POST/PUT/DELETE /api/ai-providers`, `POST/DELETE /api/ai-models`.
+- Sekrety: API nigdy nie zwraca klucza (tylko `has_secret`), plaintext szyfrowany w bazie (`SecretService`).
+- `AiProviderService` + `AiAdminController` + mappery walidujące (nazwa, URL http(s), klucz, id modelu).
+- Testy HTTP: admin zarządza dostawcami + sekret niewidoczny w odpowiedzi, nie-admin 404, brak sesji 401.
+
+## 2026-11-09 — role użytkowników (admin/user) — fundament uprawnień (Faza 1)
+
+- Migracja: kolumna `users.role` (`TEXT NOT NULL DEFAULT 'user'`); jednorazowo najwcześniejsze konto = `admin` (właściciel).
+- Rejestracja: pierwszy użytkownik = `admin`, kolejni zawsze `user` (nigdy admin) — zabezpieczenie przed przypadkowym nadaniem pełnych uprawnień przy przyszłym dodawaniu kont.
+- `AuthService::roleOf()` i `currentUser()` zwracają rolę; `AuthMiddleware` dokłada `role` do requestu.
+- Test: pierwszy zarejestrowany = admin, kolejny = user (fizyczny test na SQLite w pamięci).
+
+## 2026-11-09 — reset zapomnianego hasła linkiem e-mail (port z linii archiwalnej)
+
+- Przeniesienie ficzera resetu hasła z `backup/old-develop` (commit `2b4f806`) na `feature/password-reset-port`:
+  - `POST /api/auth/forgot-password` — neutralna odpowiedź (bez ujawniania istnienia konta), token 64 hex ważny 1 h, limit 3 prośby / 15 min osobno na e-mail i IP (`PasswordResetLimiter`, prefiksy HMAC `reset-limit/`, wspólna tabela `login_attempts`).
+  - `POST /api/auth/reset-password` — `UserRepository::resetPasswordWithToken()`: jeden `UPDATE … WHERE id AND token AND expires_at > now`, `rowCount() !== 1` = link zużyty/wyścig → 422; czyści token, potwierdza e-mail i usuwa wszystkie sesje.
+  - UI `landing.html`: „Nie pamiętasz hasła?" + „Ustaw nowe hasło", token z URL (`/?reset_token=…`) + `history.replaceState`; 429 pokazuje `Retry-After`.
+  - `LoginRateLimitException` z opcjonalnym komunikatem → middleware 429 + `Retry-After`.
+- Testy: `AuthServiceResetPasswordTest`, `AuthResetPasswordApiTest`, `PasswordResetLimiterTest`, przypadek 429 w `AuthHttpTest`, testy UI landinga.
+- Walidacja: PHPUnit 317/317 (1423 asercji), UI 112/112, formatter 0/191.
+
 ## 2026-11-08 (2) — fixy z drugiego przeglądu (usage DeepSeek, Langfuse fallback, spójność docs)
 
 - **DeepSeek + usage:** `DeepSeekProvider` implementuje `MultimodalClientInterface` — `ChatReplyGenerator::reply()` woła teraz `generateReply()` i tokeny DeepSeeka nie giną w `chat_usage`; obrazy nadal niedostępne (katalog `supports_images=false`). Docstringi metod (bramka Docstring Coverage).

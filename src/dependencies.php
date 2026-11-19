@@ -125,8 +125,26 @@ return function (ContainerBuilder $containerBuilder) {
 
             return new MailService($dsn);
         },
+        \App\Service\AiProviderService::class => function (ContainerInterface $c) {
+            $key = new \App\Infrastructure\Secrets\SecretKey($c->get('settings')['ai_registry']['key']);
+            $secretService = new \App\Infrastructure\Secrets\SecretService(
+                new \App\Infrastructure\Secrets\SecretEncryptor($key),
+                new \App\Infrastructure\Secrets\SecretDecryptor($key),
+            );
+
+            return new \App\Service\AiProviderService(
+                new \App\Repository\AiProviderRepository($c->get(PDO::class), $secretService),
+                $c->get(\App\Repository\AiModelRepository::class),
+                $c->get(\App\Repository\AiUrlRepository::class),
+                $c->get(LoggerInterface::class),
+            );
+        },
         \App\Repository\LoginAttemptRepositoryInterface::class => fn (ContainerInterface $c) => new \App\Repository\LoginAttemptRepository($c->get(PDO::class)),
         \App\Service\LoginAttemptLimiterInterface::class => fn (ContainerInterface $c) => new \App\Service\LoginAttemptLimiter(
+            $c->get(\App\Repository\LoginAttemptRepositoryInterface::class),
+            $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
+        ),
+        \App\Service\PasswordResetLimiter::class => fn (ContainerInterface $c) => new \App\Service\PasswordResetLimiter(
             $c->get(\App\Repository\LoginAttemptRepositoryInterface::class),
             $c->get(\App\Infrastructure\DataProtection\DataCipherInterface::class),
         ),
@@ -134,9 +152,10 @@ return function (ContainerBuilder $containerBuilder) {
             return new AuthService(
                 userRepository: $c->get(UserRepository::class),
                 mailService: $c->get(MailService::class),
-                appUrl: $c->get('settings')['app_url'] ?? 'http://localhost:8181',
+                appUrl: $c->get('settings')['app_url'],
                 logger: $c->get(LoggerInterface::class),
                 loginLimiter: $c->get(\App\Service\LoginAttemptLimiterInterface::class),
+                passwordResetLimiter: $c->get(\App\Service\PasswordResetLimiter::class),
             );
         },
         \App\Observability\LangfuseTrace::class => function (ContainerInterface $c) {

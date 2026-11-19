@@ -20,6 +20,10 @@ final readonly class AuthMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $userId = $this->auth->validateToken($this->resolver->resolveToken($request));
-        return $handler->handle($request->withAttribute('userId', $userId));
+        $role = $this->auth->roleOf($userId);
+
+        return $handler->handle(
+            $request->withAttribute('userId', $userId)->withAttribute('role', $role)
+        );
     }
 }

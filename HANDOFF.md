@@ -19,15 +19,23 @@ Szablon:
 
 ---
 
-## 2026-11-08 — DeepSeek (niezacommitowane) + czerwony test Gemini
+## 2026-11-19 — porządki w gałęziach, przegląd resetu hasła
 
-- **Gałąź:** `develop` (ostatni `4987be3`).
-- **Zrobione w tej sesji (niezacommitowane):** integracja DeepSeek — `src/Infrastructure/AI/DeepSeekProvider.php`, wiring w `src/settings.php` + `src/dependencies.php` + `docker-compose.yml` + `docker/php-fpm-env.conf`, testy `tests/DeepSeekProviderTest.php` (7/7), docs (README, AI_PROVIDERS, KONFIGURACJA), rytuał końca (CHANGELOG/STATUS/REPO). Reset hasła z limitem `PasswordResetLimiter` został scalony wcześniej (`2b4f806`) — nie ruszać. Do tego: globalny config opencode ma `mcp.devbrain` (token z `nv.tmp`, poza repo).
-- **Od czego zacząć:** naprawa `EmptyReplyTest` „Gemini" (czerwony na develop: `GeminiProvider` przy pustej treści z `finishReason: MAX_TOKENS` ma rzucać `EmptyReply::exception(..., limitReached: true, candidatesTokenCount, thoughtsTokenCount)`; wzorzec mapowania w `EmptyReplyTest` wiersz ~55). Potem commit DeepSeek (tylko za zgodą właściciela) i test manualny po wklejeniu `DEEPSEEK_API_KEY` do `.env` + `--force-recreate app`.
+- **Gałąź / ostatni commit:** `develop` = `749ff3f` (role + CRUD dostawców, Fazy 1–2; tylko w `develop`). `master` = `15e2ac8` (PR #24). Ostatnia walidacja z 2026-11-09: PHPUnit 323/323, UI 113/113, formatter 0/200.
+- **Zrobione:** stany ✅/🟡/❌ zadań w `TODO-zrodla.md`; usunięty stary `stash@{0}`, lokalna `backup/E3.1-…` i 11 scalonych/porzuconych gałęzi zdalnych.
+- **Otwarte PR-y do `develop`:** #25 `fix/restart-po-awarii` (restart kontenerów), #26 ta dokumentacja, #27 `feature/E3.1` (E3.1; możliwy konflikt w `STATUS.md` — scalać po #26 i oznaczyć E3.1 jako ✅).
+- **Przegląd resetu hasła:** OK (hash tokenu, atomowe zużycie, unieważnienie sesji, limit, stały czas odpowiedzi, `replaceState`). Do naprawy: `RegisterInputMapper` nie ma limitu 72 bajtów (bcrypt przycina) — reset go ma.
+- **Od czego zacząć:**
+  1. Scalić #25 → #26 → #27.
+  2. **Faza 4** — UI panel „Dostawcy AI" (formularz: nazwa, URL, klucz `type=password`, id modelu; lista z `has_secret` → `••••••`). Używa gotowych endpointów.
+  3. **Faza 3** — generalizacja rejestru db (dostawcy z UX widoczni w czacie; nachodzi na #62-497).
+  4. **Naprawa `TaskController`** — `int $id` w `update`/`delete` rzuca `TypeError` (patrz Pułapki); poprawka 72 B w rejestracji.
+  5. **Faza 5 (później)** — memory per `dostawca:model`.
 - **Pułapki:**
-  - `DEEPSEEK_BASE_URL_ANTHROPIC` w `.env.example` to celowo niespaiwana notatka właściciela (wyjście awaryjne) — nie podłączać.
-  - `GIT-FLOW.md` zawiera ręczną edycję właściciela („weewewew") — plik tylko dla człowieka, nie cofać bez zgody.
-  - `.env.example` ma notatki DeepSeek właściciela (komentarze + puste zmienne) — bezpieczne do commitu, ale to jego zmiana.
-  - Właściciel: „nie trać czasu na badanie kodu" — czytać tylko to, co konieczne do zadania.
-  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI lokalnie `node --test --experimental-test-isolation=none`.
-  - Push: `git -c credential.helper='!gh auth git-credential' push origin develop` (tylko za zgodą).
+  - Przed oceną stanu gałęzi zawsze `git fetch --prune` — lokalne `origin/*` bywają nieaktualne.
+  - `ControllerInvoker` (PHP-DI) **nie rzutuje** stringa `{id}` na int — w kontrolerach używaj `(int)$request->getAttribute('id')`, nie `int $id` (latent bug w `TaskController`).
+  - Sekrety: nigdy w odpowiedzi, nigdy w logach, pole klucza maskowane (`type=password`, `autocomplete="new-password"`).
+  - `origin/feature/password-reset-port` scalona (PR #23) — do usunięcia za zgodą; `backup/old-develop` nie istnieje już ani lokalnie, ani na origin.
+  - Rootless Docker: `./dev-start.sh` bez sudo, port `APP_HOST_PORT` (default 8181); `DOCKER_HOST` właściciela w `/etc/environment`.
+  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI `node --test --test-isolation=none`.
+  - Push: `git -c credential.helper='!gh auth git-credential' push origin <branch>` (tylko za zgodą).

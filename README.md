@@ -75,11 +75,9 @@ Co warto wiedzieć:
 1. W Langfuse: projekt → **Settings → API Keys → Create new API key** (Secret Key widać tylko raz).
 2. W `.env`: `LANGFUSE_ENABLED=true`, oba klucze i adres z paska przeglądarki jako `LANGFUSE_BASE_URL`
    (`https://cloud.langfuse.com` EU, `https://us.cloud.langfuse.com` US). **Bez `LANGFUSE_ENABLED=true` nic nie jest wysyłane.**
-3. Sprawdzenie bez uruchamiania czatu: `php bin/check-langfuse.php` — wysyła testowy ślad (tag `connection-check`)
-   i odczytuje go przez API Langfuse; kod wyjścia 0 = działa. Kluczy nie wypisuje.
-4. `./dev-start.sh` (kontener app musi dostać nowe zmienne), potem wiadomość w czacie. Każda tura zostawia w logu
-   jeden wpis: `Langfuse trace sent` (z `trace_id`), `Langfuse wyłączony …` albo `Langfuse HTTP …`.
-   Konkretny ślad z logu: `php bin/check-langfuse.php --trace <trace_id>`.
+3. `./dev-start.sh` (kontener app musi dostać nowe zmienne), potem wiadomość w czacie. Każda udana tura wysyła
+   jeden span `chat-turn-<n>`; w razie problemu w logu pojawia się `Langfuse HTTP <kod>` lub `Langfuse error`.
+   Weryfikacja: wpis w logu aplikacji oraz span w panelu Langfuse (filtr po `session.id`).
 
 ## Agenci AI pracujący nad kodem
 
@@ -173,7 +171,7 @@ src/
   Service/         Auth, Chat, ChatReplyGenerator, Research*, ModelCatalog, LoginAttemptLimiter, Task
   Repository/      dostęp do SQLite przez ProtectedStore (szyfrowanie pól)
   Infrastructure/  AI (dostawcy), Search (MCP, fetch stron), DataProtection, Database, Mail, Http, Secrets
-bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php, check-langfuse.php, restoreDevPass.sh (dev: docs/DEV-ADMIN.md)
+bin/               migrate.php, protect-user-data.php, reset-password.php, check-mcp-search.php, restoreDevPass.sh (dev: docs/DEV-ADMIN.md)
 config/app.php     jawne ustawienia (bez sekretów)
 docker/            Dockerfile, nginx, php-fpm-env.conf, start-app.sh
 tests/             PHPUnit, ui/ (node:test), e2e/ (Playwright), browser/ (routery atrap)

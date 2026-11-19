@@ -62,6 +62,10 @@ class AuthServiceTest extends TestCase
             new \App\Service\LoginAttemptLimiter(
                 new \App\Repository\LoginAttemptRepository($this->pdo),
                 ProtectedDataFixture::cipher($this->pdo)
+            ),
+            new \App\Service\PasswordResetLimiter(
+                new \App\Repository\LoginAttemptRepository($this->pdo),
+                ProtectedDataFixture::cipher($this->pdo)
             )
         );
     }
@@ -79,6 +83,15 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('test@example.com', $user['email']);
         $this->assertNotEmpty($user['password_hash']);
         $this->assertNotEquals('password123', $user['password_hash']);
+    }
+
+    public function testFirstRegisteredUserIsAdminAndLaterUsersAreNot(): void
+    {
+        $this->authService->register(new RegisterInput('admin@example.com', 'password123'));
+        $this->assertSame('admin', $this->users->findByEmail('admin@example.com')['role']);
+
+        $this->authService->register(new RegisterInput('member@example.com', 'password123'));
+        $this->assertSame('user', $this->users->findByEmail('member@example.com')['role']);
     }
 
     public function testRegisterDuplicateEmail(): void

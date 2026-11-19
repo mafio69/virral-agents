@@ -9,35 +9,52 @@
 
 ---
 
-**Ostatnia aktualizacja:** 2026-11-08
-**Gałąź:** `develop` (pushnięty; T6.x + T3.x + fix Gemini + E2.2). PR #15 scalony do `master` (`c42ab6b`); `v1.0.0` otagowane na `32ae5a5`. Fixy z przeglądu PR #16 na gałęzi `fix/pr16-review` (bez push).
-**Ostatnia pełna walidacja (2026-11-08, `fix/pr16-review`):** formatter 0/181, PHPUnit 287/287 (1340 asercji), UI 109/109; E2E niepowtórzone (2026-11-05: 5/5, Mailpit loopback `127.0.0.1:8025`).
+**Ostatnia aktualizacja:** 2026-11-19
+**Gałąź:** `develop` (DeepSeek + reset hasła + role + CRUD dostawców scalone; master = `15e2ac8` po PR #24). Scalone 2026-11-19: #25 (restart kontenerów po awarii), #26 (dokumentacja), #27 (E3.1), #28 (limit 72 B hasła przy rejestracji), #29 (testy UI na Node 22).
+**Ostatnia walidacja (2026-11-19, `develop` + E3.1):** `composer check-all` — formatter 0/200, PHPUnit 328/328 (1469 asercji), UI 113/113.
 
-## Gotowe
+## Gotowe (w develop / release/v1.0.0)
 
-- **v1.0.0:** konto (potwierdzenie e-maila, limit logowań, sesja HttpOnly/Bearer), szyfrowanie pól, czat z 6 dostawcami, obsługa błędów `DualLogger`, wyszukiwanie ASK i badanie źródeł z kontynuacją.
-- **Po v1.0.0 (w `master`):** T1.0 Langfuse (OTLP, tokeny z dostawców), T1.1 zapis zużycia `chat_usage`, T1.2 licznik „wej. / wyj.” pod odpowiedzią, #14 `LANGFUSE_HOST` i `LANGFUSE_ENABLED`, PR #15 (nginx `agents.dom`, dokumentacja).
-- **T6.1 + T6.2 (2026-11-02, w `develop`):** filtry wyszukiwania zaawansowanego — backend `SearchQuery`/`SearchQueryBuilder`, kontrakt `web_search` dla modeli (`must_have`/`exclude`/`exact_phrase`/`sites`), chipy „Bez / Musi zawierać" + „Więcej opcji" w UI, podsumowanie filtrów na karcie zgody. #62-524 i #62-525 zamknięte na DT.
-- **T3.1 (2026-11-02):** `HistoryCompactor` — ostatnie 8 tur w całości (`context_recent_turns` w config/DI), starsze tylko przycięte pytania użytkownika. #62-519 zamknięte na DT.
-- **T3.2 (2026-11-03):** pomiar zysku kompaktu — identyczna rozmowa 12 krótkich pytań, ten sam model w obu przebiegach: ostatnia odpowiedź przed T3.1 **1465/55**, po T3.1 **1331/61** → **−134 tokenów wejściowych (−9,2%)** już przy krótkiej rozmowie; przy dłuższych odpowiedziach i 30+ turach zysk rośnie, bo w całości wędruje tylko ostatnie 8 tur — starsze pytania użytkownika zostają skrócone do 300 znaków, więc historia wciąż rośnie z liczbą tur, ale wolniej i bez starego balastu odpowiedzi oraz obrazów. #62-520 zamknięte na DT.
-- **Gemini thinking (2026-11-04):** `MAX_TOKENS` nie zabija już całej odpowiedzi — częściowy tekst + usage wracają do użytkownika; limit tekstowy 8192 tokenów; obrazy pozostają rygorystyczne.
-- **E2.2 (2026-11-05):** fetcher stron wysyła realistyczny User-Agent (Chrome) i `Accept-Language` z `config/app.php` (sekcja `research`, przez DI); domyślnie neutralny UA bez nagłówka języka. Fetch bez cookies/JS bez zmian. #62-486 zamknięte na DT.
-- **PR #16 review (2026-11-08, `fix/pr16-review`):** kwotowanie wielosłownych tokenów filtra, odrzucenie pustego `query` w `web_search`, odrzucenie uciętego (`MAX_TOKENS`) `functionCall` Gemini, `completion_tokens` z myślami, normalizacja+walidacja strony/frazy w UI, sprostowanie opisu T3.2, docstringi; `dev-start.sh` bez sudo (rootless).
-- **DeepSeek (PR #18, w `master`):** dostawca czatu `deepseek-flash`, `deepseek-v4-pro` (`DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`); skille agentów komunikator i Langfuse.
-- **E3.1 (2026-11-06):** fetcher wyciąga treść z `main`/`article`/`[role="main"]`, usuwa `aside`/`header`/`figure` i banery zgód, tnie 16 000 znaków na granicy akapitu. #62-490 zrobione (kod + testy); zamknięcie na DT i push — do potwierdzenia właściciela.
+- **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, reset zapomnianego hasła linkiem e-mail ze strony logowania (limit prób, token ważny 1 h).
+- **Role i uprawnienia:** `users.role` (`admin`/`user`); pierwszy użytkownik = admin, kolejni = user (nigdy admin); `AuthMiddleware` dokłada `role`, `AdminOnlyMiddleware` zwraca 404 nie-adminowi.
+- **Zarządzanie dostawcami AI (admin-only):** `GET/POST/PUT/DELETE /api/ai-providers`, `POST/DELETE /api/ai-models`; sekret dostawcy nigdy nie jest zwracany (tylko `has_secret`), plaintext szyfrowany w bazie (`SecretService`).
+- **Ochrona danych:** szyfrowanie pól (XChaCha20-Poly1305, `USER_DATA_KEY`), HMAC e-maila, hashe tokenów, migracja CLI `bin/protect-user-data.php`.
+- **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek (`deepseek-flash`, `deepseek-v4-pro`; `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`). Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny).
+- **Obsługa błędów i logowanie (`Mariusz\Logger\DualLogger`):** wspólne mapowanie wyjątków w `src/middleware.php`; użytkownik nigdy nie widzi surowych błędów debugowania, kodów `HTTP 5xx` ani wewnętrznych nazw zmiennych — zawsze otrzymuje przyjazny komunikat z przeprosinami. Miejsca przechwycenia wyjątków (`middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`) logują bogaty kontekst diagnostyczny (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `reason`, `stage`, `sqlstate`, `driver_code`).
+- **WWW i badanie źródeł:** MCP `web_search` w trybie ASK (`MCP_SEARCH_URL` + `MCP_AUTH_TOKEN`), badanie źródeł z kontynuacją (`POST /api/chats/{id}/messages/{messageId}/continue`), izolacja jednego wyszukiwania na jedną wymianę zdań (automatyczne czyszczenie po wygenerowaniu odpowiedzi oraz ręczne czyszczenie `DELETE /api/research` w panelu bocznym i modalu), `chat_messages.kind` (`message`/`approval_request`/`continuation`), fetcher z bezpiecznymi redirectami.
+- **Jakość i dokumentacja:** formatter na całym PHP (`src/`, `bin/`, `tests/`), klamry we wszystkich if/else w PHP i JS, testy spójności zmiennych środowiskowych (`EnvNamesConsistencyTest`), dokumentacja zsynchronizowana pod `v1.0.0`.
+- **Testy:** E2E 5/5 działa przez zewnętrzny Mailpit `mail-trap.dom` (rejestracja/SMTP, logowanie z błędnym e-mailem/hasłem i poprawnymi danymi, czat, badanie źródeł, diagnostyka MCP).
 
-## Otwarte
+## Otwarte / wymagane testy manualne przed tagiem `v1.0.0` (100% pass)
 
-- **Rotacja tokenu MCP — WSTRZYMANA:** token po stronie serwera (`szukaj`) podmieniony przez właściciela, ale serwer `mcp-search` jeszcze nie działa; po jego postawieniu — `sudo docker compose up -d --force-recreate app` i weryfikacja `GET /api/search/status` / jednego wyszukania w czacie.
-- **`szukaj` w trybie dev** (backend i wbudowany frontend `appEnv:"dev"`); przełączenie na prod wymaga `APP_ENV=prod` w `szukaj/.env` i przebudowy `mcp-search`.
-- **Limit logowań za Traefikiem:** `TRUSTED_PROXIES` puste → wspólny licznik nieudanych logowań dla wszystkich klientów.
-- **`develop` → `master`:** develop jest przed masterem (T6.1+T6.2 czekają na PR); scalanie wyłącznie przez PR z zielonymi kontrolami.
-- **Brak wpisów CHANGELOG** dla T1.0 (Langfuse) i #14.
-- Do potwierdzenia na rzeczywistym modelu: #62-495 (kontynuacja badania), OpenRouter (2026-11-04: błąd odpowiedzi przy modelu typu „4o" — wg właściciela po stronie dostawcy, do obserwacji), start `./prod-start.sh` i poczta prod; manualny test filtrów wyszukiwania w UI po deployu.
+- **Wyszukiwarka MCP (`szukaj`):** po ustawieniu `MCP_AUTH_TOKEN` w `.env` i odtworzeniu kontenera `app` — potwierdzić ręczne wyszukanie WWW oraz prośbę AI o WWW z automatyczną kontynuacją (`/continue`).
+- **#62-495:** potwierdzić na rzeczywistym modelu kontynuację badania bez błędu „Nie udało się odebrać odpowiedzi” (w razie wyjątku log zawiera teraz `plik:linia` i kod SQLSTATE/PDO).
+- **#62-503:** na produkcji sprawdzić limit za proxy (6 błędnych logowań z telefonu, potem logowanie z komputera; w razie wspólnej blokady ustawić `TRUSTED_PROXIES`). HTTPS i healthcheck kontenera nadal otwarte.
+- **OpenRouter i dostawcy AI:** sprawdzić widoczność listy połączeń zgodną z kluczami w `.env` oraz odpowiedź na rzeczywistym koncie OpenRouter.
+- **Start i poczta prod:** start przez `./prod-start.sh`, dostarczenie e-maila weryfikacyjnego.
+- **Jakość źródeł badania (`TODO-zrodla.md`):** E1.1, E1.2, E2.1, E2.2, E3.1 gotowe; E2.3–E2.5 i E3.2–E3.4 do zrobienia.
+
+## Cel: MVP = wyszukiwarka + „odśnieżarka”
+
+„Odśnieżarka” — usprawnienia ograniczające efekt kuli śnieżnej w czacie (każda tura wysyła modelowi historię, więc rosną koszt, czas i ryzyko gubienia wątku). Od T3.1 `ChatService::historyForModel()` używa `HistoryCompactora`: ostatnie 8 tur w całości, starsze tylko pytania użytkownika skrócone do 300 znaków (bez starych odpowiedzi i obrazów — historia dalej rośnie z liczbą tur, ale wolniej); `chat_usage` zapisuje `prompt_tokens` odpowiedzi, które zwróciły `usage`.
+
+**Wyszukiwarka (domknięcie):**
+1. Testy manualne z sekcji wyżej: MCP `szukaj` (ręczne wyszukanie + prośba AI z `/continue`) oraz #62-495.
+
+**Odśnieżarka (propozycja kolejności, każdy krok osobnym zadaniem — decyzja właściciela):**
+1. Pomiar — **kod gotowy**: tokeny lądują w `chat_usage`, gdy dostawca zwróci `usage`; udana tura zostawia ślad `chat-turn-<n>` w Langfuse (wyjątek w trakcie tury nie zostawia ani tokenów, ani śladu). Do zrobienia: rozmowa testowa i sprawdzenie śladu w Langfuse przez właściciela. Punkt odniesienia z rozmowy 39 (przed poprawką): wejście 849 → 9645 tokenów w 8 turach.
+2. Obrazy z dawnych tur nie są wysyłane ponownie (zastępuje je krótka notka).
+2a. **Treść pobranych źródeł** — pomiar z rozmowy 41 (`openai/gpt-4o`, 2026-11-01): zwykła tura ~1,4 tys. tokenów wejścia, kontynuacja badania z pobranymi stronami ~26–27 tys. (limit 100 tys. znaków kontekstu). Po odpowiedzi źródła nie wracają do historii. Kandydaci: niższy limit kontekstu badania, skracanie stron, streszczenie strony przed opracowaniem. Duży kontekst źródeł wyczerpał też limit odpowiedzi modelu rozumującego `gpt-5-nano` (rozmowa 40; pusta odpowiedź to na tej linii kod `invalid_response`).
+3. Budżet historii: do modelu trafia tylko ostatnia część rozmowy mieszcząca się w limicie (pierwsza wiadomość użytkownika zawsze).
+4. Streszczenie starszej części rozmowy (szyfrowane, odświeżane po przekroczeniu budżetu).
+5. UI: wskaźnik rozmiaru kontekstu i propozycja „nowa rozmowa ze streszczeniem”.
 
 ## Następny priorytet
 
-1. #62-542 — data i dzień tygodnia w prompcie systemowym (małe, samodzielne).
-2. `TRUSTED_PROXIES` dla Traefika.
-3. #62-494 — strumieniowanie odpowiedzi (SSE).
-4. Test manualny Gemini 3.8 Flash po naprawie `MAX_TOKENS` (właściciel, po deployu).
+1. **Faza 4:** UI panel „Dostawcy AI" (dodawanie/edycja/usuwanie, maskowane pole klucza) na endpointach z Fazy 2.
+2. **Faza 3:** generalizacja rejestru db — dostawcy z UX widoczni i wybieralni w czacie (nachodzi na #62-497).
+3. Naprawa `TaskController` — `int $id` w `update`/`delete` nie rzutuje argumentu trasy (`TypeError` w strict mode); wzór: `(int)$request->getAttribute('id')`.
+4. **Faza 5 (później):** memory per `dostawca:model`.
+5. Reset hasła: test manualny w przeglądarce z prawdziwą pocztą + E2E przez `mail-trap.dom`.
+6. MVP: domknięcie wyszukiwarki (testy manualne MCP `szukaj` + #62-495), potem odśnieżarka krok 1.
+7. Pozostałe testy manualne → deploy na Optiplex i tag `v1.0.0`.

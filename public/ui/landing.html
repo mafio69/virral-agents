@@ -138,10 +138,59 @@ pre.success { color: var(--accent); background: var(--accent-soft); border-color
       <input type="checkbox" id="login-remember">
       <label for="login-remember" style="font-size:13px;text-transform:none;margin:0;cursor:pointer;">Zapamiętaj mnie na 30 dni</label>
     </div>
-    <button type="submit" class="btn-primary">Zaloguj</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button type="submit" class="btn-primary" style="margin:0;">Zaloguj</button>
+      <button type="button" class="link" onclick="showForm('forgot')">Nie pamiętasz hasła?</button>
+    </div>
     <pre id="login-result" class="mt-2 hidden"></pre>
     <p class="text-center mt-2" style="font-size:13px;color:var(--muted);">
       Nie masz konta? <button type="button" class="link" onclick="showForm('register')">Zarejestruj się</button>
+    </p>
+  </form>
+</div>
+
+<!-- Forgot password form modal -->
+<div class="container hidden" id="forgot-form">
+  <form class="card" onsubmit="event.preventDefault(); return forgotPassword();">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="margin:0">Odzyskiwanie hasła</h2>
+      <button type="button" class="link" onclick="hideForms()">Zamknij</button>
+    </div>
+    <p style="color:var(--muted); font-size:14px; margin-bottom:16px;">
+      Wpisz swój adres email. Jeśli konto istnieje, wyślemy link do zresetowania hasła.
+    </p>
+    <div class="field">
+      <label for="forgot-email">Email</label>
+      <input type="email" id="forgot-email" name="email" autocomplete="email" placeholder="user@example.com" required>
+    </div>
+    <button type="submit" class="btn-primary">Wyślij link resetujący</button>
+    <pre id="forgot-result" class="mt-2 hidden"></pre>
+    <p class="text-center mt-2" style="font-size:13px;color:var(--muted);">
+      Pamiętasz hasło? <button type="button" class="link" onclick="showForm('login')">Zaloguj się</button>
+    </p>
+  </form>
+</div>
+
+<!-- Reset password form modal -->
+<div class="container hidden" id="reset-form">
+  <form class="card" onsubmit="event.preventDefault(); return resetPassword();">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="margin:0">Ustaw nowe hasło</h2>
+      <button type="button" class="link" onclick="hideForms()">Zamknij</button>
+    </div>
+    <input type="hidden" id="reset-token" value="">
+    <div class="field">
+      <label for="reset-password">Nowe hasło</label>
+      <input type="password" id="reset-password" name="password" autocomplete="new-password" placeholder="min. 10 znaków" minlength="10" required>
+    </div>
+    <div class="field">
+      <label for="reset-password-confirm">Powtórz nowe hasło</label>
+      <input type="password" id="reset-password-confirm" name="password_confirm" autocomplete="new-password" placeholder="min. 10 znaków" minlength="10" required>
+    </div>
+    <button type="submit" class="btn-primary">Zmień hasło</button>
+    <pre id="reset-result" class="mt-2 hidden"></pre>
+    <p class="text-center mt-2" style="font-size:13px;color:var(--muted);">
+      <button type="button" class="link" onclick="showForm('login')">Wróć do logowania</button>
     </p>
   </form>
 </div>
@@ -214,6 +263,8 @@ function show(el, msg, cls) {
 function hideForms() {
   document.getElementById('register-form').classList.add('hidden');
   document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('forgot-form').classList.add('hidden');
+  document.getElementById('reset-form').classList.add('hidden');
   document.getElementById('landing-view').classList.remove('hidden');
 }
 
@@ -222,8 +273,19 @@ function showForm(name) {
   document.getElementById('dashboard-view').classList.add('hidden');
   document.getElementById('register-form').classList.add('hidden');
   document.getElementById('login-form').classList.add('hidden');
-  document.getElementById(name + '-form').classList.remove('hidden');
-  document.getElementById(name === 'register' ? 'reg-result' : 'login-result').classList.add('hidden');
+  document.getElementById('forgot-form').classList.add('hidden');
+  document.getElementById('reset-form').classList.add('hidden');
+  const target = document.getElementById(name + '-form');
+  if (target) {
+    target.classList.remove('hidden');
+  }
+  const resultId = name === 'register' ? 'reg-result'
+    : name === 'login' ? 'login-result'
+    : name === 'forgot' ? 'forgot-result'
+    : name === 'reset' ? 'reset-result' : null;
+  if (resultId) {
+    document.getElementById(resultId).classList.add('hidden');
+  }
 }
 
 function switchSection(name) {
@@ -297,6 +359,64 @@ async function login() {
   }
 }
 
+async function forgotPassword() {
+  const el = document.getElementById('forgot-result');
+  const button = document.querySelector('#forgot-form button[type="submit"]');
+  button.disabled = true;
+  show(el, 'Wysyłanie…');
+  try {
+    const email = document.getElementById('forgot-email').value.trim();
+    const r = await api('POST', '/auth/forgot-password', { email });
+    if (r.ok) {
+      show(el, r.data?.message || 'Jeśli konto istnieje, link do zresetowania hasła został wysłany.', 'success');
+    } else {
+      show(el, r.status === 422 ? (r.data?.error || 'Sprawdź adres email.')
+        : r.status === 429 ? 'Zbyt wiele prób wysłania linku. Spróbuj ponownie ' + retryWaitText(r.retryAfter) + '.'
+        : 'Wystąpił błąd. Spróbuj ponownie za chwilę.', 'error');
+    }
+  } catch {
+    show(el, 'Nie udało się połączyć z aplikacją.', 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function resetPassword() {
+  const el = document.getElementById('reset-result');
+  const button = document.querySelector('#reset-form button[type="submit"]');
+  const password = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-password-confirm').value;
+  const token = document.getElementById('reset-token').value;
+
+  if (password !== confirm) {
+    show(el, 'Hasła nie są identyczne.', 'error');
+    return;
+  }
+
+  button.disabled = true;
+  show(el, 'Zapisywanie nowego hasła…');
+  try {
+    const r = await api('POST', '/auth/reset-password', { token, password });
+    if (r.ok) {
+      show(el, r.data?.message || 'Hasło zostało zmienione. Możesz się zalogować.', 'success');
+      document.getElementById('reset-password').value = '';
+      document.getElementById('reset-password-confirm').value = '';
+      setTimeout(() => {
+        // Only switch to login if the user is still on the reset form.
+        if (!document.getElementById('reset-form').classList.contains('hidden')) {
+          showForm('login');
+        }
+      }, 2000);
+    } else {
+      show(el, r.status === 422 ? (r.data?.error || 'Nieprawidłowy lub wygasły link.') : 'Wystąpił błąd. Spróbuj ponownie.', 'error');
+    }
+  } catch {
+    show(el, 'Nie udało się połączyć z aplikacją.', 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function loadDashboard(user = null) {
   if (!user) {
     const r = await api('GET', '/auth/me');
@@ -343,6 +463,15 @@ if (location.hash === '#login') {
 window.addEventListener('hashchange', () => { if (location.hash === '#login') showForm('login'); });
 
 (async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const resetToken = params.get('reset_token');
+  if (resetToken) {
+    document.getElementById('reset-token').value = resetToken;
+    // Keep the one-time token out of browser history and the address bar.
+    history.replaceState(null, '', window.location.pathname);
+    showForm('reset');
+    return;
+  }
   if (location.hash === '#login') {
       showForm('login');
   }

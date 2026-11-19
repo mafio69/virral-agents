@@ -26,6 +26,8 @@ final class ConnectionFactory
 
         // Enable foreign keys
         $pdo->exec('PRAGMA foreign_keys = ON;');
+        // Serialize write transactions (BEGIN IMMEDIATE) instead of failing with SQLITE_BUSY.
+        $pdo->exec('PRAGMA busy_timeout = 5000;');
 
         return $pdo;
     }

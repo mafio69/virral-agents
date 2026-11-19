@@ -114,7 +114,7 @@ salda ani działania konkretnego modelu.
   w trybie ASK. Parametry rozumowania (`thinking`, `reasoning_effort`) nie są domyślnie wysyłane.
 - Rozmowa: `POST /chat/completions` (format OpenAI), limit 4096 tokenów.
 - Błędy: 401/403 → `provider_auth`, 402/429 → `provider_limit`, 404 → `model_unavailable`,
-  timeout → `provider_timeout`, pusta treść → `output_limit` gdy model zatrzymał się na limicie.
+  timeout → `provider_timeout`, pusta treść → `invalid_response`.
 - Selektor rozmowy: `deepseek:<model>`, np. `deepseek:deepseek-flash`.
 - Taryfa: rabat poza szczytem (off-peak) wg cennika DeepSeek; aplikacja z niego nie korzysta
   programowo — to informacja dla właściciela konta.

@@ -21,6 +21,9 @@ return function (ContainerBuilder $containerBuilder) {
     };
 
     $settings['environment'] = $sensitiveValue('APP_ENV', $settings['environment']);
+    // Email links (reset/verify) must reach the published address. APP_URL overrides the whole URL
+    // (e.g. a production domain); otherwise it defaults to localhost plus the published host port.
+    $settings['app_url'] = $sensitiveValue('APP_URL', 'http://localhost:'.$sensitiveValue('APP_HOST_PORT', '8181'));
     $settings['user_data'] = ['key' => $sensitiveValue('USER_DATA_KEY')];
     $settings['ai_registry'] = ['key' => $sensitiveValue('DB_HASH')];
     $settings['zai'] = ['key' => $sensitiveValue('ZAI_API_KEY')];
@@ -34,7 +37,8 @@ return function (ContainerBuilder $containerBuilder) {
         'base_url' => rtrim($sensitiveValue('DEEPSEEK_BASE_URL', \App\Infrastructure\AI\DeepSeekProvider::BASE_URI), '/').'/',
     ];
     $settings['langfuse'] = [
-        'host' => $sensitiveValue('LANGFUSE_HOST', 'https://cloud.langfuse.com'),
+        // LANGFUSE_HOST wins; empty falls back to LANGFUSE_BASE_URL, then to the cloud default.
+        'host' => $sensitiveValue('LANGFUSE_HOST', $sensitiveValue('LANGFUSE_BASE_URL', 'https://cloud.langfuse.com')),
         'public_key' => $sensitiveValue('LANGFUSE_PUBLIC_KEY'),
         'secret_key' => $sensitiveValue('LANGFUSE_SECRET_KEY'),
         'enabled' => filter_var($sensitiveValue('LANGFUSE_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN),

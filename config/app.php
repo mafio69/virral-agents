@@ -21,7 +21,6 @@ return [
         'date_format' => 'Y-m-d H:i:s',
         'timezone' => 'Europe/Warsaw',
     ],
-    'app_url' => 'http://localhost:8181',
     'chat' => [
         // Ile ostatnich tur rozmowy trafia do modelu w całości; starsze tury
         // zostają jako przycięte wiadomości użytkownika (HistoryCompactor, T3.1).

@@ -122,9 +122,9 @@ obsługiwanych kodowań. Testy na fikcyjnych stronach windows-1250 bez nagłówk
 
 ## Etap 3 — Jakość treści
 
-### E3.1 Ekstrakcja treści main/article i cięcie na granicy akapitów — 🟡
+### E3.1 Ekstrakcja treści main/article i cięcie na granicy akapitów — ✅
 
-> Gotowe w gałęzi `feature/E3.1` (fetcher + testy), czeka na PR do master.
+> Scalone do `develop` w PR #27 (2026-11-19).
 
 **Priorytet: wysoki**
 

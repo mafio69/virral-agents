@@ -53,8 +53,7 @@ final class PublicWebPageFetcherTest extends TestCase
         $fetcher = new PublicWebPageFetcher(new Client(['handler' => $handler]), static fn () => ['93.184.216.34'], true);
         $result = $fetcher->fetch('https://example.org/page');
         self::assertTrue($result['truncated']);
-        self::assertSame(16000, mb_strlen($result['text']));
-        self::assertStringContainsString('Visible fixture', $result['text']);
+        self::assertSame('Visible fixture', $result['text']);
         self::assertStringNotContainsString('untrustedScript', $result['text']);
         self::assertSame('93.184.216.34', $history[0]['request']->getUri()->getHost());
         self::assertSame('example.org', $history[0]['request']->getHeaderLine('Host'));
@@ -171,6 +170,72 @@ final class PublicWebPageFetcherTest extends TestCase
                 self::assertSame($expected, $error->reason);
             }
         }
+    }
+
+    public function testMainContentIsPreferredOverSurroundingBodyChrome(): void
+    {
+        $html = '<html><body>'
+            .'<div>Navigation boilerplate before main</div>'
+            .'<main><h1>Heading</h1><p>Real article text.</p></main>'
+            .'<div>Footer boilerplate after main</div>'
+            .'</body></html>';
+        $result = (new PublicWebPageFetcher(
+            new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'text/html'], $html)]))]),
+            static fn () => ['93.184.216.34'],
+        ))->fetch('https://example.org/');
+        self::assertStringContainsString('Heading', $result['text']);
+        self::assertStringContainsString('Real article text', $result['text']);
+        self::assertStringNotContainsString('Navigation boilerplate', $result['text']);
+        self::assertStringNotContainsString('Footer boilerplate', $result['text']);
+    }
+
+    public function testArticleAndRoleMainRegionsAreAlsoPreferred(): void
+    {
+        $cases = [
+            '<html><body><div>Chrome</div><article><p>Article body text.</p></article></body></html>',
+            '<html><body><div>Chrome</div><div role="main"><p>Role main text.</p></div></body></html>',
+        ];
+        foreach ($cases as $html) {
+            $result = (new PublicWebPageFetcher(
+                new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'text/html'], $html)]))]),
+                static fn () => ['93.184.216.34'],
+            ))->fetch('https://example.org/');
+            self::assertStringNotContainsString('Chrome', $result['text']);
+        }
+    }
+
+    public function testAsideHeaderFigureAndConsentBannerAreDroppedBeforeExtraction(): void
+    {
+        $html = '<html><body>'
+            .'<header>Page header</header>'
+            .'<figure>Figure caption</figure>'
+            .'<div id="cookie-consent">Accept cookies text</div>'
+            .'<div class="gdpr-banner">GDPR text</div>'
+            .'<p>Kept paragraph.</p>'
+            .'<aside>Sidebar</aside>'
+            .'</body></html>';
+        $result = (new PublicWebPageFetcher(
+            new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'text/html'], $html)]))]),
+            static fn () => ['93.184.216.34'],
+        ))->fetch('https://example.org/');
+        self::assertStringContainsString('Kept paragraph', $result['text']);
+        self::assertStringNotContainsString('Page header', $result['text']);
+        self::assertStringNotContainsString('Figure caption', $result['text']);
+        self::assertStringNotContainsString('Accept cookies', $result['text']);
+        self::assertStringNotContainsString('GDPR text', $result['text']);
+        self::assertStringNotContainsString('Sidebar', $result['text']);
+    }
+
+    public function testTruncationCutsAtParagraphBoundaryNotInsideTheParagraph(): void
+    {
+        $html = '<html><body><p>'.str_repeat('A', 100).'</p><p>'.str_repeat('B', 30000).'</p></body></html>';
+        $result = (new PublicWebPageFetcher(
+            new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, ['Content-Type' => 'text/html'], $html)]))]),
+            static fn () => ['93.184.216.34'],
+        ))->fetch('https://example.org/');
+        self::assertTrue($result['truncated']);
+        self::assertStringContainsString('A', $result['text']);
+        self::assertStringNotContainsString('B', $result['text']);
     }
 
     public function testConfiguredBrowserLikeHeadersAreSentAndDefaultsStayNeutral(): void

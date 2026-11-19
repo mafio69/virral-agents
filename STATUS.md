@@ -10,8 +10,8 @@
 ---
 
 **Ostatnia aktualizacja:** 2026-11-19
-**Gałąź:** `develop` (DeepSeek + reset hasła + role + CRUD dostawców scalone; master = `15e2ac8` po PR #24). Otwarte PR-y do `develop`: #25 (restart kontenerów po awarii), #26 (dokumentacja), #27 (E3.1).
-**Ostatnia walidacja (2026-11-09):** formatter 0/200, PHPUnit 323/323 (1451 asercji), UI 113/113.
+**Gałąź:** `develop` (DeepSeek + reset hasła + role + CRUD dostawców scalone; master = `15e2ac8` po PR #24). Scalone 2026-11-19: #25 (restart kontenerów po awarii), #26 (dokumentacja), #27 (E3.1), #28 (limit 72 B hasła przy rejestracji), #29 (testy UI na Node 22).
+**Ostatnia walidacja (2026-11-19, `develop` + E3.1):** `composer check-all` — formatter 0/200, PHPUnit 328/328 (1469 asercji), UI 113/113.
 
 ## Gotowe (w develop / release/v1.0.0)
 
@@ -32,8 +32,7 @@
 - **#62-503:** na produkcji sprawdzić limit za proxy (6 błędnych logowań z telefonu, potem logowanie z komputera; w razie wspólnej blokady ustawić `TRUSTED_PROXIES`). HTTPS i healthcheck kontenera nadal otwarte.
 - **OpenRouter i dostawcy AI:** sprawdzić widoczność listy połączeń zgodną z kluczami w `.env` oraz odpowiedź na rzeczywistym koncie OpenRouter.
 - **Start i poczta prod:** start przez `./prod-start.sh`, dostarczenie e-maila weryfikacyjnego.
-- **Reset hasła — przegląd 2026-11-19:** rejestracja (`RegisterInputMapper`) nie ma limitu 72 bajtów hasła (bcrypt przycina) — reset go ma; do wyrównania.
-- **Jakość źródeł badania (`TODO-zrodla.md`):** E1.1, E1.2, E2.1, E2.2 gotowe; E3.1 w PR #27; E2.3–E2.5 i E3.2–E3.4 do zrobienia.
+- **Jakość źródeł badania (`TODO-zrodla.md`):** E1.1, E1.2, E2.1, E2.2, E3.1 gotowe; E2.3–E2.5 i E3.2–E3.4 do zrobienia.
 
 ## Cel: MVP = wyszukiwarka + „odśnieżarka”
 
@@ -52,7 +51,6 @@
 
 ## Następny priorytet
 
-0. Scalenie PR #25 → #26 → #27 do `develop`.
 1. **Faza 4:** UI panel „Dostawcy AI" (dodawanie/edycja/usuwanie, maskowane pole klucza) na endpointach z Fazy 2.
 2. **Faza 3:** generalizacja rejestru db — dostawcy z UX widoczni i wybieralni w czacie (nachodzi na #62-497).
 3. Naprawa `TaskController` — `int $id` w `update`/`delete` nie rzutuje argumentu trasy (`TypeError` w strict mode); wzór: `(int)$request->getAttribute('id')`.

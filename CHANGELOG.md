@@ -48,6 +48,14 @@
 - Walidacja: formatter 0/198, PHP 346/347 (istniejący czerwony `EmptyReplyTest` „Gemini" — patrz STATUS), UI 110/110.
 - Porządki: usunięto 208 pustych linii z `bin/restore-dev-user.php` (bez zmiany logiki, formatter/`php -l` OK) oraz przypadkowy wpis „weewewew" z `GIT-FLOW.md`; scratch `.local/tmp/opencode.jsonc.bak` usunięty.
 
+## 2026-11-06 — #62-490 (E3.1): ekstrakcja treści głównej i cięcie na granicy akapitu w fetcherze
+
+- Fetcher zwracał całą stronę (nagłówek, menu, stopka, banery zgód) jako „treść źródła" → model dostawał szum zamiast artykułu.
+- `PublicWebPageFetcher`: tekst brany z pierwszego węzła `main` → `article` → `[role="main"]` (fallback `body` → `documentElement`); przed ekstrakcją usuwane są `script/style/noscript/iframe/svg/form/head/nav/footer` oraz nowo `aside/header/figure` i banery zgód (tokeny `cookie|cookies|consent|gdpr|cmp` w `id`/`class`, wielkość liter bez znaczenia).
+- Cięcie 16 000 znaków odbywa się na granicy akapitu (ostatni `\n\n` przed limitem), nie w środku zdania; flaga `truncated` nadal oznacza, że tekst oryginalny przekroczył limit. Granice 1 MiB / 16 000 znaków i ochrona SSRF bez zmian.
+- Testy: 4 nowe (`main` ma priorytet nad otoczką strony, `article`/`[role=main]` również, `aside`/`header`/`figure` + baner zgody wypadają przed ekstrakcją, cięcie nie przecina akapitu) + poprawka `testHtmlExtractionIsBoundedAndUsesPinnedTlsIdentityWithoutCredentials` (oczekuje wyłącznie widocznej treści).
+- Walidacja: PHPUnit 289/289 (1350 asercji), UI 107/107, formatter czysty.
+
 ## 2026-11-05 — #62-486 (E2.2): realistyczny User-Agent i Accept-Language w fetcherze
 
 - Portale informacyjne (np. Gazeta.pl) blokowały żądania z UA `VirralAgents-Research/1.0` kodem 403 → fetch źródeł dla trybu badania tracił całe strony.

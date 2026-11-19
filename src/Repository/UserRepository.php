@@ -19,12 +19,21 @@ final readonly class UserRepository
 
     public function createUser(string $email, string $passwordHash): int
     {
+        // The first account is the owner and becomes admin; later accounts are regular users.
+        $role = $this->countUsers() === 0 ? 'admin' : 'user';
+
         return $this->store->insert('users', [
             'email' => $this->cipher->emailIndex($email),
             'email_ciphertext' => $email,
             'password_hash' => $passwordHash,
+            'role' => $role,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    private function countUsers(): int
+    {
+        return (int)$this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
     }
 
     public function findByEmail(string $email): ?array

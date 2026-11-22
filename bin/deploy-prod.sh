@@ -4,8 +4,8 @@ set -euo pipefail
 usage() {
     printf '%s\n' \
         'Użycie: ./bin/deploy-prod.sh [--dry-run] [--from-commit <sha>]' \
-        'Bezpieczny deploy gałęzi master: git pull --ff-only, opcjonalny composer install,' \
-        'docker compose up -d --force-recreate (app i nginx) oraz healthcheck HTTP.' \
+        'Bezpieczny deploy gałęzi master: git pull --ff-only, build app, opcjonalny composer install,' \
+        'docker compose up -d --force-recreate (app i nginx) oraz healthcheck HTTP 200.' \
         'Skrypt nigdy nie odczytuje ani nie modyfikuje .env.'
 }
 
@@ -66,16 +66,17 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     exit 1
 fi
 
-previous_lock=''
-if [[ -n "$from_commit" ]]; then
-    previous_lock="$(git rev-parse "${from_commit}:composer.lock" 2>/dev/null || true)"
-else
-    previous_lock="$(git rev-parse HEAD:composer.lock 2>/dev/null || true)"
+if [[ -z "$from_commit" ]]; then
     run git fetch --prune origin master
     run git pull --ff-only origin master
 fi
 
+lock_marker='vendor/.deploy-composer-lock'
 current_lock="$(git rev-parse HEAD:composer.lock 2>/dev/null || true)"
+installed_lock=''
+if [[ -f "$lock_marker" ]]; then
+    installed_lock="$(<"$lock_marker")"
+fi
 
 # Non-interactive SSH shells may not inherit rootless DOCKER_HOST automatically.
 if [[ -z "${DOCKER_HOST:-}" ]]; then
@@ -99,9 +100,15 @@ export NGINX_WORKER_USER="${NGINX_WORKER_USER:-$default_nginx_worker}"
 
 compose=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
 
-if [[ ! -f vendor/autoload.php || "$previous_lock" != "$current_lock" ]]; then
+run "${compose[@]}" build app
+
+if [[ ! -f vendor/autoload.php || "$installed_lock" != "$current_lock" ]]; then
     run "${compose[@]}" run --rm --no-deps --entrypoint '' app \
         composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+    if ! "$dry_run"; then
+        mkdir -p vendor
+        printf '%s\n' "$current_lock" > "$lock_marker"
+    fi
 fi
 
 run "${compose[@]}" up -d --force-recreate app
@@ -128,13 +135,13 @@ fi
 
 health_url="http://127.0.0.1:${app_port}/api/ai-connections"
 if "$dry_run"; then
-    run curl -fsS --max-time 5 "$health_url"
+    run curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "$health_url"
 else
     healthy=false
     attempts="${DEPLOY_HEALTH_ATTEMPTS:-10}"
     wait_sec="${DEPLOY_HEALTH_WAIT:-1}"
     for ((attempt = 1; attempt <= attempts; attempt++)); do
-        if curl -fsS --max-time 5 "$health_url" >/dev/null 2>&1; then
+        if http_code="$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "$health_url" 2>/dev/null)" && [[ "$http_code" == '200' ]]; then
             healthy=true
             break
         fi

@@ -2,11 +2,12 @@
 
 Po każdym poprawnym scaleniu PR do gałęzi `master` i przejściu workflow **Tests** uruchamia się automatycznie workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), który łączy się z serwerem docelowym przez prywatną sieć **Tailscale** (OAuth Client, węzeł efemeryczny `tag:ci`) i uruchamia na serwerze:
 
-1. `git fetch --prune origin master` + `git pull --ff-only origin master` (wyłącznie przy czystym drzewie na gałęzi `master`; `.env` i `var/` nie są dotykane),
-2. warunkowy `composer install --no-dev` w kontenerze `app` (gdy zmienił się `composer.lock` lub brak `vendor/autoload.php`),
-3. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate app` (migracje `bin/migrate.php` w `docker/start-app.sh` + weryfikacja, że `app` żyje),
-4. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate nginx`,
-5. lokalny healthcheck HTTP 200 na `/api/ai-connections`.
+1. `git fetch --prune origin master` + aktualizacja dokładnego przetestowanego commita `git merge --ff-only <head_sha>` (wyłącznie przy czystym drzewie na gałęzi `master`, z pomijaniem przestarzałych uruchomień; `.env` i `var/` nie są dotykane),
+2. `docker compose -f docker-compose.yml -f docker-compose.prod.yml build app` (przebudowa obrazu `app` przed instalacją zależności i restartem),
+3. warunkowy `composer install --no-dev` w kontenerze `app` (gdy brak `vendor/autoload.php` lub znacznik `vendor/.deploy-composer-lock` nie zgadza się z aktualnym `composer.lock`),
+4. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate app` (migracje `bin/migrate.php` w `docker/start-app.sh` + weryfikacja, że `app` żyje),
+5. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate nginx`,
+6. lokalny healthcheck wymagający poprawnego transferu i dokładnie HTTP `200` na `/api/ai-connections`.
 
 Żadne adresy IP, nazwy użytkowników, ścieżki serwera ani klucze nie są zapisane w repozytorium — wszystko trafia wyłącznie do **GitHub Secrets** środowiska `production`.
 
@@ -14,7 +15,7 @@ Po każdym poprawnym scaleniu PR do gałęzi `master` i przejściu workflow **Te
 
 ## 1. Konfiguracja Tailscale (jednorazowo)
 
-1. W panelu Tailscale → **Access Controls (ACL)** dodaj definicję tagu `tag:ci` oraz regułę dostępu wyłącznie na port SSH (`22`) do hosta produkcyjnego (zasada najmniejszych uprawnień):
+1. W panelu Tailscale → **Access Controls (ACL)** dodaj definicję tagu `tag:ci` oraz regułę dostępu wyłącznie na pojedynczy port SSH zgodny z sekretem `DEPLOY_PORT` (domyślnie `22` — nie zezwalaj na wszystkie porty `*`) do hosta produkcyjnego (zasada najmniejszych uprawnień):
 
    ```json
    {
@@ -25,7 +26,7 @@ Po każdym poprawnym scaleniu PR do gałęzi `master` i przejściu workflow **Te
        {
          "action": "accept",
          "src": ["tag:ci"],
-         "dst": ["<twoj-serwer-lub-tag-prod>:22"]
+         "dst": ["<twoj-serwer-lub-tag-prod>:<DEPLOY_PORT_LUB_22>"]
        }
      ]
    }

@@ -4,6 +4,7 @@ services:
       context: ./docker
       dockerfile: Dockerfile
     container_name: slim_ovh_ai_app
+    restart: unless-stopped # wstaje sam po awarii i po restarcie serwera
     # dev-start.sh sets 0 under rootless Docker, where container UID 0 is the host user.
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
     working_dir: /var/www
@@ -43,6 +44,7 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: slim_ovh_ai_nginx
+    restart: unless-stopped # wstaje sam po awarii i po restarcie serwera
     # dev-start.sh selects root under rootless Docker, where it is the host user.
     command: ["sh", "-c", "sed -i 's/^user .*/user ${NGINX_WORKER_USER:-nginx};/' /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"]
     ports:

@@ -15,6 +15,8 @@
 >
 > Wyszukiwanie: lokalny SearXNG przez MCP `mcp-search` (max_results ≤ 10 po stronie
 > kontraktu serwera). Zadanie 000 opisuje całość przedsięwzięcia.
+>
+> **Stan na 2026-11-19 (wg kodu na `master`):** ✅ zrobione · 🟡 w gałęzi, nie w master · ❌ niezrobione.
 
 ---
 
@@ -40,7 +42,9 @@ develop i tylko za zgodą właściciela.
 
 ## Etap 1 — Diagnostyka dla modelu
 
-### E1.1 Kody przyczyn nieudanego fetch widoczne w UI i evidence JSON
+### E1.1 Kody przyczyn nieudanego fetch widoczne w UI i evidence JSON — ✅
+
+> Backend: zamknięta lista kodów w `PublicWebPageFetcher`, `page.reason` i `reason` w evidence. Widoczność w UI niezweryfikowana.
 
 **Priorytet: wysoki**
 
@@ -52,7 +56,7 @@ w evidence JSON, aby model AI mógł reagować (np. wybrać inne źródło zamia
 Zamknięta lista kodów, bez treści odpowiedzi serwera. Testy jednostkowe na atrapach HTTP
 dla każdej przyczyny.
 
-### E1.2 Snippet wyniku wyszukiwania zawsze w evidence JSON
+### E1.2 Snippet wyniku wyszukiwania zawsze w evidence JSON — ✅
 
 **Priorytet: normalny**
 
@@ -65,7 +69,7 @@ Bez zmian szyfrowanego magazynu poza rozszerzeniem struktury evidence.
 
 ## Etap 2 — Skuteczność pobierania
 
-### E2.1 Bezpieczne śledzenie redirectów (max 3 hop-y, pełna rewalidacja SSRF)
+### E2.1 Bezpieczne śledzenie redirectów (max 3 hop-y, pełna rewalidacja SSRF) — ✅
 
 **Priorytet: wysoki**
 
@@ -77,7 +81,7 @@ publicznego IPv4, zakaz downgradu https→http, bez cookies i forwardowania cred
 Zachować pełną ochronę SSRF. Testy: legalne redirecty (w tym cross-host), pętla
 redirectów, downgrade, redirect na adres prywatny/lokalny.
 
-### E2.2 Realistyczny User-Agent i Accept-Language konfigurowalne w config/app.php
+### E2.2 Realistyczny User-Agent i Accept-Language konfigurowalne w config/app.php — ✅
 
 **Priorytet: wysoki**
 
@@ -87,7 +91,7 @@ User-Agent przeglądarki oraz dodać `Accept-Language`. Wartości domyślne w
 nadal bez cookies, bez JS, bez subresource (zatwierdzone przez właściciela). Testy:
 nagłówki widoczne w atrapie HTTP.
 
-### E2.3 Akceptacja application/xhtml+xml i rodzin text/*
+### E2.3 Akceptacja application/xhtml+xml i rodzin text/* — ❌
 
 **Priorytet: normalny**
 
@@ -96,7 +100,7 @@ oraz inne `text/*` (poza dotychczasowymi html/plain), z zachowaniem limitów roz
 i bezpiecznego parsowania (xhtml parsowany jak HTML przez DOMDocument, bez dostępów
 do sieci). Testy pozytywne i negatywne (np. `application/pdf`, `image/*`).
 
-### E2.4 Obsługa gzip i jeden retry na timeout/5xx
+### E2.4 Obsługa gzip i jeden retry na timeout/5xx — ❌
 
 **Priorytet: normalny**
 
@@ -106,7 +110,7 @@ Jeden powtórny attempt przy timeout oraz 5xx/429 (z uwzględnieniem Retry-After
 obecne), bez ponawiania przy błędach walidacji. Testy na atrapach: gzip poprawny,
 uszkodzony, retry, brak retry przy 403.
 
-### E2.5 Wykrywanie charset z meta tagów gdy brak nagłówka
+### E2.5 Wykrywanie charset z meta tagów gdy brak nagłówka — ❌
 
 **Priorytet: niski**
 
@@ -118,7 +122,9 @@ obsługiwanych kodowań. Testy na fikcyjnych stronach windows-1250 bez nagłówk
 
 ## Etap 3 — Jakość treści
 
-### E3.1 Ekstrakcja treści main/article i cięcie na granicy akapitów
+### E3.1 Ekstrakcja treści main/article i cięcie na granicy akapitów — ✅
+
+> Scalone do `develop` w PR #27 (2026-11-19).
 
 **Priorytet: wysoki**
 
@@ -128,7 +134,7 @@ wyciąganiem tekstu; skrócenie do limitu znaków wykonywać na granicy akapitu,
 w środku zdania, z flagą `truncated`. Efekt: więcej realnej treści w tym samym limicie.
 Testy jednostkowe na fixture HTML z boilerplate.
 
-### E3.2 Limity konfigurowalne: 32k znaków na stronę i 200k budżetu kontekstu
+### E3.2 Limity konfigurowalne: 32k znaków na stronę i 200k budżetu kontekstu — ❌
 
 **Priorytet: normalny**
 
@@ -137,7 +143,7 @@ Obecnie hardcoded 16 000 w `PublicWebPageFetcher` i 100 000 w
 32 000/200 000 (zatwierdzone przez właściciela), przekazać przez DI do fetchera
 i serwisu. Zaktualizować REPO.md (sekcje limitów) i testy na nowe wartości graniczne.
 
-### E3.3 original_length/kept_length w evidence zamiast binarnej flagi truncated
+### E3.3 original_length/kept_length w evidence zamiast binarnej flagi truncated — ❌
 
 **Priorytet: normalny**
 
@@ -146,7 +152,7 @@ model znał skalę straty treści; zachować flagę `truncated` dla kompatybilno
 Aktualizacja `ResearchService::evidence()` i testów; dokumentacja pola w REPO.md/docs
 jeśli wymagana.
 
-### E3.4 Aktualizacja tytułu źródła z <title>/<h1> pobranej strony
+### E3.4 Aktualizacja tytułu źródła z <title>/<h1> pobranej strony — ❌
 
 **Priorytet: niski**
 

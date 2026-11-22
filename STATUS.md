@@ -10,8 +10,8 @@
 ---
 
 **Ostatnia aktualizacja:** 2026-11-22
-**Gałąź:** `develop` (scalone `feat/smart-search-lists`; master = `15e2ac8` po PR #24, PR `develop` → `master` gotowy).
-**Ostatnia walidacja (2026-11-22):** formatter 0/200, PHPUnit 326/326 (1482 asercji), UI 118/118.
+**Gałąź:** `develop` (scalone #25–#29 oraz `feat/smart-search-lists`; master = `15e2ac8` po PR #24, PR `develop` → `master` otwarty).
+**Ostatnia walidacja (2026-11-22):** `composer check-all` — formatter 0/200, PHPUnit 331/331 (1500 asercji), UI 118/118.
 
 ## Gotowe (w develop)
 
@@ -32,6 +32,7 @@
 - **#62-503:** na produkcji sprawdzić limit za proxy (6 błędnych logowań z telefonu, potem logowanie z komputera; w razie wspólnej blokady ustawić `TRUSTED_PROXIES`). HTTPS i healthcheck kontenera nadal otwarte.
 - **OpenRouter i dostawcy AI:** sprawdzić widoczność listy połączeń zgodną z kluczami w `.env` oraz odpowiedź na rzeczywistym koncie OpenRouter.
 - **Start i poczta prod:** start przez `./prod-start.sh`, dostarczenie e-maila weryfikacyjnego.
+- **Jakość źródeł badania (`TODO-zrodla.md`):** E1.1, E1.2, E2.1, E2.2, E3.1 gotowe; E2.3–E2.5 i E3.2–E3.4 do zrobienia.
 
 ## Cel: MVP = wyszukiwarka + „odśnieżarka”
 

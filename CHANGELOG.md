@@ -16,7 +16,20 @@
 - **Stabilność modeli rozumujących i OpenRouter (`OpenRouterProvider`, `DeepSeekProvider`, `OpenAiProvider`, `AnthropicProvider`):**
   - Trwale podniesiono minimalny budżet wyjściowy do **`8192`** tokenów (`max_tokens` / `max_output_tokens`) u wszystkich dostawców, aby modele rozumujące (np. `Perplexity: Sonar Reasoning Pro`, `gpt-5-nano`, `Gemini`, `DeepSeek`) nie kończyły pustym `content` przy dłuższym myśleniu.
   - W `OpenRouterProvider` dodano scalanie sąsiednich wiadomości tej samej roli (`user`+`user` przy źródłach WWW / kompakcie / ponawianiu — wymóg naprzemienności ról Perplexity Sonar) oraz mapowanie kodów błędu JSON (`402/429` → `provider_limit`, `408/504` → `provider_timeout`, `502/503` → `connection_failed`).
-- **Testy:** zaktualizowane i rozszerzone `ResearchServiceTest`, `ResearchAgentTest`, `ChatServiceUsageTest`, `OpenRouterProviderTest`, `DeepSeekProviderTest`, `AnthropicProviderTest`, `ProviderIntegrationTest`, `tests/ui/chat-research.test.mjs`, `tests/ui/chat-research-modal.test.mjs`, `tests/ui/chat-controller.test.mjs`. Walidacja: formatter 0/200, PHPUnit 326/326 (1482 asercji), UI 118/118.
+- **Testy:** zaktualizowane i rozszerzone `ResearchServiceTest`, `ResearchAgentTest`, `ChatServiceUsageTest`, `OpenRouterProviderTest`, `DeepSeekProviderTest`, `AnthropicProviderTest`, `ProviderIntegrationTest`, `tests/ui/chat-research.test.mjs`, `tests/ui/chat-research-modal.test.mjs`, `tests/ui/chat-controller.test.mjs`. Walidacja po scaleniu z `origin/develop`: formatter 0/200, PHPUnit 331/331 (1500 asercji), UI 118/118.
+
+## 2026-11-19 — limit 72 B hasła przy rejestracji, testy UI na Node 22, porządki w gałęziach
+
+- **Rejestracja (PR #28):** `RegisterInputMapper` odrzuca hasło dłuższe niż 72 bajty (422), tak jak `ResetPasswordInputMapper` — bcrypt przycina hasło do 72 B, więc dłuższe hasło po cichu traciło końcówkę. Test `AuthHttpTest::testRegistrationRejectsPasswordOverBcryptLimitInBytes` (37 × `ą` = 74 B odrzucone, 36 × `ą` = 72 B przyjęte). Wykryte w przeglądzie resetu hasła.
+- **Testy UI (PR #29):** `composer test-ui` woła `bin/test-ui.sh`, który dobiera flagę do wersji Node: `--test-isolation=none` (Node ≥ 23.6, CI: 24) albo `--experimental-test-isolation=none` (Node 22). Wcześniej na Node 22 `composer check-all` przerywało się na `node: bad option`. Opis w `REPO.md`.
+- **Dokumentacja (PR #26):** stany ✅/🟡/❌ zadań E1–E3 w `TODO-zrodla.md` według kodu; `HANDOFF.md`/`STATUS.md` zaktualizowane po porządkach gałęzi.
+- **Porządki w gałęziach:** usunięty stary `stash@{0}` (konfiguracja Dockera z czasów PR #8 — m.in. usuwała OpenRouter i zmieniała nazwę serwisu `app`), lokalna `backup/E3.1-…` (cofała zmiany z `master`; potrzebne testy już były w `feature/E3.1`) oraz scalone lub porzucone gałęzie zadaniowe (lokalnie i na GitHubie) — na origin zostały tylko `master` i `develop`.
+- Scalone do `develop`: #25 (restart kontenerów, konflikt z rootless rozwiązany: `restart` + `user`/`command` z `develop`), #27 (E3.1).
+- Walidacja (`develop` + E3.1): formatter 0/200, PHPUnit 328/328 (1469 asercji), UI 113/113.
+
+## 2026-11-11 — kontenery wstają same po awarii i restarcie serwera
+
+- **`restart: unless-stopped`** dla `app` i `nginx` w `docker-compose.yml`. Wcześniej brak polityki restartu: po restarcie serwera (10.11) oba kontenery zostały w stanie `Exited (255)`, a `agents.dom` zwracał 502 przez ~31 h. Uruchomione ponownie `./prod-start.sh` (APP_ENV=prod); działający `nginx` dostał politykę przez `docker update` (skrypt celowo go nie przebudowuje). Kontrola: `:8181` 200, `agents.dom` 200.
 
 ## 2026-11-09 — zarządzanie dostawcami AI (admin-only) — Faza 2
 
@@ -61,6 +74,14 @@
 - Testy: `tests/DeepSeekProviderTest.php` — 7 testów na atrapach HTTP (katalog bez zapytania sieciowego, usage, tools+ASK, pusta treść, kody błędów 401/429/timeout, brak klucza, własny base URL).
 - Walidacja: formatter 0/198, PHP 346/347 (istniejący czerwony `EmptyReplyTest` „Gemini" — patrz STATUS), UI 110/110.
 - Porządki: usunięto 208 pustych linii z `bin/restore-dev-user.php` (bez zmiany logiki, formatter/`php -l` OK) oraz przypadkowy wpis „weewewew" z `GIT-FLOW.md`; scratch `.local/tmp/opencode.jsonc.bak` usunięty.
+
+## 2026-11-06 — #62-490 (E3.1): ekstrakcja treści głównej i cięcie na granicy akapitu w fetcherze
+
+- Fetcher zwracał całą stronę (nagłówek, menu, stopka, banery zgód) jako „treść źródła" → model dostawał szum zamiast artykułu.
+- `PublicWebPageFetcher`: tekst brany z pierwszego węzła `main` → `article` → `[role="main"]` (fallback `body` → `documentElement`); przed ekstrakcją usuwane są `script/style/noscript/iframe/svg/form/head/nav/footer` oraz nowo `aside/header/figure` i banery zgód (tokeny `cookie|cookies|consent|gdpr|cmp` w `id`/`class`, wielkość liter bez znaczenia).
+- Cięcie 16 000 znaków odbywa się na granicy akapitu (ostatni `\n\n` przed limitem), nie w środku zdania; flaga `truncated` nadal oznacza, że tekst oryginalny przekroczył limit. Granice 1 MiB / 16 000 znaków i ochrona SSRF bez zmian.
+- Testy: 4 nowe (`main` ma priorytet nad otoczką strony, `article`/`[role=main]` również, `aside`/`header`/`figure` + baner zgody wypadają przed ekstrakcją, cięcie nie przecina akapitu) + poprawka `testHtmlExtractionIsBoundedAndUsesPinnedTlsIdentityWithoutCredentials` (oczekuje wyłącznie widocznej treści).
+- Walidacja: PHPUnit 289/289 (1350 asercji), UI 107/107, formatter czysty.
 
 ## 2026-11-05 — #62-486 (E2.2): realistyczny User-Agent i Accept-Language w fetcherze
 

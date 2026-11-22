@@ -17,6 +17,7 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
 {
     private const MAX_REDIRECTS = 3;
     private const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
+    private const MAX_TEXT_CHARS = 16000;
 
     public function __construct(
         private ?ClientInterface $http = null,
@@ -96,13 +97,21 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
                     libxml_use_internal_errors($previous);
                 }
                 $xpath = new \DOMXPath($document);
-                foreach ($xpath->query('//script|//style|//noscript|//iframe|//svg|//nav|//footer|//head|//form') as $node) {
+                foreach ($xpath->query('//script|//style|//noscript|//iframe|//svg|//form|//head|//nav|//footer|//aside|//header|//figure') as $node) {
                     $node->parentNode?->removeChild($node);
                 }
-                foreach ($xpath->query('//p|//div|//li|//h1|//h2|//h3|//tr|//br|//section|//article') as $node) {
-                    $node->appendChild($document->createTextNode("\n"));
+                foreach ($xpath->query('//*') as $node) {
+                    if ($node instanceof \DOMElement && self::isConsentBanner($node)) {
+                        $node->parentNode?->removeChild($node);
+                    }
                 }
-                $text = $document->textContent;
+                $root = self::mainContentNode($xpath);
+                $root ??= $xpath->query('//body')->item(0);
+                $root ??= $document->documentElement;
+                foreach ($xpath->query('.//p|.//div|.//li|.//h1|.//h2|.//h3|.//tr|.//br|.//section|.//article', $root) as $node) {
+                    $node->appendChild($document->createTextNode("\n\n"));
+                }
+                $text = $root->textContent;
             } else {
                 $text = $raw;
             }
@@ -111,7 +120,8 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
                 // Typically a page rendered only by JavaScript, which is never executed here.
                 throw self::failure('empty_content');
             }
-            return ['url' => $url, 'text' => mb_substr($text, 0, 16000), 'truncated' => mb_strlen($text) > 16000];
+            $truncated = mb_strlen($text) > self::MAX_TEXT_CHARS;
+            return ['url' => $url, 'text' => $truncated ? self::cutAtParagraphBoundary($text) : $text, 'truncated' => $truncated];
         } catch (SearchException $error) {
             throw $error;
         } catch (\GuzzleHttp\Exception\ConnectException $error) {
@@ -182,6 +192,38 @@ final readonly class PublicWebPageFetcher implements WebPageFetcherInterface
             throw self::failure('insecure_redirect');
         }
         return $target;
+    }
+
+    private static function mainContentNode(\DOMXPath $xpath): ?\DOMNode
+    {
+        foreach (['//main', '//article', '//*[@role="main"]'] as $selector) {
+            $node = $xpath->query($selector)->item(0);
+            if ($node !== null) {
+                return $node;
+            }
+        }
+        return null;
+    }
+
+    private static function isConsentBanner(\DOMElement $node): bool
+    {
+        foreach (['id', 'class'] as $attribute) {
+            $value = strtolower($node->getAttribute($attribute));
+            if ($value !== '' && preg_match('/(?:^|[^a-z])(?:cookie|cookies|consent|gdpr|cmp)(?:[^a-z]|$)/', $value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function cutAtParagraphBoundary(string $text): string
+    {
+        $window = mb_substr($text, 0, self::MAX_TEXT_CHARS);
+        $break = mb_strrpos($window, "\n\n");
+        if ($break === false) {
+            return $window;
+        }
+        return rtrim(mb_substr($window, 0, $break), "\n");
     }
 
     private static function failure(string $reason): SearchException

@@ -1,0 +1,97 @@
+name: Deploy Production
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    branches: [master]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Optiplex via Tailscale
+    runs-on: ubuntu-latest
+    environment: production
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    steps:
+      - name: Verify required secrets
+        env:
+          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          missing=()
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_SSH_KNOWN_HOSTS; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Brak wymaganych sekretów w środowisku production: ${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          ssh_dir="$(mktemp -d)"
+          chmod 700 "$ssh_dir"
+          trap 'rm -rf "$ssh_dir"' EXIT
+
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$ssh_dir/id_deploy"
+          chmod 600 "$ssh_dir/id_deploy"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          chmod 600 "$ssh_dir/known_hosts"
+
+          quoted_path="$(printf '%q' "$DEPLOY_PATH")"
+          remote_cmd="set -euo pipefail
+            cd ${quoted_path}
+            if [ \"\$(git rev-parse --abbrev-ref HEAD)\" != 'master' ]; then
+              echo 'Repo na serwerze nie jest na gałęzi master.' >&2
+              exit 1
+            fi
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+              echo 'Repo na serwerze ma niezacommitowane zmiany śledzonych plików.' >&2
+              exit 1
+            fi
+            old_head=\"\$(git rev-parse HEAD)\"
+            git fetch --prune origin master
+            git pull --ff-only origin master
+            ./bin/deploy-prod.sh --from-commit \"\$old_head\""
+
+          ssh \
+            -i "$ssh_dir/id_deploy" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$ssh_dir/known_hosts" \
+            -o ConnectTimeout=15 \
+            -o BatchMode=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "bash -lc $(printf '%q' "$remote_cmd")"

@@ -18,6 +18,7 @@
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
 | Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
 | Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
+| Autodeploy (prod) | `.github/workflows/deploy.yml` → `bin/deploy-prod.sh` | po zielonym `Tests` na `master`, przez Tailscale OAuth (`tag:ci`) + SSH: `git pull --ff-only`, warunkowy `composer install`, `docker compose up -d --force-recreate`, healthcheck HTTP 200; szczegóły `docs/DEPLOY.md` |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |

@@ -1,10 +1,10 @@
 import { ChatPreferences } from './chat-preferences.js?v=20261013-6';
 import { enhanceModelPicker } from './chat-model-picker.js?v=20261015-picker';
-import { ChatApi } from './chat-api.js?v=20261025-clear';
-import { ChatController, handleComposerKey } from './chat-controller.js?v=20261025-clear';
+import { ChatApi } from './chat-api.js?v=20261122-compact-modal';
+import { ChatController, handleComposerKey } from './chat-controller.js?v=20261122-smart-ux';
 import { mountSearchDog } from './chat-search-dog.js?v=20261016-sniffing';
-import { ResearchModal } from './chat-research-modal.js?v=20261025-clear';
-import { ResearchPanel, continueResearch } from './chat-research.js?v=20261102-filters';
+import { ResearchModal } from './chat-research-modal.js?v=20261122-compact-modal';
+import { ResearchPanel, continueResearch } from './chat-research.js?v=20261122-compact-modal';
 import { SearchFilters } from './chat-search-filters.js?v=20261102-filters';
 import { MarkdownRenderer } from './chat-markdown.js?v=20261013-6';
 import { prepareImage, isInlineImage, appendMessageImages } from './chat-images.js?v=20261015-images';
@@ -23,12 +23,37 @@ const input = byId('chat-input'), send = byId('send-button'), model = byId('chat
 const connection = byId('chat-connection');
 const researchModal = new ResearchModal({
     dialog: byId('research-dialog'), openButtons: [byId('research-open'), byId('research-open-side')],
-    closeButton: byId('research-close'), count: byId('research-count'), sourceList: byId('research-source-list'),
+    closeButton: byId('research-close'), count: byId('research-count'), extraCounts: [byId('research-open-count')], sourceList: byId('research-source-list'),
     clearButton: byId('research-clear-side'),
     onClear: () => {
         void researchPanel?.clear();
     },
 });
+
+function setSearchPanelOpen(open) {
+    const panel = byId('search-panel');
+    const toggle = byId('search-toggle');
+    if (!panel || !toggle) {
+        return;
+    }
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    if (!open) {
+        const morePanel = byId('search-more-panel');
+        const moreToggle = byId('search-more');
+        if (morePanel) {
+            morePanel.hidden = true;
+        }
+        if (moreToggle) {
+            moreToggle.setAttribute('aria-expanded', 'false');
+        }
+    }
+}
+
+function hideSearchUx() {
+    setSearchPanelOpen(false);
+    researchModal.close();
+}
 const status = byId('chat-status'), mobile = matchMedia('(max-width: 860px)');
 const markdown = new MarkdownRenderer();
 const searchDog = mountSearchDog(byId('search-dog'));
@@ -101,7 +126,7 @@ function messageNode(message) {
 }
 
 let renderedMessages, renderedPending, renderedBusy, renderedChats, renderedChatId;
-let renderedModels, renderedModel, renderedImages, renderedConnections, renderedConnection, renderedModelsLoading;
+let renderedModels, renderedModel, renderedImages, renderedTextAttachment, renderedConnections, renderedConnection, renderedModelsLoading;
 function render(state) {
     const blocked = preparingImage || researchBusy || researchContinuation || state.busy || state.loading || state.authenticated !== true;
     const currentId = state.activeChat?.id;
@@ -114,18 +139,27 @@ function render(state) {
     modelLabel.hidden = !confirmedModel;
     modelLabel.textContent = confirmedModel ? `Model: ${confirmedModel.name || confirmedModel.id}` : '';
     input.disabled = preparingImage || researchContinuation || state.busy || state.loading;
-    if (input.value !== state.draft) { input.value = state.draft; autosize(); }
-    send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length);
+    if (input.value !== state.draft) {
+        input.value = state.draft;
+        autosize();
+    }
+    send.disabled = blocked || state.modelsLoading || (!state.activeChat && !state.selectedModel) || state.deliveryUncertain || (!state.draft.trim() && !state.images.length && !state.textAttachment);
     researchPanel?.setScope(state.authenticated === true ? currentId || 0 : null);
     if (researchPanel) {
         researchPanel.updateButton();
         researchPanel.search.disabled ||= preparingImage || state.busy || state.loading;
         byId('research-clear-side').disabled = preparingImage || researchContinuation || researchBusy || state.busy || state.loading || !researchPanel.hasContent();
     }
-    searchDog.update(state.authenticated === true ? researchBusy ? researchActivity : state.searchActivity !== 'idle' ? state.searchActivity : researchActivity : 'idle');
+    const rawActivity = state.authenticated === true
+        ? (researchBusy ? researchActivity : state.searchActivity !== 'idle' ? state.searchActivity : researchActivity)
+        : 'idle';
+    const dogActivity = !researchBusy && !state.busy && rawActivity === 'done' ? 'idle' : rawActivity;
+    searchDog.update(dogActivity);
     const supportsImages = controller.canAttachImage();
-    byId('attach-image').disabled = blocked || state.deliveryUncertain || !supportsImages;
-    byId('attach-image').title = supportsImages ? 'Dodaj PNG, JPEG lub WebP do analizy' : 'Wybierz model oznaczony tekst i obrazy';
+    byId('attach-image').disabled = blocked || state.deliveryUncertain;
+    byId('attach-image').title = supportsImages
+        ? 'Dodaj obraz (PNG/JPEG/WebP) lub plik tekstowy'
+        : 'Dodaj plik tekstowy (wybrany model nie obsługuje obrazów)';
     send.setAttribute('aria-busy', String(state.busy));
     connection.disabled = researchContinuation || researchBusy || state.busy || state.loading || Boolean(state.activeChat) || !state.connections.length;
     model.disabled = researchContinuation || researchBusy || state.busy || state.modelsLoading || Boolean(state.activeChat) || !state.models.length;
@@ -133,9 +167,17 @@ function render(state) {
     model.title = state.activeChat ? 'Aby zmienić model, rozpocznij nową rozmowę.' : 'Model nowej rozmowy';
     byId('new-chat').disabled = researchContinuation || researchBusy || state.busy;
     byId('research-mode').disabled = researchContinuation || researchBusy || state.busy;
+    const searchToggle = byId('search-toggle');
+    if (searchToggle) {
+        searchToggle.disabled = blocked;
+    }
 
-    status.replaceChildren(element('span', '', state.busy ? state.searchActivity === 'searching' ? 'Szukam źródeł i przygotowuję odpowiedź…' : 'Model przygotowuje odpowiedź…'
-        : state.loading ? 'Wczytywanie rozmów…' : state.modelsLoading ? 'Pobieranie modeli…' : [state.error, state.notice].filter(Boolean).join(' ')));
+    const statusText = state.busy ? state.searchActivity === 'searching' ? 'Szukam źródeł i przygotowuję odpowiedź…' : 'Model przygotowuje odpowiedź…'
+        : state.loading ? 'Wczytywanie rozmów…' : state.modelsLoading ? 'Pobieranie modeli…' : [state.error, state.notice].filter(Boolean).join(' ');
+    status.replaceChildren();
+    if (statusText) {
+        status.append(element('span', '', statusText));
+    }
     status.dataset.kind = state.error ? 'error' : state.busy || state.loading ? 'busy' : '';
     if (!state.modelsLoading && !state.models.length && state.selectedConnection && !state.activeChat) {
         const retry = element('button', 'btn btn-sm', 'Pobierz modele');
@@ -155,6 +197,7 @@ function render(state) {
         check.addEventListener('click', () => controller.checkDelivery());
         status.append(check);
     }
+    status.hidden = status.childNodes.length === 0;
 
     if (renderedChats !== state.chats || renderedChatId !== currentId) {
         list.replaceChildren(element('h2', 'group-label', 'Rozmowy'));
@@ -214,19 +257,31 @@ function render(state) {
         renderedModelsLoading = state.modelsLoading;
     }
 
-    if (renderedImages !== state.images) {
+    if (renderedImages !== state.images || renderedTextAttachment !== state.textAttachment) {
         const preview = byId('image-preview');
         preview.replaceChildren();
         if (state.images.length && isInlineImage(state.images[0])) {
+            const item = element('div', 'attachment-item');
             const picture = element('img');
             picture.src = state.images[0];
             picture.alt = 'Podgląd obrazu do analizy';
             const remove = element('button', 'btn btn-sm', 'Usuń obraz');
             remove.type = 'button';
             remove.addEventListener('click', () => controller.removeImage());
-            preview.append(picture, element('span', '', 'Obraz gotowy do analizy'), remove);
+            item.append(picture, element('span', '', 'Obraz gotowy do analizy'), remove);
+            preview.append(item);
+        }
+        if (state.textAttachment) {
+            const item = element('div', 'attachment-item');
+            const info = element('span', '', `Plik: ${state.textAttachment.name} (${state.textAttachment.content.length} zn.)`);
+            const remove = element('button', 'btn btn-sm', 'Usuń plik');
+            remove.type = 'button';
+            remove.addEventListener('click', () => controller.removeTextAttachment());
+            item.append(info, remove);
+            preview.append(item);
         }
         renderedImages = state.images;
+        renderedTextAttachment = state.textAttachment;
     }
     byId('image-preview').querySelectorAll('button').forEach(button => { button.disabled = blocked || state.deliveryUncertain; });
 
@@ -288,15 +343,59 @@ connection.addEventListener('change', () => controller.selectConnection(connecti
 model.addEventListener('change', () => controller.selectModel(model.value));
 enhanceModelPicker(model);
 input.addEventListener('input', () => { controller.setDraft(input.value); autosize(); });
-async function sendDraft() {
-    if (preparingImage || researchBusy || controller.state.busy || !controller.state.draft.trim() && !controller.state.images.length) {
+byId('search-toggle')?.addEventListener('click', () => {
+    const panel = byId('search-panel');
+    if (!panel) {
         return;
     }
-    const useResearch = byId('research-mode').checked;
-    if (useResearch && !await researchPanel.beforeSend()) { researchModal.open(); return; }
+    const nextOpen = panel.hidden;
+    setSearchPanelOpen(nextOpen);
+    if (nextOpen) {
+        byId('search-query')?.focus();
+    }
+});
+async function sendDraft() {
+    if (preparingImage || researchBusy || controller.state.busy
+        || (!controller.state.draft.trim() && !controller.state.images.length && !controller.state.textAttachment)) {
+        return;
+    }
+    const hasSelectedSources = researchPanel.state.sources.length > 0;
+    const allowAiWeb = Boolean(byId('research-mode')?.checked);
+    const useResearch = hasSelectedSources || allowAiWeb;
+    hideSearchUx();
+    if (useResearch) {
+        const hasPendingActions = researchPanel.state.actions.some(action => ['pending', 'running'].includes(action.status));
+        if (hasPendingActions) {
+            researchModal.open();
+            return;
+        }
+        if (hasSelectedSources && researchPanel.state.sources.some(source => source.page.status === 'unread')) {
+            researchContinuation = true;
+            researchActivity = 'searching';
+            render(controller.state);
+            let fetched = false;
+            try {
+                fetched = await researchPanel.fetchSelectedSources();
+            } finally {
+                researchContinuation = false;
+                researchActivity = 'idle';
+                render(controller.state);
+            }
+            if (!fetched) {
+                return;
+            }
+        }
+        if (!await researchPanel.beforeSend()) {
+            researchModal.open();
+            return;
+        }
+    }
     await controller.send(null, useResearch);
     if (useResearch) {
         await researchPanel.refreshAfterReply();
+    }
+    if (!researchPanel.state.actions.some(action => action.status === 'pending')) {
+        hideSearchUx();
     }
     if (!input.disabled) {
         input.focus();
@@ -309,15 +408,63 @@ byId('chat-form').addEventListener('submit', event => {
 });
 researchPanel = new ResearchPanel(controller.api, {
     query: byId('search-query'), search: byId('search-send'), body: byId('research-body'), summary: byId('research-summary'),
+    modeControl: byId('search-ephemeral'),
     filters: new SearchFilters({
         excludeInput: byId('filter-exclude'), excludeChips: byId('chips-exclude'),
         mustInput: byId('filter-must'), mustChips: byId('chips-must'),
         phraseInput: byId('filter-phrase'), siteInput: byId('filter-site'),
         moreToggle: byId('search-more'), morePanel: byId('search-more-panel'),
     }),
-    continueControl: byId('research-continue'), continueLabel: 'Kontynuuj',
+    continueControl: byId('research-continue'),
+    newPromptControl: byId('research-new-prompt'),
+    newChatControl: byId('research-new-chat'),
+    continueLabel: 'Kontynuuj',
+    onNewPrompt: () => {
+        hideSearchUx();
+        controller.update({ notice: 'Zaznaczone źródła są podpięte — napisz nowy prompt i wyślij.', error: '' });
+        if (!input.disabled) {
+            input.focus();
+        }
+    },
+    onNewChat: async () => {
+        if (researchBusy || researchContinuation || controller.state.busy) {
+            return;
+        }
+        const sourceScope = researchPanel.scope;
+        if (sourceScope > 0) {
+            researchBusy = true;
+            render(controller.state);
+            try {
+                await controller.api.research('copyToDraft', sourceScope);
+            } catch {
+                controller.update({ error: 'Nie udało się przenieść źródeł do nowej sesji.', notice: '' });
+                return;
+            } finally {
+                researchBusy = false;
+                render(controller.state);
+            }
+        }
+        if (!controller.newChat()) {
+            return;
+        }
+        hideSearchUx();
+        if (mobile.matches) {
+            setSidebar(false);
+        }
+        await researchPanel.refresh();
+        controller.update({ notice: 'Wybrane źródła przeniesione do nowej sesji — napisz prompt.', error: '' });
+        if (!input.disabled) {
+            input.focus();
+        }
+    },
     onState: state => researchModal.update(state),
-    onContinuationChange: busy => { if (busy) researchModal.close(); researchContinuation = busy; render(controller.state); },
+    onContinuationChange: busy => {
+        if (busy) {
+            hideSearchUx();
+        }
+        researchContinuation = busy;
+        render(controller.state);
+    },
     onBusy: busy => { researchBusy = busy; render(controller.state); },
     onNotice: (text, error = false) => {
         if (!researchContinuation) {
@@ -330,23 +477,32 @@ researchPanel = new ResearchPanel(controller.api, {
         && controller.state.authenticated === true && !controller.state.modelsLoading
         && !controller.state.deliveryUncertain && Boolean(controller.state.activeChat || controller.state.selectedModel),
     onContinue: async () => {
+        hideSearchUx();
         const last = controller.state.messages.at(-1);
         const waitingForContinuation = !controller.state.draft.trim()
+            && !controller.state.textAttachment
             && controller.state.messages.some(message => message.role === 'user')
             && (!last || last.role === 'user' || last.kind === 'approval_request');
         if (waitingForContinuation) {
             await controller.continueReply();
             await researchPanel.refreshAfterReply();
         } else {
-            await continueResearch(controller, () => { byId('research-mode').checked = true; }, sendDraft);
+            await continueResearch(controller, () => {}, sendDraft);
+        }
+        if (!researchPanel.state.actions.some(action => action.status === 'pending')) {
+            hideSearchUx();
         }
     },
     onResume: () => sendDraft(),
     onAgent: async () => {
+        hideSearchUx();
         if (!await controller.continueReply()) {
             controller.update({ notice: 'Decyzja zapisana. Użyj Kontynuuj, aby ponowić odpowiedź.' });
         }
         await researchPanel.refreshAfterReply();
+        if (!researchPanel.state.actions.some(action => action.status === 'pending')) {
+            hideSearchUx();
+        }
     },
 });
 render(controller.state);
@@ -356,25 +512,66 @@ byId('attach-image').addEventListener('click', () => byId('image-file').click())
 byId('image-file').addEventListener('change', async event => {
     const file = event.target.files[0];
     event.target.value = '';
-    if (!file || preparingImage || !controller.canAttachImage()) {
+    if (!file || preparingImage) {
+        return;
+    }
+    const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.type.startsWith('image/');
+    if (isImage) {
+        if (!controller.canAttachImage()) {
+            controller.update({ error: 'Wybrany model nie obsługuje obrazów. Dodaj plik tekstowy albo wybierz model tekst i obrazy.', notice: '' });
+            return;
+        }
+        const version = controller.selectionVersion;
+        const selected = controller.state.activeChat?.model || controller.state.selectedModel;
+        preparingImage = true;
+        controller.update({ notice: 'Przygotowywanie obrazu…', error: '' });
+        try {
+            const source = await prepareImage(file);
+            if (version !== controller.selectionVersion
+                || selected !== (controller.state.activeChat?.model || controller.state.selectedModel)) {
+                return;
+            }
+            if (controller.setImage(source)) {
+                controller.update({ notice: '' });
+            }
+        } catch {
+            if (version === controller.selectionVersion) {
+                controller.update({ error: 'Nie udało się dodać obrazu. Wybierz PNG, JPEG lub WebP do 20 MB.', notice: '' });
+            }
+        } finally {
+            preparingImage = false;
+            render(controller.state);
+        }
+        return;
+    }
+    if (file.size <= 0 || file.size > 256 * 1024) {
+        controller.update({ error: 'Plik tekstowy musi być niepusty i mniejszy niż 256 KB.', notice: '' });
         return;
     }
     const version = controller.selectionVersion;
-    const selected = controller.state.activeChat?.model || controller.state.selectedModel;
     preparingImage = true;
-    controller.update({ notice: 'Przygotowywanie obrazu…', error: '' });
+    controller.update({ notice: 'Wczytywanie pliku tekstowego…', error: '' });
     try {
-        const source = await prepareImage(file);
-        if (version !== controller.selectionVersion
-            || selected !== (controller.state.activeChat?.model || controller.state.selectedModel)) {
+        const text = await file.text();
+        if (version !== controller.selectionVersion) {
             return;
         }
-        if (controller.setImage(source)) {
+        if (text.includes('\0')) {
+            controller.update({ error: 'Wybrany plik jest binarny. Wybierz obraz (PNG/JPEG/WebP) lub plik tekstowy.', notice: '' });
+            return;
+        }
+        if (text.length > 12000 || new TextEncoder().encode(text).length > 12000) {
+            controller.update({ error: 'Plik tekstowy jest za długi (maksymalnie 12 000 bajtów tekstu).', notice: '' });
+            return;
+        }
+        if (controller.setTextAttachment({ name: file.name, content: text })) {
             controller.update({ notice: '' });
+        } else {
+            controller.update({ error: 'Plik tekstowy jest pusty lub nieprawidłowy.', notice: '' });
         }
     } catch {
         if (version === controller.selectionVersion) {
-            controller.update({ error: 'Nie udało się dodać obrazu. Wybierz PNG, JPEG lub WebP do 20 MB.', notice: '' });
+            controller.update({ error: 'Nie udało się odczytać pliku tekstowego.', notice: '' });
         }
     } finally {
         preparingImage = false;

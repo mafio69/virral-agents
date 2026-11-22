@@ -47,36 +47,17 @@ final readonly class ResearchService implements ResearchServiceInterface
         return $this->publicState($state);
     }
 
-    public function select(int $userId, int $chatId, string $sourceId, bool $selected): array
+    public function select(int $userId, int $chatId, string $sourceId, bool $selected, string $target = 'source'): array
     {
         $this->authorize($userId, $chatId);
-        $state = $this->store->change($userId, $chatId, function (array $state) use ($sourceId, $selected): array {
-            if (!$selected) {
-                unset($state['sources'][$sourceId]);
-                $state['excluded'][$sourceId] = true;
-                $state['excluded'] = array_slice($state['excluded'], -80, null, true);
-                foreach ($state['actions'] as &$action) {
-                    if ($action['status'] === 'pending' && ($action['request']['kind'] ?? '') === 'fetch'
-                        && self::sourceId($action['request']['url']) === $sourceId) {
-                        $action['status'] = 'cancelled';
-                    }
-                }
-                return $state;
-            }
-            unset($state['excluded'][$sourceId]);
-            if (isset($state['sources'][$sourceId])) {
-                return $state;
-            }
-            if (count($state['sources']) >= 20) {
-                throw new ValidationException('Można wybrać maksymalnie 20 źródeł.');
-            }
-            foreach ($state['results'] as $source) {
-                if ($source['id'] === $sourceId) {
-                    $state['sources'][$sourceId] = $source + ['page' => ['status' => 'unread']];
-                    return $state;
-                }
-            }
-            throw new NotFoundException('Source not found');
+        $state = $this->store->change($userId, $chatId, function (array $state) use ($sourceId, $selected, $target): array {
+            return match ($target) {
+                'source' => $this->selectSource($state, $sourceId, $selected),
+                'list' => $this->selectList($state, $sourceId, $selected),
+                'save_list' => $this->saveList($state, $sourceId, $selected),
+                'delete_list' => $this->deleteList($state, $sourceId),
+                default => throw new ValidationException('Nieznana operacja.'),
+            };
         });
         return $this->publicState($state);
     }
@@ -102,6 +83,8 @@ final readonly class ResearchService implements ResearchServiceInterface
             $state['results'] = [];
             $state['sources'] = [];
             $state['excluded'] = [];
+            $state['lists'] = [];
+            $state['pages'] = [];
             $state['actions'] = array_filter(
                 $state['actions'] ?? [],
                 static fn (array $action): bool => ($action['status'] ?? '') === 'running'
@@ -109,6 +92,79 @@ final readonly class ResearchService implements ResearchServiceInterface
             return $state;
         });
         return $this->publicState($state);
+    }
+
+    public function clearEphemeral(int $userId, int $chatId): array
+    {
+        $this->authorize($userId, $chatId);
+        $state = $this->store->change($userId, $chatId, function (array $state): array {
+            $removedItems = [];
+            foreach ($state['lists'] ?? [] as $listId => $list) {
+                if (($list['mode'] ?? 'pool') === 'ephemeral' && empty($list['saved'])) {
+                    foreach ($list['items'] ?? [] as $item) {
+                        $removedItems[] = $item;
+                    }
+                    unset($state['lists'][$listId]);
+                }
+            }
+            if ($removedItems !== []) {
+                $state = $this->pruneOrphanSources($state, $removedItems);
+                $state = $this->syncListSelection($state);
+            }
+            foreach ($state['actions'] as &$action) {
+                if (($action['origin'] ?? '') === 'ai' && !in_array($action['status'] ?? '', ['pending', 'running'], true)) {
+                    $action['consumed'] = true;
+                }
+            }
+            unset($action);
+            return $state;
+        });
+        return $this->publicState($state);
+    }
+
+    public function copySelectedToDraft(int $userId, int $chatId): array
+    {
+        $this->authorize($userId, $chatId);
+        if ($chatId === 0) {
+            return $this->state($userId, 0);
+        }
+        $current = $this->store->read($userId, $chatId);
+        $selectedSources = $current['sources'] ?? [];
+        $selectedLists = [];
+        foreach ($current['lists'] ?? [] as $listId => $list) {
+            $selectedItems = array_values(array_filter(
+                $list['items'] ?? [],
+                static fn (array $item): bool => isset($selectedSources[$item['id']])
+            ));
+            if ($selectedItems !== []) {
+                $list['items'] = $selectedItems;
+                $list['selected'] = true;
+                $selectedLists[$listId] = $list;
+            }
+        }
+        $selectedPages = [];
+        foreach ($selectedSources as $id => $source) {
+            if (($source['page']['status'] ?? '') === 'loaded') {
+                $selectedPages[$id] = $source['page'];
+            } elseif (isset($current['pages'][$id])) {
+                $selectedPages[$id] = $current['pages'][$id];
+            }
+        }
+        $selectedResults = array_values(array_filter(
+            $current['results'] ?? [],
+            static fn (array $source): bool => isset($selectedSources[$source['id']])
+        ));
+        $draft = $this->store->change($userId, 0, static function () use ($selectedSources, $selectedLists, $selectedPages, $selectedResults): array {
+            return [
+                'results' => $selectedResults,
+                'sources' => $selectedSources,
+                'actions' => [],
+                'lists' => $selectedLists,
+                'pages' => $selectedPages,
+                'excluded' => [],
+            ];
+        });
+        return $this->publicState($draft);
     }
 
     public function decide(int $userId, int $chatId, string $actionId, bool $allow): array
@@ -150,7 +206,7 @@ final readonly class ResearchService implements ResearchServiceInterface
         try {
             if ($request['kind'] === 'search') {
                 try {
-                    $query = SearchQuery::fromArray(array_diff_key($request, ['kind' => 'search']));
+                    $query = SearchQuery::fromArray(array_diff_key($request, ['kind' => true, 'mode' => true]));
                     $result = $this->search->search(SearchQueryBuilder::build($query), 10);
                 } finally {
                     $this->search->close();
@@ -169,32 +225,18 @@ final readonly class ResearchService implements ResearchServiceInterface
                 $state['actions'][$actionId]['reason'] = $reason;
             }
             if ($request['kind'] === 'search' && $result !== null) {
-                $state['results'] = [];
-                $state['sources'] = [];
-                $state['excluded'] = [];
-                $state['actions'] = [$actionId => $state['actions'][$actionId]];
-                foreach ($result['results'] as $entry) {
-                    try {
-                        $url = PublicWebUrl::normalize($entry['url']);
-                    } catch (ValidationException) {
-                        continue;
-                    }
-                    $id = self::sourceId($url);
-                    $state['results'][$id] = ['id' => $id, 'url' => $url, 'title' => mb_substr($entry['title'], 0, 300), 'snippet' => mb_substr($entry['snippet'], 0, 400)];
-                }
-                foreach ($state['results'] as $id => $source) {
-                    if (count($state['sources']) >= 20) {
-                        break;
-                    }
-                    $state['sources'][$id] = $source + ['page' => ['status' => 'unread']];
-                }
-                $state['results'] = array_values($state['results']);
+                $state = $this->applySearchResults($state, $actionId, $request, $result);
             } elseif ($request['kind'] === 'fetch') {
                 $id = self::sourceId($request['url']);
-                // A removed source is not silently reselected by an in-flight request.
-                if (isset($state['sources'][$id])) {
-                    $state['sources'][$id]['page'] = $result === null ? ['status' => 'failed', 'reason' => $reason]
-                        : ['status' => 'loaded', 'text' => $result['text'], 'truncated' => $result['truncated'], 'fetched_at' => gmdate('c')];
+                if ($result !== null) {
+                    $page = ['status' => 'loaded', 'text' => $result['text'], 'truncated' => $result['truncated'], 'fetched_at' => gmdate('c')];
+                    $state['pages'][$id] = $page;
+                    // A removed source is not silently reselected by an in-flight request.
+                    if (isset($state['sources'][$id])) {
+                        $state['sources'][$id]['page'] = $page;
+                    }
+                } elseif (isset($state['sources'][$id])) {
+                    $state['sources'][$id]['page'] = ['status' => 'failed', 'reason' => $reason];
                 }
             }
             return $state;
@@ -222,7 +264,10 @@ final readonly class ResearchService implements ResearchServiceInterface
                 // Closed fetch failure code so the model can prefer another source instead of guessing.
                 'reason' => $page['status'] === 'failed' ? ($page['reason'] ?? 'unavailable') : null];
         }
-        $decisions = array_filter($state['actions'], static fn (array $action): bool => $action['origin'] === 'ai');
+        $decisions = array_filter(
+            $state['actions'],
+            static fn (array $action): bool => ($action['origin'] ?? '') === 'ai' && empty($action['consumed'])
+        );
         return ['sources' => $evidence, 'decisions' => array_values(array_map(static fn (array $action): array => ['request' => $action['request'], 'status' => $action['status']], $decisions))];
     }
 
@@ -243,13 +288,22 @@ final readonly class ResearchService implements ResearchServiceInterface
     private function validateRequest(array $request): array
     {
         $kind = $request['kind'] ?? null;
-        if ($kind === 'search' && array_diff(array_keys($request), ['kind', 'query', 'exclude', 'must_have', 'exact_phrase', 'sites']) === []) {
-            $query = SearchQuery::fromArray(array_diff_key($request, ['kind' => 'search']));
+        if ($kind === 'search' && array_diff(array_keys($request), ['kind', 'query', 'exclude', 'must_have', 'exact_phrase', 'sites', 'mode']) === []) {
+            $hasMode = array_key_exists('mode', $request);
+            $mode = $request['mode'] ?? null;
+            if ($hasMode && (!is_string($mode) || !in_array($mode, ['pool', 'ephemeral'], true))) {
+                throw new ValidationException('Nieprawidłowa prośba WWW.');
+            }
+            $query = SearchQuery::fromArray(array_diff_key($request, ['kind' => true, 'mode' => true]));
             if ($query->query === '') {
                 throw new ValidationException('Nieprawidłowa prośba WWW.');
             }
             SearchQueryBuilder::build($query);
-            return ['kind' => 'search', ...$query->toArray()];
+            $validated = ['kind' => 'search', ...$query->toArray()];
+            if ($hasMode) {
+                $validated['mode'] = $mode;
+            }
+            return $validated;
         }
         if ($kind === 'fetch' && array_diff(array_keys($request), ['kind', 'url']) === [] && is_string($request['url'] ?? null)) {
             return ['kind' => 'fetch', 'url' => PublicWebUrl::normalize($request['url'])];
@@ -284,6 +338,235 @@ final readonly class ResearchService implements ResearchServiceInterface
         return $state;
     }
 
+    private function applySearchResults(array $state, string $actionId, array $request, array $result): array
+    {
+        $state['excluded'] = [];
+        $state['lists'] ??= [];
+        $state['pages'] ??= [];
+        foreach ($state['sources'] as $id => $source) {
+            if (($source['page']['status'] ?? '') === 'loaded') {
+                $state['pages'][$id] = $source['page'];
+            }
+        }
+        $newResults = [];
+        foreach ($result['results'] as $entry) {
+            try {
+                $url = PublicWebUrl::normalize($entry['url']);
+            } catch (ValidationException) {
+                continue;
+            }
+            $id = self::sourceId($url);
+            $newResults[$id] = [
+                'id' => $id,
+                'url' => $url,
+                'title' => mb_substr($entry['title'], 0, 300),
+                'snippet' => mb_substr($entry['snippet'], 0, 400),
+            ];
+        }
+        $mode = ($request['mode'] ?? 'pool') === 'ephemeral' ? 'ephemeral' : 'pool';
+        $state['lists'][$actionId] = [
+            'id' => $actionId,
+            'query' => $request['query'],
+            'mode' => $mode,
+            'saved' => $mode === 'pool',
+            'selected' => true,
+            'created' => time(),
+            'items' => array_values($newResults),
+        ];
+        $state['results'] = array_values($newResults);
+        $newSources = [];
+        foreach ($newResults as $id => $source) {
+            if (count($newSources) >= 20) {
+                break;
+            }
+            $page = $state['sources'][$id]['page'] ?? $state['pages'][$id] ?? ['status' => 'unread'];
+            $newSources[$id] = $source + ['page' => $page];
+        }
+        $existing = array_diff_key($state['sources'], $newSources);
+        $keepCount = max(0, 20 - count($newSources));
+        $kept = $keepCount > 0 ? array_slice($existing, -$keepCount, null, true) : [];
+        foreach (array_keys(array_diff_key($existing, $kept)) as $droppedId) {
+            $state = $this->cancelPendingFetch($state, $droppedId);
+        }
+        $state['sources'] = $kept + $newSources;
+        return $this->syncListSelection($state);
+    }
+
+    private function selectSource(array $state, string $sourceId, bool $selected): array
+    {
+        if (!$selected) {
+            $state = $this->deselectSource($state, $sourceId);
+            $state['excluded'][$sourceId] = true;
+            $state['excluded'] = array_slice($state['excluded'], -80, null, true);
+            return $this->syncListSelection($state);
+        }
+        unset($state['excluded'][$sourceId]);
+        if (isset($state['sources'][$sourceId])) {
+            return $this->syncListSelection($state);
+        }
+        if (count($state['sources']) >= 20) {
+            throw new ValidationException('Można wybrać maksymalnie 20 źródeł.');
+        }
+        $source = $this->findSourceById($state, $sourceId);
+        if ($source === null) {
+            throw new NotFoundException('Source not found');
+        }
+        $page = $state['pages'][$sourceId] ?? ['status' => 'unread'];
+        $state['sources'][$sourceId] = $source + ['page' => $page];
+        return $this->syncListSelection($state);
+    }
+
+    private function selectList(array $state, string $listId, bool $selected): array
+    {
+        if (!isset($state['lists'][$listId])) {
+            throw new NotFoundException('List not found');
+        }
+        if (!$selected) {
+            $state['lists'][$listId]['selected'] = false;
+            $protected = [];
+            foreach ($state['lists'] as $otherId => $otherList) {
+                if ($otherId === $listId || empty($otherList['selected'])) {
+                    continue;
+                }
+                foreach ($otherList['items'] ?? [] as $item) {
+                    $protected[$item['id']] = true;
+                }
+            }
+            foreach ($state['lists'][$listId]['items'] ?? [] as $item) {
+                if (!isset($protected[$item['id']])) {
+                    $state = $this->deselectSource($state, $item['id']);
+                }
+            }
+            return $this->syncListSelection($state);
+        }
+        $items = $state['lists'][$listId]['items'] ?? [];
+        foreach ($items as $item) {
+            $id = $item['id'];
+            if (isset($state['sources'][$id])) {
+                continue;
+            }
+            if (count($state['sources']) >= 20) {
+                break;
+            }
+            unset($state['excluded'][$id]);
+            $page = $state['pages'][$id] ?? ['status' => 'unread'];
+            $state['sources'][$id] = $item + ['page' => $page];
+        }
+        $hasSelected = false;
+        foreach ($items as $item) {
+            if (isset($state['sources'][$item['id']])) {
+                $hasSelected = true;
+                break;
+            }
+        }
+        if ($items !== [] && !$hasSelected && count($state['sources']) >= 20) {
+            throw new ValidationException('Można wybrać maksymalnie 20 źródeł.');
+        }
+        return $this->syncListSelection($state);
+    }
+
+    private function saveList(array $state, string $listId, bool $saved): array
+    {
+        if (!isset($state['lists'][$listId])) {
+            throw new NotFoundException('List not found');
+        }
+        $state['lists'][$listId]['saved'] = $saved;
+        if ($saved) {
+            $state['lists'][$listId]['mode'] = 'pool';
+        }
+        return $state;
+    }
+
+    private function deleteList(array $state, string $listId): array
+    {
+        if (!isset($state['lists'][$listId])) {
+            throw new NotFoundException('List not found');
+        }
+        $items = $state['lists'][$listId]['items'] ?? [];
+        unset($state['lists'][$listId]);
+        $state = $this->pruneOrphanSources($state, $items);
+        return $this->syncListSelection($state);
+    }
+
+    private function pruneOrphanSources(array $state, array $candidateItems): array
+    {
+        $keepIds = [];
+        foreach ($state['lists'] ?? [] as $list) {
+            foreach ($list['items'] ?? [] as $item) {
+                $keepIds[$item['id']] = true;
+            }
+        }
+        $removeIds = [];
+        foreach ($candidateItems as $item) {
+            $id = $item['id'];
+            if (!isset($keepIds[$id])) {
+                $removeIds[$id] = true;
+                $state = $this->deselectSource($state, $id);
+                unset($state['pages'][$id]);
+            }
+        }
+        if ($removeIds !== []) {
+            $state['results'] = array_values(array_filter(
+                $state['results'] ?? [],
+                static fn (array $source): bool => !isset($removeIds[$source['id']])
+            ));
+        }
+        return $state;
+    }
+
+    private function deselectSource(array $state, string $sourceId): array
+    {
+        if (($state['sources'][$sourceId]['page']['status'] ?? '') === 'loaded') {
+            $state['pages'][$sourceId] = $state['sources'][$sourceId]['page'];
+        }
+        unset($state['sources'][$sourceId]);
+        return $this->cancelPendingFetch($state, $sourceId);
+    }
+
+    private function cancelPendingFetch(array $state, string $sourceId): array
+    {
+        foreach ($state['actions'] as &$action) {
+            if ($action['status'] === 'pending' && ($action['request']['kind'] ?? '') === 'fetch'
+                && self::sourceId($action['request']['url']) === $sourceId) {
+                $action['status'] = 'cancelled';
+            }
+        }
+        unset($action);
+        return $state;
+    }
+
+    private function findSourceById(array $state, string $sourceId): ?array
+    {
+        foreach ($state['results'] ?? [] as $source) {
+            if ($source['id'] === $sourceId) {
+                return $source;
+            }
+        }
+        foreach (array_reverse($state['lists'] ?? []) as $list) {
+            foreach ($list['items'] ?? [] as $source) {
+                if ($source['id'] === $sourceId) {
+                    return $source;
+                }
+            }
+        }
+        return null;
+    }
+
+    private function syncListSelection(array $state): array
+    {
+        foreach ($state['lists'] ?? [] as $listId => $list) {
+            $anySelected = false;
+            foreach ($list['items'] ?? [] as $item) {
+                if (isset($state['sources'][$item['id']])) {
+                    $anySelected = true;
+                    break;
+                }
+            }
+            $state['lists'][$listId]['selected'] = $anySelected;
+        }
+        return $state;
+    }
+
     private function publicState(array $state): array
     {
         $sources = [];
@@ -292,7 +575,25 @@ final readonly class ResearchService implements ResearchServiceInterface
             $sources[] = $source;
         }
         $results = array_map(static fn (array $source): array => $source + ['selected' => isset($state['sources'][$source['id']])], $state['results']);
-        return ['results' => $results, 'sources' => $sources, 'actions' => array_values($state['actions'])];
+        $lists = [];
+        foreach (array_reverse(array_values($state['lists'] ?? [])) as $list) {
+            $items = [];
+            $anySelected = false;
+            foreach ($list['items'] ?? [] as $item) {
+                $id = $item['id'];
+                $isSelected = isset($state['sources'][$id]);
+                if ($isSelected) {
+                    $anySelected = true;
+                }
+                $page = $state['sources'][$id]['page'] ?? $state['pages'][$id] ?? ['status' => 'unread'];
+                unset($page['text']);
+                $items[] = $item + ['selected' => $isSelected, 'page' => $page];
+            }
+            $list['items'] = $items;
+            $list['selected'] = $anySelected;
+            $lists[] = $list;
+        }
+        return ['results' => $results, 'sources' => $sources, 'actions' => array_values($state['actions']), 'lists' => $lists];
     }
 
     private static function sourceId(string $url): string

@@ -72,6 +72,7 @@ return function (App $app) {
             $group->post('/research/decisions', [ChatController::class, 'researchDecide']);
             $group->put('/research/sources', [ChatController::class, 'researchSelect']);
             $group->post('/research/prepare', [ChatController::class, 'researchPrepare']);
+            $group->post('/research/new-chat', [ChatController::class, 'researchCopyToDraft']);
         })->add(\App\Middleware\AuthMiddleware::class);
 
         // Admin-only: AI provider/model management (AuthMiddleware sets `role`, AdminOnlyMiddleware checks it).

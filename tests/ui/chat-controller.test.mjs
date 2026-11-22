@@ -444,3 +444,22 @@ test('delivery failure distinguishes validation errors, invalid json and server 
         assert.equal(controller.state.error, expected);
     }
 });
+
+test('text attachment preserves user prompt draft, composes payload and clears after send', async () => {
+    const sent = [];
+    const controller = new ChatController(fixture({
+        sendMessage: async (_id, content) => { sent.push(content); return pair(content); },
+    }));
+    await controller.load();
+    controller.selectModel('fixture-model');
+    controller.setDraft('Przeanalizuj ten log:');
+    assert.equal(controller.setTextAttachment({ name: 'error.log', content: 'ERROR 500' }), true);
+    assert.equal(controller.state.draft, 'Przeanalizuj ten log:');
+    assert.equal(controller.state.textAttachment.name, 'error.log');
+    assert.equal(await controller.send(), true);
+    assert.equal(sent.length, 1);
+    assert.match(sent[0], /^Przeanalizuj ten log:\n\nZałączony plik: error\.log/);
+    assert.match(sent[0], /ERROR 500/);
+    assert.equal(controller.state.draft, '');
+    assert.equal(controller.state.textAttachment, null);
+});

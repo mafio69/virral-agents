@@ -17,7 +17,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       APP_URL: ${APP_URL:-}
-      APP_HOST_PORT: ${APP_HOST_PORT:-8181}
+      APP_PORT: ${APP_PORT:-8181}
       OVH_AI_ENDPOINTS_ACCESS_TOKEN: ${OVH_AI_ENDPOINTS_ACCESS_TOKEN:-}
       DB_HASH: ${DB_HASH:-}
       USER_DATA_KEY: ${USER_DATA_KEY:-}
@@ -29,18 +29,14 @@ services:
       OPENROUTER_MODELS: ${OPENROUTER_MODELS:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-}
-      # Empty LANGFUSE_HOST falls back to LANGFUSE_BASE_URL, then to https://cloud.langfuse.com (src/settings.php).
-      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_ENABLED: ${LANGFUSE_ENABLED:-false}
-      LANGFUSE_RELEASE: ${LANGFUSE_RELEASE:-}
       MCP_SEARCH_URL: ${MCP_SEARCH_URL:-http://mcp-search:8000/mcp}
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
       MAIL_DSN: ${MAIL_DSN:-}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
-      PHP_IDE_CONFIG: serverName=slim-ovh-ai
     networks:
       - default
       - ai
@@ -52,7 +48,7 @@ services:
     # dev-start.sh selects root under rootless Docker, where it is the host user.
     command: ["sh", "-c", "sed -i 's/^user .*/user ${NGINX_WORKER_USER:-nginx};/' /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"]
     ports:
-      - "${APP_HOST_PORT:-8181}:80"
+      - "${APP_PORT:-8181}:80"
     volumes:
       - ./:/var/www
       - ./docker/nginx:/etc/nginx/conf.d

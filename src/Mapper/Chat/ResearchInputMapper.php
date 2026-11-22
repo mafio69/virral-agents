@@ -15,13 +15,31 @@ final class ResearchInputMapper
             throw new ValidationException('Nieprawidłowa rozmowa.');
         }
         $args = match ($operation) {
-            'state', 'prepare', 'clear' => [],
+            'state', 'prepare', 'clear', 'copySelectedToDraft' => [],
             'propose' => [is_array($data['request'] ?? null) ? $data['request'] : throw new ValidationException('Brak prośby WWW.')],
             'decide' => [$this->id($data['id'] ?? null), $this->boolean($data['allow'] ?? null)],
-            'select' => [$this->id($data['id'] ?? null), $this->boolean($data['selected'] ?? null)],
+            'select' => $this->mapSelect($data),
             default => throw new ValidationException('Nieznana operacja.'),
         };
         return [(int)$scope, $args];
+    }
+
+    private function mapSelect(array $data): array
+    {
+        if (array_key_exists('list_id', $data)) {
+            $listId = $this->id($data['list_id'] ?? null);
+            if (array_key_exists('delete', $data)) {
+                if ($this->boolean($data['delete'])) {
+                    return [$listId, false, 'delete_list'];
+                }
+                throw new ValidationException('Nieprawidłowa operacja.');
+            }
+            if (array_key_exists('saved', $data)) {
+                return [$listId, $this->boolean($data['saved']), 'save_list'];
+            }
+            return [$listId, $this->boolean($data['selected'] ?? null), 'list'];
+        }
+        return [$this->id($data['id'] ?? null), $this->boolean($data['selected'] ?? null)];
     }
     private function id(mixed $value): string
     {

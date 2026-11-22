@@ -453,3 +453,65 @@ test('an allowed AI search with unread sources waits for Continue and clear remo
     assert.equal(panel.state.sources.length, 0);
     assert.equal(panel.state.results.length, 0);
 });
+
+test('ephemeral mode control sends mode ephemeral in search proposal', async () => {
+    const calls = [];
+    const modeControl = new Element('input');
+    modeControl.checked = true;
+    const panel = fixture({ research: async (...args) => { calls.push(args); return state(); } }, { modeControl });
+    await panel.setScope(0);
+    panel.query.value = 'Quick lookup';
+    panel.query.handlers.input();
+    panel.search.handlers.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls[1], ['propose', 0, { request: { kind: 'search', query: 'Quick lookup', mode: 'ephemeral' } }]);
+});
+
+test('search lists render toggle checkbox, save button for ephemeral lists, and trash delete button', async () => {
+    const calls = [];
+    const item = { id: 's1', url: 'https://example.org/s1', title: 'Result 1', snippet: 'Snippet', selected: true, page: { status: 'unread' } };
+    const list = { id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', query: 'Test query', mode: 'ephemeral', saved: false, selected: true, items: [item] };
+    const snapshot = { results: [item], sources: [item], actions: [], lists: [list] };
+    const panel = fixture({ research: async (...args) => { calls.push(args); return snapshot; } });
+    await panel.setScope(1);
+    const descendants = el => el.children.flatMap(child => [child, ...descendants(child)]);
+    const all = descendants(panel.body);
+    const listCheckbox = all.find(el => el.tag === 'input' && el['aria-label'] === 'Dołącz listę: Test query');
+    const saveButton = all.find(el => el.tag === 'button' && el.textContent === 'Zapisz / Utrwal');
+    const trashButton = all.find(el => el.tag === 'button' && el['aria-label'] === 'Usuń listę: Test query');
+    assert.ok(listCheckbox);
+    assert.ok(saveButton);
+    assert.ok(trashButton);
+    listCheckbox.checked = false;
+    await listCheckbox.handlers.change();
+    assert.deepEqual(calls.at(-1), ['select', 1, { list_id: list.id, selected: false }]);
+    await saveButton.handlers.click();
+    assert.deepEqual(calls.at(-1), ['select', 1, { list_id: list.id, saved: true }]);
+    await trashButton.handlers.click();
+    assert.deepEqual(calls.at(-1), ['select', 1, { list_id: list.id, delete: true }]);
+});
+
+test('new prompt and new session modal actions stay disabled without selection and fire callbacks when ready', async () => {
+    const newPromptControl = new Element('button');
+    const newChatControl = new Element('button');
+    let promptClicks = 0;
+    let chatClicks = 0;
+    let snapshot = state();
+    const panel = fixture({ research: async () => snapshot }, {
+        newPromptControl,
+        newChatControl,
+        onNewPrompt: () => { promptClicks++; },
+        onNewChat: () => { chatClicks++; },
+    });
+    await panel.setScope(1);
+    assert.equal(newPromptControl.disabled, true);
+    assert.equal(newChatControl.disabled, true);
+    snapshot = state([{ id: 's1', url: 'https://example.org/s1', page: { status: 'unread' } }]);
+    await panel.refresh();
+    assert.equal(newPromptControl.disabled, false);
+    assert.equal(newChatControl.disabled, false);
+    newPromptControl.handlers.click();
+    newChatControl.handlers.click();
+    assert.equal(promptClicks, 1);
+    assert.equal(chatClicks, 1);
+});

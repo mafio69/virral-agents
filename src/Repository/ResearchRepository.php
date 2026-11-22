@@ -20,7 +20,10 @@ final readonly class ResearchRepository implements ResearchRepositoryInterface
         $query = $this->pdo->prepare('SELECT payload FROM research_workspaces WHERE user_id = ? AND chat_id = ?');
         $query->execute([$userId, $chatId]);
         $payload = $query->fetchColumn();
-        return $payload === false ? self::emptyState() : json_decode($this->cipher->decrypt($payload, $this->context($userId, $chatId)), true, 64, JSON_THROW_ON_ERROR);
+        if ($payload === false) {
+            return self::emptyState();
+        }
+        return json_decode($this->cipher->decrypt($payload, $this->context($userId, $chatId)), true, 64, JSON_THROW_ON_ERROR) + self::emptyState();
     }
 
     public function change(int $userId, int $chatId, callable $change): array
@@ -74,6 +77,6 @@ final readonly class ResearchRepository implements ResearchRepositoryInterface
     }
     private static function emptyState(): array
     {
-        return ['results' => [], 'sources' => [], 'actions' => []];
+        return ['results' => [], 'sources' => [], 'actions' => [], 'lists' => []];
     }
 }

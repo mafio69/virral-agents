@@ -124,7 +124,7 @@ final class ProviderIntegrationTest extends TestCase
         self::assertSame('https://api.openai.com/v1/responses', (string)$request->getUri());
         $body = json_decode((string)$request->getBody(), true, flags: JSON_THROW_ON_ERROR);
         self::assertFalse($body['store']);
-        self::assertSame(4096, $body['max_output_tokens']);
+        self::assertSame(8192, $body['max_output_tokens']);
         self::assertSame(self::IMAGE, $body['input'][0]['content'][1]['image_url']);
         self::assertSame('input_text', $body['input'][0]['content'][0]['type']);
         self::assertArrayNotHasKey('tools', $body);

@@ -221,17 +221,16 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 @keyframes markdown-slide-in{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
 @media(max-width:860px){#markdown-help .help-body{top:116px;max-height:calc(100dvh - 140px)}}
 .image-preview:empty{display:none}
-.image-preview{display:flex;align-items:center;gap:12px;margin:0 0 10px;padding:10px;background:var(--field);border:1px solid var(--line);border-radius:12px}
-.image-preview img{width:88px;height:72px;object-fit:contain;border-radius:6px}
+.image-preview{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:0 0 6px;padding:8px 10px;background:var(--field);border:1px solid var(--line);border-radius:12px;font-size:13px}
+.image-preview img{width:64px;height:52px;object-fit:contain;border-radius:6px}
+.attachment-item{display:inline-flex;align-items:center;gap:8px;max-width:100%}
+.attachment-item span{overflow-wrap:anywhere}
 .message-image{display:block;max-width:min(100%,420px);max-height:360px;object-fit:contain;margin:0 0 12px;border-radius:10px}
-#attach-image{flex:none;min-height:40px}
-.search-controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--muted)}
-.search-controls input{flex:1;min-width:150px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--field)}
-.search-controls small{flex-basis:100%}
-.search-filters{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+#attach-image{flex:none}
+.search-controls{font-size:12px;color:var(--muted)}
 .filter-group{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
 .filter-group label{white-space:nowrap}
-.search-controls .filter-group input{flex:0 1 130px;min-width:110px;width:auto;padding:4px 8px;font-size:12px}
+.search-controls .filter-group input{flex:0 1 130px;min-width:110px;width:auto;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--field);font-size:12px}
 .chips{display:inline-flex;flex-wrap:wrap;gap:4px}
 .chips .chip{border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11px;line-height:1.5;background:var(--field);color:inherit;cursor:pointer}
 .chips .chip::after{content:" ×";color:var(--muted)}
@@ -240,7 +239,7 @@ svg.mark{width:28px;height:28px;flex:none;fill:none}
 </style>
 <link rel="stylesheet" href="/ui/theme.css">
 <link rel="stylesheet" href="/ui/chat/chat-search-dog.css?v=20261016-sniffing">
-<link rel="stylesheet" href="/ui/chat/chat-research.css?v=20261025-clear">
+<link rel="stylesheet" href="/ui/chat/chat-research.css?v=20261122-compact-modal">
 </head>
 <body>
 
@@ -359,13 +358,20 @@ echo "Cześć";
         <div id="chat-status" role="status" aria-live="polite"></div>
 
         <div id="image-preview" class="image-preview" aria-live="polite"></div>
-        <input type="file" id="image-file" accept="image/png,image/jpeg,image/webp" hidden>
+        <input type="file" id="image-file" accept="image/png,image/jpeg,image/webp,.txt,.md,.markdown,.csv,.json,.xml,.yaml,.yml,.log,.ini,.conf,.php,.js,.mjs,.ts,.py,.sh,.sql,.html,.css,text/plain,text/markdown,text/csv,application/json" hidden>
         <p id="composer-model" class="composer-model" role="status" aria-live="polite" hidden></p>
-        <div class="search-controls">
-          <label for="search-query">Szukaj stron · ASK</label>
-          <input id="search-query" type="text" maxlength="1000" placeholder="Tylko publiczne informacje" autocomplete="off">
-          <button id="search-send" type="button" class="btn btn-sm" disabled>Szukaj stron…</button>
-          <div id="search-filters" class="search-filters">
+        <div id="search-panel" class="search-controls search-panel" hidden>
+          <div class="search-row">
+            <label class="sr-only" for="search-query">Szukaj stron · ASK</label>
+            <input id="search-query" type="text" maxlength="1000" placeholder="Szukaj stron WWW (tylko publiczne informacje)" autocomplete="off">
+            <button id="search-send" type="button" class="btn btn-sm" disabled>Szukaj</button>
+            <button type="button" id="search-more" class="btn btn-sm" aria-expanded="false" aria-controls="search-more-panel">Filtry</button>
+          </div>
+          <div class="search-meta">
+            <label class="search-mode-toggle"><input type="checkbox" id="search-ephemeral"> Doraźne (skasuj po odpowiedzi)</label>
+            <label class="research-mode"><input type="checkbox" id="research-mode"> AI może prosić o WWW (ASK)</label>
+          </div>
+          <div id="search-more-panel" class="search-more-panel" hidden>
             <span class="filter-group">
               <label for="filter-exclude">Bez:</label>
               <span id="chips-exclude" class="chips"></span>
@@ -376,9 +382,6 @@ echo "Cześć";
               <span id="chips-must" class="chips"></span>
               <input id="filter-must" type="text" maxlength="64" placeholder="słowo + Enter" autocomplete="off">
             </span>
-            <button type="button" id="search-more" class="linklike" aria-expanded="false" aria-controls="search-more-panel">Więcej opcji…</button>
-          </div>
-          <div id="search-more-panel" class="search-filters" hidden>
             <span class="filter-group">
               <label for="filter-phrase">Dokładna fraza:</label>
               <input id="filter-phrase" type="text" maxlength="100" placeholder="np. dokładnie ten ciąg słów" autocomplete="off">
@@ -388,13 +391,16 @@ echo "Cześć";
               <input id="filter-site" type="text" maxlength="64" placeholder="np. wikipedia.org" autocomplete="off">
             </span>
           </div>
-          <small>Wyniki otworzą się w osobnym oknie. Wybierz strony i kliknij Kontynuuj.</small>
         </div>
         <div id="search-dog" hidden></div>
-        <button type="button" id="research-open" class="btn btn-sm research-open" aria-haspopup="dialog">Otwórz wyniki i źródła</button>
-        <label class="research-mode"><input type="checkbox" id="research-mode" checked>Uwzględnij wybrane źródła; AI może prosić o WWW (zawsze ASK)</label>
+        <div class="dock-tools">
+          <button type="button" id="search-toggle" class="btn btn-sm" aria-expanded="false" aria-controls="search-panel">WWW / Szukaj</button>
+          <button type="button" id="research-open" class="btn btn-sm research-open" aria-haspopup="dialog">Źródła (<span id="research-open-count">0</span>)</button>
+        </div>
         <form id="chat-form" class="composer" autocomplete="off">
-          <button type="button" id="attach-image" class="btn btn-sm" disabled title="Wybierz model obsługujący obrazy">Obraz</button>
+          <button type="button" id="attach-image" class="btn btn-icon composer-plus" disabled title="Dodaj obraz lub plik tekstowy" aria-label="Dodaj obraz lub plik tekstowy">
+            <svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>
+          </button>
           <label class="sr-only" for="chat-input">Wiadomość</label>
           <textarea id="chat-input" disabled rows="1" placeholder="Napisz wiadomość…" enterkeyhint="send"></textarea>
           <button type="submit" id="send-button" class="btn btn-silver" aria-label="Wyślij" disabled>
@@ -420,18 +426,19 @@ echo "Cześć";
 
 <dialog id="research-dialog" class="research-dialog" aria-labelledby="research-summary">
   <header class="research-dialog-head">
-    <div><h2 id="research-summary">Wyniki i źródła</h2><p>Wyniki i pobrane treści są zachowane w tej rozmowie, także po odświeżeniu.</p></div>
+    <h2 id="research-summary">Źródła</h2>
     <button type="button" id="research-close" class="btn btn-icon" aria-label="Zamknij wyniki">×</button>
   </header>
   <div id="research-body" class="research-body" aria-live="polite"></div>
-  <footer class="research-dialog-foot">
-    <p>Zaznaczone strony zostaną pobrane i przekazane AI wraz z treścią. Bez dodatkowych pytań o fetch.</p>
-    <button type="button" id="research-continue" class="btn btn-silver" disabled>Kontynuuj</button>
+  <footer id="research-foot" class="research-dialog-foot">
+    <button type="button" id="research-new-chat" class="btn btn-sm" disabled>Nowa sesja</button>
+    <button type="button" id="research-new-prompt" class="btn btn-sm" disabled>Nowy prompt</button>
+    <button type="button" id="research-continue" class="btn btn-silver btn-sm" disabled>Kontynuuj</button>
   </footer>
 </dialog>
 
 <script src="/ui/lib/marked.umd.js"></script>
 <script src="/ui/lib/purify.min.js"></script>
-<script type="module" src="/ui/chat/chat-app.js?v=20261102-filters"></script>
+<script type="module" src="/ui/chat/chat-app.js?v=20261122-compact-modal"></script>
 </body>
 </html>

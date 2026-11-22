@@ -78,7 +78,7 @@ final class DeepSeekProvider implements ChatProviderInterface, MultimodalClientI
     {
         $body = $this->transport->request('POST', 'chat/completions', [
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
-            'messages' => $messages, 'max_tokens' => 4096,
+            'messages' => $messages, 'max_tokens' => 8192,
             ...($web ? ['tools' => WebTools::compat(), 'parallel_tool_calls' => false] : []),
         ]);
         if (isset($body['error'])) {

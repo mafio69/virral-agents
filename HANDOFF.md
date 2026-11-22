@@ -19,23 +19,21 @@ Szablon:
 
 ---
 
-## 2026-11-19 — porządki w gałęziach, scalenie PR #25–#29
+## 2026-11-22 — Listy wyszukiwań (historyczne + doraźne), Smart UX czatu, porządek APP_PORT i limit 8192
 
-- **Gałąź / ostatni commit:** `develop` = `5289ea9` (PR #27). `master` = `15e2ac8` (PR #24) — w `develop` czekają Fazy 1–2 oraz #25–#29. Walidacja 2026-11-19: `composer check-all` — formatter 0/200, PHPUnit 328/328, UI 113/113.
-- **Zrobione:** scalone do `develop` #29 (testy UI na Node 22), #28 (limit 72 B hasła przy rejestracji), #25 (restart kontenerów), #26 (docs), #27 (E3.1); usunięty stary `stash@{0}` i lokalna `backup/E3.1-…`.
-- **Gałęzie zadaniowe scalone z `develop` usunięte** lokalnie i na GitHubie (decyzja właściciela). Na origin zostały tylko `master` i `develop`.
+- **Gałąź:** `develop` (scalone `feat/smart-search-lists` z `origin/develop`, pushnięte na `origin/develop`, otwarty PR do `master`). Walidacja: formatter 0/200, PHPUnit 331/331 (1500 asercji), UI 118/118.
+- **Zrobione w tej sesji:**
+  - Backend list wyszukiwań (`ResearchService`, `ResearchRepository`, `ResearchInputMapper`, `ResearchReplyGenerator`): `state['lists']` z trybami `pool`/`ephemeral` + `saved`, cache pobranych stron (`pages`), operacje na listach w `PUT /api/research/sources` (checkbox listy, utrwalenie, kosz `delete_list`), `clearEphemeral()` po odpowiedzi AI zamiast kasowania wszystkiego.
+  - Smart UX czatu (`chat.html`, `chat-research.css`, `chat-research.js`, `chat-research-modal.js`, `chat-app.js`): domyślnie zwinięty panel wyszukiwania (`#search-panel`) i wszystkie filtry pod `Filtry`, automatyczne chowanie UX przy wysyłce/odpowiedzi AI bez kasowania wpisanego promptu, karty list z checkboxem, `Zapisz / Utrwal` i koszem `🗑 Usuń`, lżejszy modal (`data-mode="approval"` 460 px / wyniki 640 px) z 3 akcjami w stopce (`Nowa sesja` → `POST /api/research/new-chat`, `Nowy prompt`, `Kontynuuj`).
+  - Przycisk `+` w polu promptu (`chat-controller.js`, `chat-app.js`): obraz (PNG/JPEG/WebP dla vision) lub plik tekstowy (do 12 KB tekstu dla każdego modelu) z zachowaniem tekstu promptu.
+  - Porządek zmiennych środowiska: jedno `APP_PORT` zamiast `APP_HOST_PORT`, usunięte zbędne `LANGFUSE_HOST`, `LANGFUSE_RELEASE` i `PHP_IDE_CONFIG` z `docker-compose.yml`, `php-fpm-env.conf` i `src/settings.php` (zachowane `restart: unless-stopped` z `origin/develop`).
+  - Dostawcy AI (`OpenRouter`, `DeepSeek`, `OpenAI`, `Anthropic`): minimum `8192` tokenów wyjścia trwale w kodzie + w `OpenRouterProvider` scalanie sąsiednich wiadomości tej samej roli (Perplexity Sonar) i mapowanie kodów błędów JSON.
 - **Od czego zacząć:**
-  1. PR `develop` → `master` (zielone kontrole), potem deploy — tylko za zgodą właściciela.
-  2. **Faza 4** — UI panel „Dostawcy AI" (formularz: nazwa, URL, klucz `type=password`, id modelu; lista z `has_secret` → `••••••`). Używa gotowych endpointów.
-  3. **Faza 3** — generalizacja rejestru db (dostawcy z UX widoczni w czacie; nachodzi na #62-497).
-  4. **Naprawa `TaskController`** — `int $id` w `update`/`delete` rzuca `TypeError` (patrz Pułapki).
-  5. **Faza 5 (później)** — memory per `dostawca:model`.
+  1. Po zielonym CI na PR `develop` → `master` i akceptacji Mariusza: merge PR na GitHub, sprawdzenie `APP_PORT` / `LANGFUSE_BASE_URL` w `.env` produkcji i deploy (osobna zgoda).
+  2. Kolejne z `STATUS.md`: **Faza 4** (UI panel „Dostawcy AI"), **Faza 3** (generalizacja rejestru DB), naprawa `TaskController` (`int $id`), **Faza 5** (memory).
 - **Pułapki:**
-  - **GIT-FLOW.md jest wiążący:** czytać na starcie; bez force push; pełne `composer check-all` przed każdym commitem (także docs i merge); commit i push tylko za zgodą. 2026-11-19 złamane: 2× force push (#26), commity bez pełnych testów, usunięcie 11 gałęzi zdalnych przed deployem.
-  - **Przepływ gałęzi:** gałąź zadaniowa z `origin/develop` tylko lokalnie → testy → commit → lokalne scalenie do `develop` → push wyłącznie `develop` → PR `develop` → `master`. Gałęzi zadaniowych nie wypychać i nie otwierać z nich PR-ów.
   - Przed oceną stanu gałęzi zawsze `git fetch --prune` — lokalne `origin/*` bywają nieaktualne.
-  - `ControllerInvoker` (PHP-DI) **nie rzutuje** stringa `{id}` na int — w kontrolerach używaj `(int)$request->getAttribute('id')`, nie `int $id` (latent bug w `TaskController`).
-  - Sekrety: nigdy w odpowiedzi, nigdy w logach, pole klucza maskowane (`type=password`, `autocomplete="new-password"`).
-  - Rootless Docker: `./dev-start.sh` bez sudo, port `APP_HOST_PORT` (default 8181); `DOCKER_HOST` właściciela w `/etc/environment`.
-  - E2E: `E2E_MAILBOX_URL=http://127.0.0.1:8025 E2E_SMTP_DSN=smtp://127.0.0.1:1025 npm run test:e2e`; UI `composer test-ui` (`bin/test-ui.sh` dobiera flagę izolacji do wersji Node).
-  - Push: `git -c credential.helper='!gh auth git-credential' push origin <branch>` (tylko za zgodą).
+  - Przepływ gałęzi: gałąź zadaniowa lokalnie → testy → commit → lokalny merge do `develop` → push wyłącznie `develop` → PR `develop` → `master`.
+  - W nieśledzonych plikach roboczych na dysku były wcześniej `agents.code-workspace`, `docs/INSTRUCTIONS.md`, `docs/INSTRUKCJA.md`, `docs/Makefile`, `favicon.svg` — nie dodawać ich do commita.
+  - `ControllerInvoker` (PHP-DI) nie rzutuje stringa `{id}` na `int` — używać `(int)$request->getAttribute('id')` (latent bug w `TaskController`).
+  - Rootless Docker: `./dev-start.sh` bez sudo, port `APP_PORT` (default 8181); testy UI przez `composer test-ui` (`bin/test-ui.sh`).

@@ -60,8 +60,15 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          DEPLOY_EVENT: ${{ github.event_name }}
+          DEPLOY_TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
+          if [[ ! "$DEPLOY_TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Nieprawidłowy docelowy commit SHA." >&2
+            exit 1
+          fi
+
           ssh_dir="$(mktemp -d)"
           chmod 700 "$ssh_dir"
           trap 'rm -rf "$ssh_dir"' EXIT
@@ -73,8 +80,12 @@ jobs:
 
           ssh_port="${DEPLOY_PORT:-22}"
           quoted_path="$(printf '%q' "$DEPLOY_PATH")"
+          quoted_sha="$(printf '%q' "$DEPLOY_TARGET_SHA")"
+          quoted_event="$(printf '%q' "$DEPLOY_EVENT")"
           remote_cmd="set -euo pipefail
             cd ${quoted_path}
+            target_sha=${quoted_sha}
+            deploy_event=${quoted_event}
             if [ \"\$(git rev-parse --abbrev-ref HEAD)\" != 'master' ]; then
               echo 'Repo na serwerze nie jest na gałęzi master.' >&2
               exit 1
@@ -85,7 +96,27 @@ jobs:
             fi
             old_head=\"\$(git rev-parse HEAD)\"
             git fetch --prune origin master
-            git pull --ff-only origin master
+            if ! git cat-file -e \"\${target_sha}^{commit}\" 2>/dev/null || ! git merge-base --is-ancestor \"\$target_sha\" origin/master; then
+              echo \"Docelowy commit \$target_sha nie należy do origin/master.\" >&2
+              exit 1
+            fi
+            if [ \"\$deploy_event\" = 'workflow_run' ]; then
+              origin_master=\"\$(git rev-parse origin/master)\"
+              if [ \"\$origin_master\" != \"\$target_sha\" ]; then
+                echo \"Pominięto przestarzały deploy (\$target_sha); origin/master jest już na \$origin_master.\"
+                exit 0
+              fi
+              if git merge-base --is-ancestor \"\$target_sha\" \"\$old_head\"; then
+                echo \"Pominięto — commit \$target_sha jest już wdrożony (HEAD=\$old_head).\"
+                exit 0
+              fi
+            else
+              if [ \"\$old_head\" != \"\$target_sha\" ] && git merge-base --is-ancestor \"\$target_sha\" \"\$old_head\"; then
+                echo \"Ręczny deploy nie może cofnąć serwera z \$old_head do starszego \$target_sha.\" >&2
+                exit 1
+              fi
+            fi
+            git merge --ff-only \"\$target_sha\"
             ./bin/deploy-prod.sh --from-commit \"\$old_head\""
 
           ssh \

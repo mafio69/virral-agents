@@ -45,10 +45,10 @@ ssh-keygen -t ed25519 -N "" -C "github-actions-deploy" -f ~/.ssh/virral_agents_d
 cat ~/.ssh/virral_agents_deploy.pub >> ~/.ssh/authorized_keys
 ```
 
-Pobierz odcisk hosta (wpis `known_hosts`) dla adresu Tailscale serwera (np. `100.x.y.z` lub nazwy MagicDNS):
+Pobierz odcisk hosta (wpis `known_hosts`) dla adresu Tailscale serwera (np. `100.x.y.z` lub nazwy MagicDNS; jeśli OpenSSH nasłuchuje na niestandardowym porcie, podaj `-p <PORT>`):
 
 ```bash
-ssh-keyscan -t ed25519 <ADRES_TAILSCALE_SERWERA>
+ssh-keyscan -p <PORT_SSH> -t ed25519 <ADRES_TAILSCALE_SERWERA>
 ```
 
 ## 3. Sekrety w GitHub (`Settings → Environments → production`)
@@ -60,10 +60,11 @@ Utwórz środowisko **`production`** i dodaj następujące **Environment secrets
 | `TS_OAUTH_CLIENT_ID` | Client ID z Tailscale OAuth |
 | `TS_OAUTH_SECRET` | Client Secret z Tailscale OAuth |
 | `DEPLOY_HOST` | Adres Tailscale serwera (np. `100.x.y.z` lub nazwa MagicDNS) |
+| `DEPLOY_PORT` | *(opcjonalny, domyślnie `22`)* Port OpenSSH na serwerze (np. `2222`, gdy `22` zajmuje Tailscale SSH) |
 | `DEPLOY_USER` | Nazwa użytkownika SSH na serwerze |
 | `DEPLOY_PATH` | Bezwzględna ścieżka katalogu repozytorium na serwerze |
 | `DEPLOY_SSH_KEY` | Zawartość prywatnego klucza (`~/.ssh/virral_agents_deploy`) |
-| `DEPLOY_SSH_KNOWN_HOSTS` | Wynik `ssh-keyscan -t ed25519 <DEPLOY_HOST>` |
+| `DEPLOY_SSH_KNOWN_HOSTS` | Wynik `ssh-keyscan -p <PORT_SSH> -t ed25519 <DEPLOY_HOST>` |
 
 > Opcjonalnie: w ustawieniach środowiska `production` możesz włączyć **Required reviewers**, jeśli zechcesz ręcznie zatwierdzać wdrożenie jednym kliknięciem przed jego startem.
 

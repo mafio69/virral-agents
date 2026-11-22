@@ -55,6 +55,7 @@ jobs:
       - name: Deploy over SSH
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -70,6 +71,7 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
           chmod 600 "$ssh_dir/known_hosts"
 
+          ssh_port="${DEPLOY_PORT:-22}"
           quoted_path="$(printf '%q' "$DEPLOY_PATH")"
           remote_cmd="set -euo pipefail
             cd ${quoted_path}
@@ -88,6 +90,7 @@ jobs:
 
           ssh \
             -i "$ssh_dir/id_deploy" \
+            -p "$ssh_port" \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$ssh_dir/known_hosts" \

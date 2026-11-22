@@ -11,7 +11,7 @@
 
 **Ostatnia aktualizacja:** 2026-11-22
 **Gałąź:** `develop` (scalone #25–#29 oraz `feat/smart-search-lists`; master = `15e2ac8` po PR #24, PR `develop` → `master` otwarty).
-**Ostatnia walidacja (2026-11-22):** `composer check-all` — formatter 0/200, PHPUnit 331/331 (1500 asercji), UI 118/118.
+**Ostatnia walidacja (2026-11-22):** `composer check-all` — formatter 0/200, PHPUnit 331/331 (1500 asercji), UI 124/124.
 
 ## Gotowe (w develop)
 
@@ -23,6 +23,7 @@
 - **Obsługa błędów i logowanie (`Mariusz\Logger\DualLogger`):** wspólne mapowanie wyjątków w `src/middleware.php`; użytkownik nigdy nie widzi surowych błędów debugowania, kodów `HTTP 5xx` ani wewnętrznych nazw zmiennych — zawsze otrzymuje przyjazny komunikat z przeprosinami. Miejsca przechwycenia wyjątków (`middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`) logują bogaty kontekst diagnostyczny (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `reason`, `stage`, `sqlstate`, `driver_code`).
 - **WWW, listy wyszukiwań i Smart UX:** MCP `web_search` w trybie ASK (`MCP_SEARCH_URL` + `MCP_AUTH_TOKEN`), listy wyszukiwań w puli lub trybie doraźnym (`pool`/`ephemeral`), checkbox listy, utrwalanie (`Zapisz / Utrwal`), kosz (`trash`) na liście oraz `Usuń wszystkie` (`DELETE /api/research`), cache pobranych stron (`pages`), automatyczne czyszczenie wyłącznie list doraźnych po odpowiedzi AI (`clearEphemeral`), zwijany panel wyszukiwania i filtry pod `Filtry`, automatyczne chowanie UX wyszukiwania przy odpowiedzi AI.
 - **Jakość i dokumentacja:** formatter na całym PHP (`src/`, `bin/`, `tests/`), klamry we wszystkich if/else w PHP i JS, testy spójności zmiennych środowiskowych (`EnvNamesConsistencyTest`), dokumentacja zsynchronizowana pod `v1.0.0`.
+- **Autodeploy (prod):** `.github/workflows/deploy.yml` + `bin/deploy-prod.sh` + `docs/DEPLOY.md` — automatyczny deploy po zielonym `Tests` na `master` przez Tailscale OAuth (`tag:ci`) + SSH (`git pull --ff-only`, warunkowy `composer install`, `docker compose up -d --force-recreate`, healthcheck HTTP 200). Wymaga jednorazowego wpisania 7 sekretów w GitHub Environment `production`.
 - **Testy:** E2E 5/5 działa przez zewnętrzny Mailpit `mail-trap.dom` (rejestracja/SMTP, logowanie z błędnym e-mailem/hasłem i poprawnymi danymi, czat, badanie źródeł, diagnostyka MCP).
 
 ## Otwarte / wymagane testy manualne przed tagiem `v1.0.0` (100% pass)

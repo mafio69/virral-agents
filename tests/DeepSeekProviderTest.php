@@ -67,7 +67,7 @@ final class DeepSeekProviderTest extends TestCase
         $body = $this->sentBody(0);
         self::assertSame('/chat/completions', $this->history[0]['request']->getUri()->getPath());
         self::assertSame('deepseek-flash', $body['model']);
-        self::assertSame(4096, $body['max_tokens']);
+        self::assertSame(8192, $body['max_tokens']);
         self::assertArrayNotHasKey('tools', $body);
         self::assertArrayNotHasKey('provider', $body);
     }

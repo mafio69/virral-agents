@@ -27,7 +27,7 @@ export class ChatController {
         this.selectionVersion = 0;
         this.uncertainDelivery = null;
         this.state = {
-            chats: [], models: [], connections: initialConnections, selectedConnection: this.preferredConnection(initialConnections)?.id || '', modelsLoading: false, activeChat: null, messages: [], draft: '', images: [],
+            chats: [], models: [], connections: initialConnections, selectedConnection: this.preferredConnection(initialConnections)?.id || '', modelsLoading: false, activeChat: null, messages: [], draft: '', images: [], textAttachment: null,
             selectedModel: '', authenticated: null, loading: false, busy: false,
             pendingMessage: null, retryMessageId: null, error: '', notice: '', deliveryUncertain: false, searchActivity: 'idle',
         };
@@ -139,6 +139,28 @@ export class ChatController {
         }
     }
 
+    setTextAttachment(attachment) {
+        if (this.state.busy || this.state.loading || this.state.deliveryUncertain
+            || this.state.authenticated !== true || !attachment
+            || typeof attachment.name !== 'string' || typeof attachment.content !== 'string') {
+            return false;
+        }
+        const name = attachment.name.trim();
+        const content = attachment.content;
+        if (!name || !content.trim() || content.includes('\0')
+            || content.length > 12000 || new TextEncoder().encode(content).length > 12000) {
+            return false;
+        }
+        this.update({ textAttachment: { name, content }, error: '' });
+        return true;
+    }
+
+    removeTextAttachment() {
+        if (!this.state.busy && !this.state.deliveryUncertain) {
+            this.update({ textAttachment: null });
+        }
+    }
+
     selectModel(model) {
         if (!this.state.activeChat && !this.state.busy && !this.state.modelsLoading
             && this.state.models.some(item => item.id === model)) {
@@ -154,7 +176,7 @@ export class ChatController {
         this.selectionVersion++;
         this.uncertainDelivery = null;
         this.update({
-            activeChat: null, messages: [], draft: '', images: [], loading: false, searchActivity: 'idle',
+            activeChat: null, messages: [], draft: '', images: [], textAttachment: null, loading: false, searchActivity: 'idle',
             pendingMessage: null, retryMessageId: null, error: '', notice: '', deliveryUncertain: false,
         });
         const connection = this.preferredConnection(this.state.connections)?.id;
@@ -180,7 +202,7 @@ export class ChatController {
             this.uncertainDelivery = running ? { content: last.content, images: last.images || [], previousIds: new Set(chat.messages.slice(0, -1).map(message => message.id)) } : null;
             this.update({
                 activeChat: chat, messages: chat.messages, selectedModel: chat.model || '',
-                draft: '', images: [], loading: false, deliveryUncertain: running, retryMessageId: this.retryableMessage(chat.messages),
+                draft: '', images: [], textAttachment: null, loading: false, deliveryUncertain: running, retryMessageId: this.retryableMessage(chat.messages),
                 notice: running ? 'Serwer nadal przetwarza tę wiadomość. Sprawdź zapis za chwilę.' : '', searchActivity: 'idle',
             });
             const namespace = chat.model?.split(':', 1)[0];
@@ -202,7 +224,13 @@ export class ChatController {
     }
 
     async send(search = null, research = false) {
-        const content = this.state.draft.trim()
+        const draftText = this.state.draft.trim();
+        const attachment = this.state.textAttachment;
+        const attachmentBlock = attachment
+            ? `Załączony plik: ${attachment.name}\n\`\`\`\n${attachment.content}\n\`\`\``
+            : '';
+        const composed = [draftText, attachmentBlock].filter(Boolean).join('\n\n');
+        const content = composed
             || (search?.approved === true && typeof search.query === 'string' ? search.query.trim() : '');
         const images = this.state.images;
         if ((!content && !images.length) || this.state.busy || this.state.loading
@@ -210,7 +238,7 @@ export class ChatController {
             return false;
         }
 
-        if (content.length > 16000) {
+        if (content.length > 16000 || new TextEncoder().encode(content).length > 16000) {
             this.update({ error: 'Wiadomość jest za długa (maksymalnie 16 000 znaków).' });
             return false;
         }
@@ -227,7 +255,8 @@ export class ChatController {
         this.update({ busy: true, error: '', notice: '', retryMessageId: null, pendingMessage: { role: 'user', content, images }, searchActivity: search ? 'searching' : 'idle' });
         try {
             if (!this.state.activeChat) {
-                const title = Array.from((content || 'Analiza obrazu').split(/\r?\n/, 1)[0]).slice(0, 72).join('');
+                const titleSource = draftText || attachment?.name || content || 'Analiza obrazu';
+                const title = Array.from(titleSource.split(/\r?\n/, 1)[0]).slice(0, 72).join('');
                 const chat = await this.api.createChat({ title, model: this.state.selectedModel });
                 this.update({
                     activeChat: chat,
@@ -237,7 +266,7 @@ export class ChatController {
             }
             messageRequestStarted = true;
             const messages = await this.api.sendMessage(this.state.activeChat.id, content, images, ...(research ? [search, true] : search ? [search] : []));
-            this.update({ messages: [...this.state.messages, ...messages], draft: '', images: [], pendingMessage: null, searchActivity: search ? 'done' : 'idle' });
+            this.update({ messages: [...this.state.messages, ...messages], draft: '', images: [], textAttachment: null, pendingMessage: null, searchActivity: search ? 'done' : 'idle' });
             return true;
         } catch (error) {
             this.update({
@@ -281,6 +310,7 @@ export class ChatController {
                 retryMessageId: running ? null : this.retryableMessage(chat.messages),
                 draft: saved ? '' : this.state.draft,
                 images: saved ? [] : this.state.images,
+                textAttachment: saved ? null : this.state.textAttachment,
                 error: answered ? '' : saved ? this.state.error || 'Wiadomość została zapisana, ale model nie odpowiedział.' : this.state.error,
                 notice: running ? 'Serwer nadal przetwarza tę wiadomość. Sprawdź zapis za chwilę.' : answered ? 'Odpowiedź jest już w rozmowie.' : saved
                     ? this.retryableMessage(chat.messages) ? 'Użyj przycisku Ponów.' : 'Nie ma potwierdzonego stanu tej próby. Ponowienie jest niedostępne.' : 'Wiadomość nie została zapisana. Możesz wysłać ją ponownie.',

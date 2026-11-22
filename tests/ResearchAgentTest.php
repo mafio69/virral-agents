@@ -95,7 +95,7 @@ final class ResearchAgentTest extends TestCase
             ['url' => 'https://example.org/read', 'status' => 'loaded', 'text' => 'Fetched fixture', 'truncated' => true],
             ['url' => 'https://example.org/denied', 'status' => 'denied', 'text' => '', 'truncated' => false],
         ], 'decisions' => []]);
-        $research->expects(self::once())->method('clear')->with(1, 1)->willReturn(['results' => [], 'sources' => [], 'actions' => []]);
+        $research->expects(self::once())->method('clearEphemeral')->with(1, 1)->willReturn(['results' => [], 'sources' => [], 'actions' => [], 'lists' => []]);
         $client = $this->createMock(WebToolClientInterface::class);
         $client->expects(self::never())->method('generateWebReply');
         $plain = $this->createMock(ChatReplyGeneratorInterface::class);

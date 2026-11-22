@@ -152,7 +152,7 @@ export class ChatApi {
         if (!Number.isInteger(scope) || scope < 0) {
             throw new ChatApiError('Nieprawidłowe badanie.');
         }
-        const routes = { state: ['GET', ''], propose: ['POST', '/actions'], decide: ['POST', '/decisions'], select: ['PUT', '/sources'], prepare: ['POST', '/prepare'], clear: ['DELETE', ''] };
+        const routes = { state: ['GET', ''], propose: ['POST', '/actions'], decide: ['POST', '/decisions'], select: ['PUT', '/sources'], prepare: ['POST', '/prepare'], clear: ['DELETE', ''], copyToDraft: ['POST', '/new-chat'] };
         const route = routes[operation];
         if (!route) {
             throw new ChatApiError('Nieznana operacja badania.');

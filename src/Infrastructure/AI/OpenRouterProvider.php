@@ -11,6 +11,7 @@ use App\Exception\AiConnectionException;
 final class OpenRouterProvider implements ChatProviderInterface, WebToolClientInterface
 {
     public const BASE_URI = 'https://openrouter.ai/api/v1/';
+    public const MAX_TOKENS = 8192;
 
     private ?array $models = null;
 
@@ -96,13 +97,21 @@ final class OpenRouterProvider implements ChatProviderInterface, WebToolClientIn
     {
         $body = $this->transport->request('POST', 'chat/completions', [
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
-            'messages' => $messages, 'max_tokens' => 4096,
+            'messages' => $this->normalizeMessages($messages), 'max_tokens' => self::MAX_TOKENS,
             // Route only to upstream providers that do not collect user data.
             'provider' => ['data_collection' => 'deny'],
             ...($web ? ['tools' => WebTools::compat(), 'parallel_tool_calls' => false] : []),
         ]);
         if (isset($body['error'])) {
-            throw new AiConnectionException('invalid_response');
+            $code = is_array($body['error']) ? (int) ($body['error']['code'] ?? 0) : 0;
+            throw new AiConnectionException(match ($code) {
+                401, 403 => 'provider_auth',
+                404 => 'model_unavailable',
+                402, 429 => 'provider_limit',
+                408, 504 => 'provider_timeout',
+                502, 503 => 'connection_failed',
+                default => 'invalid_response',
+            });
         }
         $message = $body['choices'][0]['message'] ?? null;
         if (!is_array($message)) {
@@ -118,5 +127,38 @@ final class OpenRouterProvider implements ChatProviderInterface, WebToolClientIn
             throw new AiConnectionException('invalid_response');
         }
         return new AiReply($text, usage: $usage);
+    }
+
+    /**
+     * Merges consecutive messages with the same role so strict upstream models
+     * (e.g. Perplexity Sonar) never fail on research evidence or compacted history.
+     */
+    private function normalizeMessages(array $messages): array
+    {
+        $normalized = [];
+        foreach ($messages as $message) {
+            $role = $message['role'] ?? null;
+            if (!is_string($role)) {
+                $normalized[] = $message;
+                continue;
+            }
+            $lastIndex = count($normalized) - 1;
+            if ($lastIndex >= 0 && ($normalized[$lastIndex]['role'] ?? null) === $role) {
+                $normalized[$lastIndex]['content'] = $this->mergeContent($normalized[$lastIndex]['content'], $message['content']);
+                continue;
+            }
+            $normalized[] = $message;
+        }
+        return $normalized;
+    }
+
+    private function mergeContent(string|array $first, string|array $second): string|array
+    {
+        if (is_string($first) && is_string($second)) {
+            return $first."\n\n".$second;
+        }
+        $firstParts = is_string($first) ? [['type' => 'text', 'text' => $first]] : $first;
+        $secondParts = is_string($second) ? [['type' => 'text', 'text' => $second]] : $second;
+        return [...$firstParts, ...$secondParts];
     }
 }

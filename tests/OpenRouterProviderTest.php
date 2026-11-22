@@ -90,7 +90,7 @@ final class OpenRouterProviderTest extends TestCase
         self::assertSame('vendor/vision-model', $body['model']);
         self::assertSame($messages, $body['messages']);
         self::assertSame(['data_collection' => 'deny'], $body['provider']);
-        self::assertSame(4096, $body['max_tokens']);
+        self::assertSame(8192, $body['max_tokens']);
         self::assertArrayNotHasKey('tools', $body);
     }
 
@@ -169,5 +169,34 @@ final class OpenRouterProviderTest extends TestCase
             self::assertSame('missing_configuration', $error->reason);
         }
         self::assertSame([], $this->history);
+    }
+
+    public function testConsecutiveSameRoleMessagesAreMergedAndJsonErrorCodesMapped(): void
+    {
+        $provider = $this->provider([
+            $this->response(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Merged answer']]]]),
+            $this->response(['error' => ['code' => 429, 'message' => 'Private limit']]),
+            $this->response(['error' => ['code' => 502, 'message' => 'Private upstream']]),
+        ]);
+        $reply = $provider->generate([
+            ['role' => 'system', 'content' => 'System'],
+            ['role' => 'user', 'content' => 'First question'],
+            ['role' => 'user', 'content' => 'Attached evidence'],
+        ], 'perplexity/sonar-reasoning-pro');
+        self::assertSame('Merged answer', $reply);
+        $sent = $this->sentBody(0);
+        self::assertSame(8192, $sent['max_tokens']);
+        self::assertSame([
+            ['role' => 'system', 'content' => 'System'],
+            ['role' => 'user', 'content' => "First question\n\nAttached evidence"],
+        ], $sent['messages']);
+        foreach (['provider_limit', 'connection_failed'] as $expected) {
+            try {
+                $provider->generate([['role' => 'user', 'content' => 'Q']], 'perplexity/sonar-reasoning-pro');
+                self::fail('Expected mapped error: '.$expected);
+            } catch (AiConnectionException $error) {
+                self::assertSame($expected, $error->reason);
+            }
+        }
     }
 }

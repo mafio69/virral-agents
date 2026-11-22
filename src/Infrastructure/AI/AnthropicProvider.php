@@ -104,7 +104,7 @@ final class AnthropicProvider implements ChatProviderInterface, WebToolClientInt
         }
         $body = $this->transport->request('POST', 'messages', [
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
-            'max_tokens' => 4096, 'messages' => $conversation,
+            'max_tokens' => 8192, 'messages' => $conversation,
             ...($system !== [] ? ['system' => $system] : []),
             ...($web ? ['tools' => array_map(static fn (array $tool): array => ['name' => $tool['name'], 'description' => $tool['description'], 'input_schema' => $tool['parameters']], WebTools::definitions()), 'tool_choice' => ['type' => 'auto', 'disable_parallel_tool_use' => true]] : []),
         ]);

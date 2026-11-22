@@ -30,7 +30,7 @@ rozmowie kończy się czytelnym błędem braku konfiguracji.
 | DeepSeek | `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL` | czat (OpenAI-compatible): `deepseek-flash`, `deepseek-v4-pro` | `docs/AI_PROVIDERS.md` |
 | Wyszukiwarka MCP (SearXNG) | `MCP_SEARCH_URL` (np. `https://szukaj.dom/mcp`, domyślnie `http://mcp-search:8000/mcp`), `MCP_AUTH_TOKEN` (Bearer, gdy serwer go wymaga; zdalne endpointy z tokenem wymagają TLS) | wyszukiwanie WWW i badanie źródeł | `docs/MCP-USAGE.md`, `docs/instrukcja-integracji-mcp-search.md` |
 | Poczta SMTP | `MAIL_DSN` | potwierdzenie rejestracji | `docs/KONFIGURACJA.md` |
-| Langfuse (obserwowalność) | **`LANGFUSE_ENABLED=true`** (wymagane), `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` lub `LANGFUSE_HOST` (domyślnie EU cloud), opcjonalnie `LANGFUSE_RELEASE` | ślad każdej tury czatu: tokeny, model, czas, błędy — bez treści rozmów | [niżej](#podłączenie-langfuse), `REPO.md` |
+| Langfuse (obserwowalność) | **`LANGFUSE_ENABLED=true`** (wymagane), `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` (domyślnie EU cloud) | ślad każdej tury czatu: tokeny, model, czas, błędy — bez treści rozmów | [niżej](#podłączenie-langfuse), `REPO.md` |
 
 Klucze szyfrowania (`USER_DATA_KEY`, `DB_HASH`) są wymagane zawsze — `docs/OCHRONA_DANYCH.md`.
 

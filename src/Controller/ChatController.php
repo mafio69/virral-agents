@@ -112,6 +112,10 @@ final readonly class ChatController
     {
         return $this->researchCall('clear', $request, $response);
     }
+    public function researchCopyToDraft(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return $this->researchCall('copySelectedToDraft', $request, $response);
+    }
 
     private function researchCall(string $operation, ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {

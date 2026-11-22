@@ -9,19 +9,19 @@
 
 ---
 
-**Ostatnia aktualizacja:** 2026-11-09
-**Gałąź:** `develop` (DeepSeek + reset hasła + role + CRUD dostawców scalone; master = `15e2ac8` po PR #24).
-**Ostatnia walidacja (2026-11-09):** formatter 0/200, PHPUnit 323/323 (1451 asercji), UI 113/113.
+**Ostatnia aktualizacja:** 2026-11-22
+**Gałąź:** `develop` (scalone `feat/smart-search-lists`; master = `15e2ac8` po PR #24, PR `develop` → `master` gotowy).
+**Ostatnia walidacja (2026-11-22):** formatter 0/200, PHPUnit 326/326 (1482 asercji), UI 118/118.
 
-## Gotowe (w develop / release/v1.0.0)
+## Gotowe (w develop)
 
 - **Konto:** rejestracja z obowiązkowym potwierdzeniem e-maila, logowanie z limitem prób (`Retry-After`), za zaufanym proxy limit per rzeczywisty klient (`TRUSTED_PROXIES`), sesja HttpOnly + Bearer, wylogowanie po stronie serwera, reset zapomnianego hasła linkiem e-mail ze strony logowania (limit prób, token ważny 1 h).
 - **Role i uprawnienia:** `users.role` (`admin`/`user`); pierwszy użytkownik = admin, kolejni = user (nigdy admin); `AuthMiddleware` dokłada `role`, `AdminOnlyMiddleware` zwraca 404 nie-adminowi.
 - **Zarządzanie dostawcami AI (admin-only):** `GET/POST/PUT/DELETE /api/ai-providers`, `POST/DELETE /api/ai-models`; sekret dostawcy nigdy nie jest zwracany (tylko `has_secret`), plaintext szyfrowany w bazie (`SecretService`).
 - **Ochrona danych:** szyfrowanie pól (XChaCha20-Poly1305, `USER_DATA_KEY`), HMAC e-maila, hashe tokenów, migracja CLI `bin/protect-user-data.php`.
-- **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek (`deepseek-flash`, `deepseek-v4-pro`; `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`). Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny).
+- **Czat AI:** OVH, Z.ai (GLM), OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek (`deepseek-flash`, `deepseek-v4-pro`; `DEEPSEEK_API_KEY`, opcjonalnie `DEEPSEEK_BASE_URL`). Połączenia bez klucza są ukryte przy nowej rozmowie (Z.ai zawsze widoczny). Przycisk `+` w polu promptu pozwala dodać obraz (dla modeli z vision) lub plik tekstowy (do 12 KB, dla każdego modelu) z zachowaniem tekstu promptu.
 - **Obsługa błędów i logowanie (`Mariusz\Logger\DualLogger`):** wspólne mapowanie wyjątków w `src/middleware.php`; użytkownik nigdy nie widzi surowych błędów debugowania, kodów `HTTP 5xx` ani wewnętrznych nazw zmiennych — zawsze otrzymuje przyjazny komunikat z przeprosinami. Miejsca przechwycenia wyjątków (`middleware.php`, `public/index.php`, `AuthService`, `ChatService`, `ModelCatalogService`, `ChatReplyGenerator`) logują bogaty kontekst diagnostyczny (`type`, `origin`, `line`, `code`, `method`, `path`, `user_id`, `chat_id`, `model`, `reason`, `stage`, `sqlstate`, `driver_code`).
-- **WWW i badanie źródeł:** MCP `web_search` w trybie ASK (`MCP_SEARCH_URL` + `MCP_AUTH_TOKEN`), badanie źródeł z kontynuacją (`POST /api/chats/{id}/messages/{messageId}/continue`), izolacja jednego wyszukiwania na jedną wymianę zdań (automatyczne czyszczenie po wygenerowaniu odpowiedzi oraz ręczne czyszczenie `DELETE /api/research` w panelu bocznym i modalu), `chat_messages.kind` (`message`/`approval_request`/`continuation`), fetcher z bezpiecznymi redirectami.
+- **WWW, listy wyszukiwań i Smart UX:** MCP `web_search` w trybie ASK (`MCP_SEARCH_URL` + `MCP_AUTH_TOKEN`), listy wyszukiwań w puli lub trybie doraźnym (`pool`/`ephemeral`), checkbox listy, utrwalanie (`Zapisz / Utrwal`), kosz (`trash`) na liście oraz `Usuń wszystkie` (`DELETE /api/research`), cache pobranych stron (`pages`), automatyczne czyszczenie wyłącznie list doraźnych po odpowiedzi AI (`clearEphemeral`), zwijany panel wyszukiwania i filtry pod `Filtry`, automatyczne chowanie UX wyszukiwania przy odpowiedzi AI.
 - **Jakość i dokumentacja:** formatter na całym PHP (`src/`, `bin/`, `tests/`), klamry we wszystkich if/else w PHP i JS, testy spójności zmiennych środowiskowych (`EnvNamesConsistencyTest`), dokumentacja zsynchronizowana pod `v1.0.0`.
 - **Testy:** E2E 5/5 działa przez zewnętrzny Mailpit `mail-trap.dom` (rejestracja/SMTP, logowanie z błędnym e-mailem/hasłem i poprawnymi danymi, czat, badanie źródeł, diagnostyka MCP).
 

@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 2026-11-22 — Listy wyszukiwań (historyczne + doraźne), Smart UX czatu i przycisk `+`
+
+- **Backend list wyszukiwań (`ResearchService`, `ResearchRepository`, `ResearchInputMapper`, `ResearchReplyGenerator`):**
+  - Każde wyszukiwanie tworzy osobną listę w `state['lists']` (`mode`: `pool` lub `ephemeral`, `saved: bool`) i automatycznie zaznacza jej wyniki (do limitu 20 źródeł), bez kasowania poprzednich list i pobranych stron (`pages` cache).
+  - Rozszerzenie `PUT /api/research/sources` o operacje na listach: checkbox całej listy (`list_id` + `selected`), utrwalenie (`list_id` + `saved: true`) oraz usunięcie koszem (`list_id` + `delete: true`).
+  - `ResearchService::clearEphemeral()` używane po odpowiedzi AI w `ResearchReplyGenerator` — kasuje wyłącznie listy doraźne (`ephemeral` bez `saved`), pozostawiając zaznaczone listy trwałe w sesji. Brak zaznaczonych źródeł oznacza brak dołączania wyników WWW do promptu.
+- **Smart UX wyszukiwania i przycisk `+` (`chat.html`, `chat-research.css`, `chat-research.js`, `chat-research-modal.js`, `chat-controller.js`, `chat-app.js`):**
+  - Domyślnie schowany panel wyszukiwania (`#search-panel`) oraz wszystkie filtry (`Bez`, `Musi zawierać`, `Dokładna fraza`, `Strona`) pod przyciskiem `Filtry` — na dole czatu zostaje czyste pole promptu z małym `+` i kompaktowy pasek `WWW / Szukaj` + `Źródła (N)`.
+  - Automatyczne chowanie całego UX wyszukiwania (pasek, filtry, modal, status szukania) w momencie wysyłania wiadomości i po odpowiedzi AI, z zachowaniem wpisanego tekstu promptu.
+  - Widok list wyszukiwań w oknie źródeł: checkbox listy, oznaczenie `Doraźna`/`Zapisana`, przycisk `Zapisz / Utrwal` i kosz `🗑 Usuń` przy każdej liście.
+  - Mniejszy, lżejszy modal źródeł (`height: auto`, tryb `data-mode="approval"` 460 px dla samej zgody `Allow/Deny` bez stopki, `640 px` dla list) oraz 3 akcje w stopce: `Kontynuuj`, `Nowy prompt` (w tej samej sesji z podpiętymi źródłami) i `Nowa sesja` (`POST /api/research/new-chat` przenoszący wybrane źródła i pobrane treści do nowej rozmowy).
+  - Przycisk `Obraz` w polu promptu zastąpiony przyciskiem `+` obsługującym obraz (PNG/JPEG/WebP — dla modeli z vision) oraz plik tekstowy (do 12 KB tekstu — dla każdego modelu), z podglądem i zachowaniem wpisanego promptu.
+- **Porządek zmiennych środowiska (`docker-compose.yml`, `docker/php-fpm-env.conf`, `src/settings.php`, `dev-start.sh`):** ujednolicono port do jednego `APP_PORT` (usunięto `APP_HOST_PORT`), usunięto nieużywane `LANGFUSE_RELEASE`, `PHP_IDE_CONFIG` oraz zdublowany alias `LANGFUSE_HOST` (zostaje wyłącznie `LANGFUSE_BASE_URL`). `app_url` domyślnie buduje się z `http://localhost:$APP_PORT`, gdy `APP_URL` jest puste.
+- **Stabilność modeli rozumujących i OpenRouter (`OpenRouterProvider`, `DeepSeekProvider`, `OpenAiProvider`, `AnthropicProvider`):**
+  - Trwale podniesiono minimalny budżet wyjściowy do **`8192`** tokenów (`max_tokens` / `max_output_tokens`) u wszystkich dostawców, aby modele rozumujące (np. `Perplexity: Sonar Reasoning Pro`, `gpt-5-nano`, `Gemini`, `DeepSeek`) nie kończyły pustym `content` przy dłuższym myśleniu.
+  - W `OpenRouterProvider` dodano scalanie sąsiednich wiadomości tej samej roli (`user`+`user` przy źródłach WWW / kompakcie / ponawianiu — wymóg naprzemienności ról Perplexity Sonar) oraz mapowanie kodów błędu JSON (`402/429` → `provider_limit`, `408/504` → `provider_timeout`, `502/503` → `connection_failed`).
+- **Testy:** zaktualizowane i rozszerzone `ResearchServiceTest`, `ResearchAgentTest`, `ChatServiceUsageTest`, `OpenRouterProviderTest`, `DeepSeekProviderTest`, `AnthropicProviderTest`, `ProviderIntegrationTest`, `tests/ui/chat-research.test.mjs`, `tests/ui/chat-research-modal.test.mjs`, `tests/ui/chat-controller.test.mjs`. Walidacja: formatter 0/200, PHPUnit 326/326 (1482 asercji), UI 118/118.
+
 ## 2026-11-09 — zarządzanie dostawcami AI (admin-only) — Faza 2
 
 - `AdminOnlyMiddleware` — nie-admin dostaje 404 (endpointy niewidoczne); role w request z Fazy 1.

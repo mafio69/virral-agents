@@ -118,7 +118,7 @@ final class ChatServiceUsageTest extends TestCase
             {
                 return [];
             }
-            public function select(int $userId, int $chatId, string $sourceId, bool $selected): array
+            public function select(int $userId, int $chatId, string $sourceId, bool $selected, string $target = 'source'): array
             {
                 return [];
             }
@@ -127,6 +127,14 @@ final class ChatServiceUsageTest extends TestCase
                 return [];
             }
             public function clear(int $userId, int $chatId): array
+            {
+                return [];
+            }
+            public function clearEphemeral(int $userId, int $chatId): array
+            {
+                return [];
+            }
+            public function copySelectedToDraft(int $userId, int $chatId): array
             {
                 return [];
             }

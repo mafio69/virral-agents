@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { ResearchModal } from '../../public/ui/chat/chat-research-modal.js';
 
 class Element {
-    constructor() { this.handlers = {}; this.children = []; this.isConnected = true; }
+    constructor() { this.handlers = {}; this.children = []; this.isConnected = true; this.dataset = {}; }
     addEventListener(name, handler) { this.handlers[name] = handler; }
     append(child) { this.children.push(child); }
     replaceChildren() { this.children = []; }
@@ -45,4 +45,22 @@ test('backdrop closes while content click stays open; replaced opener has a focu
     modal.dialog.handlers.click({ target: modal.dialog, clientX: 0, clientY: 0 });
     assert.equal(modal.dialog.open, false);
     assert.equal(modal.openButtons[0].focused, true);
+});
+
+test('modal switches to compact approval mode for pending consent without sources', () => {
+    const modal = fixture();
+    modal.update({
+        sources: [],
+        results: [],
+        lists: [],
+        actions: [{ id: 'a1', status: 'pending', request: { kind: 'search', query: 'Q' } }],
+    });
+    assert.equal(modal.dialog.dataset.mode, 'approval');
+    modal.update({
+        sources: [{ id: 's1', title: 'S1', url: 'https://example.org/s1', page: { status: 'unread' } }],
+        results: [],
+        lists: [],
+        actions: [],
+    });
+    assert.equal(modal.dialog.dataset.mode, 'results');
 });

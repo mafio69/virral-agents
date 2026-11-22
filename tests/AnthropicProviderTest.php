@@ -81,7 +81,7 @@ final class AnthropicProviderTest extends TestCase
         self::assertCount(3, $body['messages']);
         self::assertSame('assistant', $body['messages'][1]['role']);
         self::assertSame(['type' => 'base64', 'media_type' => 'image/png', 'data' => 'YQ=='], $body['messages'][0]['content'][1]['source']);
-        self::assertSame(4096, $body['max_tokens']);
+        self::assertSame(8192, $body['max_tokens']);
         self::assertArrayNotHasKey('tools', $body);
         self::assertFalse($this->history[0]['options']['allow_redirects']);
     }

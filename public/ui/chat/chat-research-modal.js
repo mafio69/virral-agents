@@ -1,19 +1,21 @@
 /** Presentation only: durable source data stays in the encrypted server workspace. */
 export class ResearchModal {
-    constructor({ dialog, openButtons, closeButton, count, sourceList, clearButton = null, onClear = () => {} }) {
-        Object.assign(this, { dialog, openButtons, closeButton, count, sourceList, clearButton, onClear });
+    constructor({ dialog, openButtons, closeButton, count, extraCounts = [], sourceList, clearButton = null, onClear = () => {} }) {
+        Object.assign(this, { dialog, openButtons, closeButton, count, extraCounts, sourceList, clearButton, onClear });
         this.opener = null;
         openButtons.forEach(button => button.addEventListener('click', () => this.open(button)));
         closeButton.addEventListener('click', () => this.close());
         clearButton?.addEventListener('click', () => {
             this.onClear();
         });
-        dialog.addEventListener('click', event => { if (event.target === dialog) {
-            const bounds = dialog.getBoundingClientRect();
-            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
-                this.close();
+        dialog.addEventListener('click', event => {
+            if (event.target === dialog) {
+                const bounds = dialog.getBoundingClientRect();
+                if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+                    this.close();
+                }
             }
-        } });
+        });
         dialog.addEventListener('close', () => (this.opener?.isConnected ? this.opener : this.openButtons[0])?.focus());
     }
 
@@ -24,15 +26,30 @@ export class ResearchModal {
         }
     }
 
-    close() { if (this.dialog.open) this.dialog.close(); }
+    close() {
+        if (this.dialog.open) {
+            this.dialog.close();
+        }
+    }
 
     update(state) {
-        this.count.textContent = String(state.sources.length);
+        const countText = String(state.sources.length);
+        this.count.textContent = countText;
+        for (const extra of this.extraCounts) {
+            if (extra) {
+                extra.textContent = countText;
+            }
+        }
         this.sourceList.replaceChildren();
         const selected = new Set(state.sources.map(source => source.id));
         const sources = [...state.sources, ...state.results.filter(source => !selected.has(source.id))];
+        const hasLists = Array.isArray(state.lists) && state.lists.length > 0;
+        const hasPending = Array.isArray(state.actions) && state.actions.some(action => action.status === 'pending');
+        if (this.dialog.dataset) {
+            this.dialog.dataset.mode = hasPending && sources.length === 0 && !hasLists ? 'approval' : 'results';
+        }
         if (this.clearButton) {
-            this.clearButton.disabled = sources.length === 0 && (!state.actions || state.actions.length === 0);
+            this.clearButton.disabled = sources.length === 0 && !hasLists && (!state.actions || state.actions.length === 0);
         }
         for (const source of sources) {
             const item = document.createElement('li');

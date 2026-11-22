@@ -1,6 +1,6 @@
 import { describeSearchFilters } from './chat-search.js';
 
-const empty = () => ({ results: [], sources: [], actions: [] });
+const empty = () => ({ results: [], sources: [], actions: [], lists: [] });
 const FETCH_REASONS = {
     dns_failed: 'nie znaleziono adresu',
     private_address: 'adres prywatny lub lokalny',
@@ -34,8 +34,8 @@ const node = (tag, text, className = '') => {
 
 /** Durable server state; result replacement never clears the selected source shelf. */
 export class ResearchPanel {
-    constructor(api, { query, search, body, summary, filters = null, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, onState = () => {}, continueControl = null, continueLabel = 'Kontynuuj z wybranymi stronami', canContinue = () => true }) {
-        Object.assign(this, { api, query, search, body, summary, filters, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, onState, continueControl, continueLabel, canContinue });
+    constructor(api, { query, search, body, summary, filters = null, modeControl = null, onBusy = () => {}, onNotice = () => {}, onResume = () => {}, onAgent = () => {}, onActivity = () => {}, onContinue = () => {}, onContinuationChange = () => {}, onState = () => {}, continueControl = null, newPromptControl = null, newChatControl = null, onNewPrompt = () => {}, onNewChat = () => {}, continueLabel = 'Kontynuuj z wybranymi stronami', canContinue = () => true }) {
+        Object.assign(this, { api, query, search, body, summary, filters, modeControl, onBusy, onNotice, onResume, onAgent, onActivity, onContinue, onContinuationChange, onState, continueControl, newPromptControl, newChatControl, onNewPrompt, onNewChat, continueLabel, canContinue });
         this.scope = null;
         this.version = 0;
         this.busy = false;
@@ -48,6 +48,16 @@ export class ResearchPanel {
         this.refreshQueued = false;
         this.bulkApproval = null;
         continueControl?.addEventListener('click', () => this.continueWithSources());
+        newPromptControl?.addEventListener('click', () => {
+            if (this.ready && !this.busy && !this.continuing && this.state.sources.length) {
+                this.onNewPrompt();
+            }
+        });
+        newChatControl?.addEventListener('click', () => {
+            if (this.ready && !this.busy && !this.continuing && this.state.sources.length) {
+                void this.onNewChat();
+            }
+        });
         query.addEventListener('input', () => this.updateButton());
         search.addEventListener('click', () => {
             const text = query.value.trim();
@@ -61,7 +71,12 @@ export class ResearchPanel {
                 this.onNotice('Popraw filtr „Strona” — podaj domenę, np. wikipedia.org.');
                 return;
             }
-            const request = { kind: 'search', query: text, ...filters };
+            const request = {
+                kind: 'search',
+                query: text,
+                ...filters,
+                ...(this.modeControl?.checked ? { mode: 'ephemeral' } : {}),
+            };
             void this.run('propose', { request }).then(ok => {
                 if (ok) {
                     this.onNotice('Sprawdź dokładne zapytanie poniżej i wybierz Allow lub Deny.');
@@ -71,9 +86,16 @@ export class ResearchPanel {
         this.render();
     }
 
-    canSearch() { return this.scope !== null && this.ready && !this.busy && !this.continuing && this.query.value.trim() !== '' && new TextEncoder().encode(this.query.value.trim()).length <= 1000; }
+    canSearch() {
+        return this.scope !== null && this.ready && !this.busy && !this.continuing && this.query.value.trim() !== '' && new TextEncoder().encode(this.query.value.trim()).length <= 1000;
+    }
     hasContent() {
-        return Boolean(this.state.results.length || this.state.sources.length || this.state.actions.length);
+        return Boolean(
+            this.state.results.length
+            || this.state.sources.length
+            || this.state.actions.length
+            || (Array.isArray(this.state.lists) && this.state.lists.length)
+        );
     }
     async clear() {
         if (!this.ready || this.busy || this.continuing || this.scope === null || !this.hasContent()) {
@@ -86,23 +108,57 @@ export class ResearchPanel {
     updateButton() {
         this.search.disabled = !this.canSearch();
         this.query.disabled = this.scope === null || this.busy;
+        if (this.modeControl) {
+            this.modeControl.disabled = this.scope === null || this.busy;
+        }
         this.filters?.setEnabled(this.scope === null || this.busy);
+        const hasSelection = this.ready && !this.busy && !this.continuing && this.scope !== null && this.state.sources.length > 0;
         if (this.continueButton) {
-            this.continueButton.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue();
+            this.continueButton.disabled = !hasSelection || !this.canContinue();
             this.continueButton.setAttribute('aria-busy', String(this.continuing));
             this.continueButton.textContent = this.continuing
                 ? this.continuationStage === 'ai' ? 'AI przygotowuje odpowiedź…' : 'Pobieram wybrane strony…'
                 : this.continueLabel;
         }
+        if (this.newPromptControl) {
+            this.newPromptControl.disabled = !hasSelection || !this.canContinue();
+        }
+        if (this.newChatControl) {
+            this.newChatControl.disabled = !hasSelection;
+        }
+    }
+
+    async fetchSelectedSources() {
+        if (!this.ready || this.busy || this.scope === null || !this.state.sources.length) {
+            return false;
+        }
+        const version = this.version;
+        // Approves fetching only the source URLs visible in this selection.
+        const approved = new Set(this.state.sources.map(source => source.url));
+        if (this.state.sources.some(source => source.page.status === 'unread')) {
+            if (!await this.run('prepare', {}) || version !== this.version) {
+                return false;
+            }
+        }
+        const fetches = this.pendingFetches().filter(action => approved.has(action.request.url));
+        for (const action of fetches) {
+            if (version !== this.version) {
+                return false;
+            }
+            if (!this.state.sources.some(source => source.url === action.request.url)) {
+                continue;
+            }
+            if (!await this.run('decide', { id: action.id, allow: true }) || version !== this.version) {
+                return false;
+            }
+        }
+        return version === this.version;
     }
 
     async continueWithSources() {
         if (!this.ready || this.busy || this.continuing || this.scope === null || !this.state.sources.length || !this.canContinue()) {
             return;
         }
-        const version = this.version;
-        // The explicit click approves fetching only the source URLs visible in this selection.
-        const approved = new Set(this.state.sources.map(source => source.url));
         this.continuing = true;
         this.continuationStage = 'fetch';
         this.onContinuationChange(true);
@@ -110,24 +166,10 @@ export class ResearchPanel {
         this.onActivity('searching');
         this.render();
         try {
-            if (this.state.sources.some(source => source.page.status === 'unread')) {
-                if (!await this.run('prepare', {}) || version !== this.version) {
-                    return;
-                }
-            }
-            const fetches = this.pendingFetches().filter(action => approved.has(action.request.url));
-            for (const action of fetches) {
-                if (version !== this.version) {
-                    return;
-                }
-                if (!this.state.sources.some(source => source.url === action.request.url)) {
-                    continue;
-                }
-                if (!await this.run('decide', { id: action.id, allow: true }) || version !== this.version) {
-                    return;
-                }
-            }
-            if (version !== this.version) {
+            const approved = new Set(this.state.sources.map(source => source.url));
+            const needsFetch = this.state.sources.some(source => source.page.status === 'unread')
+                || this.pendingFetches().some(action => approved.has(action.request.url));
+            if (needsFetch && !await this.fetchSelectedSources()) {
                 return;
             }
             this.continuationStage = 'ai';
@@ -320,15 +362,18 @@ export class ResearchPanel {
 
     render() {
         this.updateButton();
-        this.summary.textContent = `Źródła do badania (${this.state.sources.length}/20)`;
+        const lists = Array.isArray(this.state.lists) ? this.state.lists : [];
+        const pending = this.state.actions.filter(action => action.status === 'pending' && !(this.continuing && action.request.kind === 'fetch' && this.state.sources.some(source => source.url === action.request.url)));
+        const approvalOnly = pending.length > 0 && !this.state.sources.length && !this.state.results.length && !lists.length;
+        this.summary.textContent = approvalOnly ? 'Zgoda WWW · ASK' : `Źródła (${this.state.sources.length}/20)`;
         this.body.replaceChildren();
         this.continueButton = this.continueControl;
         this.updateButton();
-        const refresh = node('button', 'Odśwież listę', 'btn btn-sm');
+        const refresh = node('button', 'Odśwież listę', 'btn btn-sm research-toolbar-btn');
         refresh.type = 'button'; refresh.disabled = this.busy || this.scope === null;
         refresh.addEventListener('click', () => this.refresh());
         this.body.append(refresh);
-        const clear = node('button', 'Usuń wszystkie', 'btn btn-sm');
+        const clear = node('button', 'Usuń wszystkie', 'btn btn-sm research-toolbar-btn');
         clear.type = 'button';
         clear.id = 'research-clear-modal';
         clear.disabled = !this.ready || this.busy || this.continuing || this.scope === null || !this.hasContent();
@@ -344,15 +389,12 @@ export class ResearchPanel {
             button.type = 'button';
             if (!this.continueControl) {
                 button.addEventListener('click', () => this.continueWithSources());
+                this.body.append(button);
+                this.body.append(node('p', 'Kliknięcie pobiera zaznaczone strony i przekazuje je AI.'));
             }
             this.continueButton = button;
-            if (!this.continueControl) {
-                this.body.append(button);
-            }
-            this.body.append(node('p', 'Kliknięcie pobiera zaznaczone strony i przekazuje je AI.'));
             this.updateButton();
         }
-        const pending = this.state.actions.filter(action => action.status === 'pending' && !(this.continuing && action.request.kind === 'fetch' && this.state.sources.some(source => source.url === action.request.url)));
         pending.forEach(action => {
             const card = node('section', undefined, 'research-permission');
             const request = action.request;
@@ -374,31 +416,98 @@ export class ResearchPanel {
         this.state.actions.filter(action => ['failed', 'running'].includes(action.status)).slice(-3).forEach(action => {
             this.body.append(node('p', `${action.status === 'failed' ? 'Nie udało się wykonać operacji' : 'Operacja w toku — nie ponawiaj decyzji'}: ${action.request.query || action.request.url}${action.reason ? ' (' + fetchReasonText(action.reason) + ')' : ''}`, 'research-address'));
         });
-        if (this.state.results.length) {
-            this.body.append(node('h3', 'Wyniki ostatniego udanego wyszukiwania'));
-            this.state.results.forEach(source => this.body.append(this.resultNode(source)));
-        }
-        const earlierSources = this.state.sources.filter(source => !this.state.results.some(result => result.id === source.id));
-        if (earlierSources.length) {
-            this.body.append(node('h3', 'Źródła z wcześniejszych wyszukiwań'));
-        }
-        if (!this.state.sources.length) {
-            this.body.append(node('p', 'Nowe wyniki będą domyślnie zaznaczone. Wybór pozostaje na liście podczas kolejnych wyszukiwań.'));
-        }
-        earlierSources.forEach(source => {
-            const row = node('div', undefined, 'research-source');
-            const link = node('a', source.title || source.url); link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
-            const labels = { unread: 'Czeka na zgodę i pobranie', loaded: source.page.truncated ? 'Tekst pobrany (skrócony)' : 'Tekst pobrany', denied: 'Odmowa — nie przeczytano', failed: withReason('Nie udało się pobrać', source.page.reason) };
-            row.append(link, node('small', labels[source.page.status] || 'Nie przeczytano'));
-            if (['denied', 'failed'].includes(source.page.status)) {
-                const retry = node('button', 'Poproś ponownie o pobranie…', 'btn btn-sm'); retry.type = 'button'; retry.disabled = this.busy || this.continuing;
-                retry.addEventListener('click', () => this.run('propose', { request: { kind: 'fetch', url: source.url } })); row.append(retry);
+        if (lists.length) {
+            this.body.append(node('h3', 'Listy wyszukiwań'));
+            const listedIds = new Set();
+            lists.forEach(list => {
+                (list.items || []).forEach(item => listedIds.add(item.id));
+                this.body.append(this.listNode(list));
+            });
+            const standaloneSources = this.state.sources.filter(source => !listedIds.has(source.id));
+            if (standaloneSources.length) {
+                this.body.append(node('h3', 'Pozostałe źródła'));
+                standaloneSources.forEach(source => this.body.append(this.earlierSourceNode(source)));
             }
-            const remove = node('button', 'Usuń z listy', 'btn btn-sm'); remove.type = 'button'; remove.disabled = this.busy || this.continuing;
-            remove.addEventListener('click', () => this.run('select', { id: source.id, selected: false })); row.append(remove);
-            this.body.append(row);
-        });
+        } else {
+            if (this.state.results.length) {
+                this.body.append(node('h3', 'Wyniki ostatniego udanego wyszukiwania'));
+                this.state.results.forEach(source => this.body.append(this.resultNode(source)));
+            }
+            const earlierSources = this.state.sources.filter(source => !this.state.results.some(result => result.id === source.id));
+            if (earlierSources.length) {
+                this.body.append(node('h3', 'Źródła z wcześniejszych wyszukiwań'));
+            }
+            if (!this.state.sources.length && !approvalOnly) {
+                this.body.append(node('p', 'Nowe wyniki będą domyślnie zaznaczone. Wybór pozostaje na liście podczas kolejnych wyszukiwań.'));
+            }
+            earlierSources.forEach(source => this.body.append(this.earlierSourceNode(source)));
+        }
         this.onState(this.state);
+    }
+
+    listNode(list) {
+        const card = node('section', undefined, 'research-list');
+        const head = node('div', undefined, 'research-list-head');
+        const toggle = node('label', undefined, 'research-list-toggle');
+        const checkbox = node('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = Boolean(list.selected);
+        checkbox.disabled = this.busy || this.continuing;
+        checkbox.setAttribute('aria-label', `Dołącz listę: ${list.query || list.id}`);
+        checkbox.addEventListener('change', () => this.run('select', { list_id: list.id, selected: checkbox.checked }));
+        const isEphemeral = list.mode === 'ephemeral' && !list.saved;
+        toggle.append(
+            checkbox,
+            node('strong', list.query || 'Wyszukiwanie'),
+            node('span', isEphemeral ? 'Doraźna' : 'Zapisana', 'research-list-badge')
+        );
+        const actions = node('div', undefined, 'research-list-actions');
+        if (isEphemeral) {
+            const save = node('button', 'Zapisz / Utrwal', 'btn btn-sm');
+            save.type = 'button';
+            save.disabled = this.busy || this.continuing;
+            save.addEventListener('click', () => this.run('select', { list_id: list.id, saved: true }));
+            actions.append(save);
+        }
+        const trash = node('button', '🗑 Usuń', 'btn btn-sm research-list-trash');
+        trash.type = 'button';
+        trash.disabled = this.busy || this.continuing;
+        trash.title = 'Usuń listę wyszukiwania';
+        trash.setAttribute('aria-label', `Usuń listę: ${list.query || list.id}`);
+        trash.addEventListener('click', () => this.run('select', { list_id: list.id, delete: true }));
+        actions.append(trash);
+        head.append(toggle, actions);
+        card.append(head);
+        (list.items || []).forEach(item => card.append(this.resultNode(item)));
+        return card;
+    }
+
+    earlierSourceNode(source) {
+        const row = node('div', undefined, 'research-source');
+        const link = node('a', source.title || source.url);
+        link.href = source.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        const labels = {
+            unread: 'Czeka na zgodę i pobranie',
+            loaded: source.page.truncated ? 'Tekst pobrany (skrócony)' : 'Tekst pobrany',
+            denied: 'Odmowa — nie przeczytano',
+            failed: withReason('Nie udało się pobrać', source.page.reason),
+        };
+        row.append(link, node('small', labels[source.page.status] || 'Nie przeczytano'));
+        if (['denied', 'failed'].includes(source.page.status)) {
+            const retry = node('button', 'Poproś ponownie o pobranie…', 'btn btn-sm');
+            retry.type = 'button';
+            retry.disabled = this.busy || this.continuing;
+            retry.addEventListener('click', () => this.run('propose', { request: { kind: 'fetch', url: source.url } }));
+            row.append(retry);
+        }
+        const remove = node('button', 'Usuń z listy', 'btn btn-sm');
+        remove.type = 'button';
+        remove.disabled = this.busy || this.continuing;
+        remove.addEventListener('click', () => this.run('select', { id: source.id, selected: false }));
+        row.append(remove);
+        return row;
     }
 
     resultNode(source) {

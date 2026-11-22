@@ -78,7 +78,7 @@ final class OpenAiProvider implements ChatProviderInterface, WebToolClientInterf
         }
         $body = $this->transport->request('POST', 'responses', [
             'model' => $model ?? throw new AiConnectionException('model_unavailable'),
-            'input' => $input, 'store' => false, 'max_output_tokens' => 4096,
+            'input' => $input, 'store' => false, 'max_output_tokens' => 8192,
             ...($web ? ['tools' => array_map(static fn (array $tool): array => ['type' => 'function', ...$tool], WebTools::definitions()), 'parallel_tool_calls' => false] : []),
         ]);
         if (isset($body['error'])) {

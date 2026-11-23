@@ -12,14 +12,21 @@ use Throwable;
 
 final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
 {
+    private ModelCatalogueInterface $catalogue;
+
     /** @param Closure(): AiClientFactoryInterface $factory */
-    public function __construct(private AiModelRepository $models, private Closure $factory, private ?ModelCatalogueInterface $catalogue = null, private ?AiClientInterface $environmentClient = null)
-    {
+    public function __construct(
+        private AiModelRepository $models,
+        private Closure $factory,
+        ?ModelCatalogueInterface $catalogue = null,
+        private ?AiClientInterface $environmentClient = null,
+    ) {
+        $this->catalogue = $catalogue ?? new ZaiModelCatalogue();
     }
 
     public function listModels(): array
     {
-        $remote = ($this->catalogue ?? new ZaiModelCatalogue())->listModels();
+        $remote = $this->catalogue->listModels();
         $registered = $this->availableModels();
         if ($registered === [] || $this->environmentClient !== null) {
             $configured = $this->environmentClient !== null;
@@ -75,7 +82,7 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
             if ($this->environmentClient === null) {
                 throw new AiConnectionException('missing_configuration');
             }
-            foreach (($this->catalogue ?? new ZaiModelCatalogue())->listModels() as $entry) {
+            foreach ($this->catalogue->listModels() as $entry) {
                 if ($selector === 'zai:'.$entry['id']) {
                     // Zero IDs identify process configuration, never a database record.
                     return AiModel::fromRow([
@@ -112,10 +119,15 @@ final readonly class ZaiChatModelRegistry implements ChatModelRegistryInterface
     /** @return list<AiModel> */
     private function availableModels(): array
     {
-        return array_values(array_filter(
-            $this->models->findAvailableAtEndpoint(ZaiEndpointPolicy::BASE_URI),
-            static fn (AiModel $model): bool => (bool)preg_match('/^glm-[a-z0-9.-]+$/D', $model->idModel),
-        ));
+        $models = [];
+        foreach (ZaiEndpointPolicy::ALLOWED_BASE_URIS as $endpoint) {
+            foreach ($this->models->findAvailableAtEndpoint($endpoint) as $model) {
+                if (preg_match('/^glm-[a-z0-9.-]+$/D', $model->idModel)) {
+                    $models[$model->id] = $model;
+                }
+            }
+        }
+        return array_values($models);
     }
 
     private function selector(AiModel $model): string

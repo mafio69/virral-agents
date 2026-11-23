@@ -46,11 +46,7 @@ ssh-keygen -t ed25519 -N "" -C "github-actions-deploy" -f ~/.ssh/virral_agents_d
 cat ~/.ssh/virral_agents_deploy.pub >> ~/.ssh/authorized_keys
 ```
 
-Pobierz odcisk hosta (wpis `known_hosts`) dla adresu Tailscale serwera (np. `100.x.y.z` lub nazwy MagicDNS; jeśli OpenSSH nasłuchuje na niestandardowym porcie, podaj `-p <PORT>`):
-
-```bash
-ssh-keyscan -p <PORT_SSH> -t ed25519 <ADRES_TAILSCALE_SERWERA>
-```
+Odcisk hosta ED25519 (`known_hosts`) jest pobierany automatycznie wewnątrz uwierzytelnionego tunelu WireGuard Tailscale (`ssh-keyscan`) — nie trzeba go utrzymywać ręcznie jako osobnego sekretu.
 
 ## 3. Sekrety w GitHub (`Settings → Environments → production`)
 
@@ -65,7 +61,6 @@ Utwórz środowisko **`production`** i dodaj następujące **Environment secrets
 | `DEPLOY_USER` | Nazwa użytkownika SSH na serwerze |
 | `DEPLOY_PATH` | Bezwzględna ścieżka katalogu repozytorium na serwerze |
 | `DEPLOY_SSH_KEY` | Zawartość prywatnego klucza (`~/.ssh/virral_agents_deploy`) |
-| `DEPLOY_SSH_KNOWN_HOSTS` | Wynik `ssh-keyscan -p <PORT_SSH> -t ed25519 <DEPLOY_HOST>` |
 
 > Opcjonalnie: w ustawieniach środowiska `production` możesz włączyć **Required reviewers**, jeśli zechcesz ręcznie zatwierdzać wdrożenie jednym kliknięciem przed jego startem.
 

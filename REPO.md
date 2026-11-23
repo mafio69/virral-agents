@@ -158,6 +158,12 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `landing.html` po odczytaniu tokenu usuwa go z paska adresu (`history.replaceState`). 429 pokazuje czas oczekiwania z `Retry-After`.
 - `LoginRateLimitException` przyjmuje opcjonalny komunikat; middleware mapuje oba limity na 429 + `Retry-After`.
 
+### Z.ai / GLM (2026-11-23)
+
+- `ZaiEndpointPolicy` dopuszcza na allowliście oba oficjalne endpointy Z.ai: domyślny `https://api.z.ai/api/paas/v4/` oraz Coding Plan `https://api.z.ai/api/coding/paas/v4/` (normalizuje brak `/` i ewentualny sufiks `/chat/completions`, blokuje obce domeny). Env: `ZAI_API_KEY` + opcjonalny `ZAI_BASE_ENDPOINT` (przekazywany przez `docker-compose.yml` → `docker/php-fpm-env.conf` → `src/settings.php`).
+- `OpenAiCompatClient` implementuje `MultimodalClientInterface` (`generateReply()` z `usage`), wymusza minimum `max_tokens >= 8192` (`MIN_MAX_TOKENS`) i ponawia chwilowy HTTP `429` do 2 razy z backoffem (`Retry-After` max 5 s; kod konta/salda `1113` przerywa natychmiast bez retry).
+- `ZaiModelCatalogue` cache'uje listę modeli z `docs.z.ai/openapi.json` w pamięci i w `var/cache/zai-models.json` (TTL 1 h, fallback do starego cache przy awarii sieci).
+
 ### DeepSeek (dostawca czatu, 2026-11-08)
 
 - `DeepSeekProvider` na wspólnym `ProviderTransport` (OpenAI-compatible, `Bearer`): `POST /chat/completions`, `max_tokens` 8192; narzędzia `web_search`/`web_fetch` w trybie ASK dla obu modeli. Selektor: `deepseek:<model>`.

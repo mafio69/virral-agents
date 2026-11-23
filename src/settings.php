@@ -27,7 +27,10 @@ return function (ContainerBuilder $containerBuilder) {
     $settings['app_url'] = rtrim($sensitiveValue('APP_URL', 'http://localhost:'.$appPort), '/');
     $settings['user_data'] = ['key' => $sensitiveValue('USER_DATA_KEY')];
     $settings['ai_registry'] = ['key' => $sensitiveValue('DB_HASH')];
-    $settings['zai'] = ['key' => $sensitiveValue('ZAI_API_KEY')];
+    $settings['zai'] = [
+        'key' => $sensitiveValue('ZAI_API_KEY'),
+        'base_url' => $sensitiveValue('ZAI_BASE_ENDPOINT'),
+    ];
     $settings['openai'] = ['key' => $sensitiveValue('OPEN_AI_KEY')];
     $settings['anthropic'] = ['key' => $sensitiveValue('ANTHROPIC_API_KEY')];
     $settings['google'] = ['key' => $sensitiveValue('GEMINI_KEY')];

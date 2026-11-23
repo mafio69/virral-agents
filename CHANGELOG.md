@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-11-23 — Z.ai / GLM: obsługa `ZAI_BASE_ENDPOINT` (Coding Plan), retry 429, min. 8192 tokenów, `usage` i cache katalogu
+
+- **Allowlista i endpoint Z.ai (`ZaiEndpointPolicy`, `settings.php`, `dependencies.php`, `docker-compose.yml`, `docker/php-fpm-env.conf`, `AiClientFactory`, `ZaiChatModelRegistry`):** dopuszczono oba oficjalne endpointy Z.ai (`https://api.z.ai/api/paas/v4/` domyślnie oraz `https://api.z.ai/api/coding/paas/v4/` dla Coding Plan, z normalizacją końcowego `/` i sufiksu `/chat/completions`, przy zachowaniu blokady obcych hostów) i podpięto zmienną `ZAI_BASE_ENDPOINT` aż do PHP-FPM.
+- **Odporność na chwilowy `429`, `usage` i min. 8192 tokenów (`OpenAiCompatClient`):** dodano do 2 ponowień przy chwilowym HTTP `429` z backoffem (`Retry-After` ograniczony do 5 s, domyślnie 1 s / 2 s) z natychmiastowym przerwaniem dla błędu pakietu/salda `1113`; wdrożono `MultimodalClientInterface` (`generateReply()` zwraca `usage` dla czatu i Langfuse) oraz wymuszone minimum `max_tokens >= 8192` (`MIN_MAX_TOKENS`).
+- **Cache katalogu (`ZaiModelCatalogue`):** dodano cache w pamięci i plikowy TTL (`var/cache/zai-models.json`, 1 h) z fallbackiem do starego cache przy awarii `docs.z.ai`, dzięki czemu wiadomości czatu nie pobierają `openapi.json` przy każdej turze.
+- **Testy:** rozszerzono `ZaiChatIntegrationTest` (endpointy Coding/standard, min. `max_tokens: 8192`, `usage`, retry 429 + brak retry dla `1113`, cache + stale fallback katalogu).
+
 ## 2026-11-22 (2) — Autodeploy na produkcję po merge do `master` (GitHub Actions + Tailscale)
 
 - **Workflow `.github/workflows/deploy.yml`:** uruchamia się automatycznie po zielonym przejściu `Tests` na `push` do `master` (plus `workflow_dispatch`), łączy się z serwerem przez Tailscale OAuth Client (`tag:ci`, węzeł efemeryczny) i SSH z `StrictHostKeyChecking=yes` (`DEPLOY_SSH_KNOWN_HOSTS`, opcjonalny `DEPLOY_PORT`). Wdraża dokładny przetestowany commit (`workflow_run.head_sha` lub `github.sha` dla ręcznego uruchomienia) po weryfikacji przynależności do `origin/master` i pomija przestarzałe (superseded) uruchomienia. Wszystkie parametry i sekrety wyłącznie w GitHub Environment `production` (zero IP/ścieżek/kluczy w repo).

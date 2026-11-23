@@ -123,11 +123,16 @@ final class ZaiChatIntegrationTest extends TestCase
 
     public function testOtherEndpointsAndDeletedProvidersCannotConfigurePublicModels(): void
     {
-        $this->pdo->exec("UPDATE ai_urls SET url = 'https://api.z.ai/api/coding/paas/v4/' WHERE id = 1");
+        $this->pdo->exec("UPDATE ai_urls SET url = 'https://api.z.ai/api/other/v4/' WHERE id = 1");
         $publicModels = $this->registry->listModels();
         $this->assertCount(1, $publicModels);
         $this->assertFalse($publicModels[0]['configured']);
         $this->assertSame('zai:glm-5.3-flash', $publicModels[0]['id']);
+        $this->pdo->exec("UPDATE ai_urls SET url = 'https://api.z.ai/api/coding/paas/v4/' WHERE id = 1");
+        $codingModels = $this->registry->listModels();
+        $this->assertCount(1, $codingModels);
+        $this->assertTrue($codingModels[0]['configured']);
+        $this->assertStringStartsWith('db:', $codingModels[0]['id']);
         $this->pdo->exec("UPDATE ai_urls SET url = 'https://api.z.ai/api/paas/v4/' WHERE id = 1");
         $this->pdo->exec("UPDATE ai_providers SET deleted_at = 'now' WHERE id = 1");
         $this->assertSame($publicModels, $this->registry->listModels());
@@ -265,6 +270,123 @@ final class ZaiChatIntegrationTest extends TestCase
         } catch (NotFoundException) {
             self::assertSame([], $this->history);
             self::assertSame(0, (int)$this->pdo->query('SELECT COUNT(*) FROM chat_messages')->fetchColumn());
+        }
+    }
+
+    public function testEndpointPolicyAllowsStandardAndCodingEndpointsAndRejectsUntrustedHosts(): void
+    {
+        self::assertSame(ZaiEndpointPolicy::BASE_URI, ZaiEndpointPolicy::resolveConfiguredBaseUri(''));
+        self::assertSame(ZaiEndpointPolicy::BASE_URI, ZaiEndpointPolicy::resolveConfiguredBaseUri('https://api.z.ai/api/paas/v4'));
+        self::assertSame(ZaiEndpointPolicy::CODING_BASE_URI, ZaiEndpointPolicy::resolveConfiguredBaseUri('https://api.z.ai/api/coding/paas/v4'));
+        self::assertSame(ZaiEndpointPolicy::CODING_BASE_URI, ZaiEndpointPolicy::resolveConfiguredBaseUri('https://api.z.ai/api/coding/paas/v4/chat/completions'));
+        self::assertNull(ZaiEndpointPolicy::resolveConfiguredBaseUri('https://evil.example/api/coding/paas/v4/'));
+        self::assertNull(ZaiEndpointPolicy::resolveConfiguredBaseUri('https://api.z.ai/api/other/v4/'));
+    }
+
+    public function testOpenAiCompatClientEnforcesMinimumMaxTokensAndReturnsUsage(): void
+    {
+        $requests = [];
+        $handler = HandlerStack::create(new MockHandler([
+            new Response(200, [], '{"choices":[{"message":{"content":"Odpowiedź"}}],"usage":{"prompt_tokens":120,"completion_tokens":45}}'),
+            new Response(200, [], '{"choices":[{"message":{"content":"Większy limit"}}]}'),
+        ]));
+        $handler->push(Middleware::history($requests));
+        $http = new Client(['base_uri' => ZaiEndpointPolicy::CODING_BASE_URI, 'handler' => $handler]);
+
+        $clamped = new OpenAiCompatClient(ZaiEndpointPolicy::CODING_BASE_URI, 'dummy-key', 'glm-5', httpClient: $http, maxTokens: 1024);
+        $reply = $clamped->generateReply([['role' => 'user', 'content' => 'Cześć']]);
+        self::assertSame('Odpowiedź', $reply->text);
+        self::assertSame(['prompt_tokens' => 120, 'completion_tokens' => 45], $reply->usage);
+        $firstBody = json_decode((string)$requests[0]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame(8192, $firstBody['max_tokens']);
+
+        $larger = new OpenAiCompatClient(ZaiEndpointPolicy::CODING_BASE_URI, 'dummy-key', 'glm-5', httpClient: $http, maxTokens: 16384);
+        $larger->generateReply([['role' => 'user', 'content' => 'Więcej']]);
+        $secondBody = json_decode((string)$requests[1]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame(16384, $secondBody['max_tokens']);
+    }
+
+    public function testOpenAiCompatClientRetriesTransient429WithBackoffAndStopsImmediatelyOn1113(): void
+    {
+        $sleeps = [];
+        $sleeper = static function (int $ms) use (&$sleeps): void {
+            $sleeps[] = $ms;
+        };
+
+        $handler = HandlerStack::create(new MockHandler([
+            new Response(429, ['Retry-After' => '3'], '{"error":{"code":"1302","message":"Rate limit"}}'),
+            new Response(429, ['Retry-After' => '99'], '{"error":{"code":"1305","message":"Busy"}}'),
+            new Response(200, [], '{"choices":[{"message":{"content":"Udało się po retry"}}]}'),
+        ]));
+        $client = new OpenAiCompatClient(
+            ZaiEndpointPolicy::CODING_BASE_URI,
+            'dummy-key',
+            'glm-5',
+            httpClient: new Client(['base_uri' => ZaiEndpointPolicy::CODING_BASE_URI, 'handler' => $handler]),
+            sleeper: $sleeper,
+        );
+        self::assertSame('Udało się po retry', $client->generate([['role' => 'user', 'content' => 'Test']]));
+        self::assertSame([3000, 5000], $sleeps);
+
+        $quotaSleeps = [];
+        $quotaRequests = [];
+        $quotaHandler = HandlerStack::create(new MockHandler([
+            new Response(429, ['Retry-After' => '1'], '{"error":{"code":"1113","message":"Insufficient balance"}}'),
+        ]));
+        $quotaHandler->push(Middleware::history($quotaRequests));
+        $quotaClient = new OpenAiCompatClient(
+            ZaiEndpointPolicy::BASE_URI,
+            'dummy-key',
+            'glm-5',
+            httpClient: new Client(['base_uri' => ZaiEndpointPolicy::BASE_URI, 'handler' => $quotaHandler]),
+            sleeper: static function (int $ms) use (&$quotaSleeps): void {
+                $quotaSleeps[] = $ms;
+            },
+        );
+        try {
+            $quotaClient->generate([['role' => 'user', 'content' => 'Test']]);
+            self::fail('Expected quota 1113 rejection');
+        } catch (AiConnectionException $error) {
+            self::assertSame('provider_limit', $error->reason);
+            self::assertCount(1, $quotaRequests);
+            self::assertSame([], $quotaSleeps);
+        }
+    }
+
+    public function testZaiModelCatalogueUsesFileCacheAndStaleFallback(): void
+    {
+        $cacheFile = sys_get_temp_dir().'/zai-catalogue-test-'.bin2hex(random_bytes(6)).'.json';
+        try {
+            $spec = json_encode([
+                'components' => [
+                    'schemas' => [
+                        'ChatCompletionTextRequest' => ['properties' => ['model' => ['enum' => ['glm-5']]]],
+                        'ChatCompletionVisionRequest' => ['properties' => ['model' => ['enum' => ['glm-5v']]]],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR);
+            $requests = [];
+            $handler = HandlerStack::create(new MockHandler([new Response(200, [], $spec)]));
+            $handler->push(Middleware::history($requests));
+            $first = new \App\Infrastructure\AI\ZaiModelCatalogue(new Client(['handler' => $handler]), $cacheFile, 3600);
+            $models = $first->listModels();
+            self::assertCount(2, $models);
+            self::assertCount(1, $requests);
+
+            // Second instance reads fresh cache without touching HTTP.
+            $second = new \App\Infrastructure\AI\ZaiModelCatalogue(new Client(['handler' => HandlerStack::create(new MockHandler([]))]), $cacheFile, 3600);
+            self::assertSame($models, $second->listModels());
+
+            // Expired cache with network failure falls back to stale cache cleanly.
+            file_put_contents($cacheFile, json_encode(['cached_at' => time() - 7200, 'models' => $models], JSON_THROW_ON_ERROR));
+            $stale = new \App\Infrastructure\AI\ZaiModelCatalogue(
+                new Client(['handler' => HandlerStack::create(new MockHandler([new Response(503, [], 'down')]))]),
+                $cacheFile,
+                3600
+            );
+            self::assertSame($models, $stale->listModels());
+        } finally {
+            @unlink($cacheFile);
         }
     }
 }

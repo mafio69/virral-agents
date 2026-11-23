@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-11-23 — Z.ai / GLM: obsługa `ZAI_BASE_ENDPOINT` (Coding Plan), retry 429, min. 8192 tokenów, `usage` i cache katalogu
+
+- **Allowlista i endpoint Z.ai (`ZaiEndpointPolicy`, `settings.php`, `dependencies.php`, `docker-compose.yml`, `docker/php-fpm-env.conf`, `AiClientFactory`, `ZaiChatModelRegistry`):** dopuszczono oba oficjalne endpointy Z.ai (`https://api.z.ai/api/paas/v4/` domyślnie oraz `https://api.z.ai/api/coding/paas/v4/` dla Coding Plan, z normalizacją końcowego `/` i sufiksu `/chat/completions`, przy zachowaniu blokady obcych hostów) i podpięto zmienną `ZAI_BASE_ENDPOINT` aż do PHP-FPM.
+- **Odporność na chwilowy `429`, `usage` i min. 8192 tokenów (`OpenAiCompatClient`):** dodano do 2 ponowień przy chwilowym HTTP `429` z backoffem (`Retry-After` ograniczony do 5 s, domyślnie 1 s / 2 s) z natychmiastowym przerwaniem dla błędu pakietu/salda `1113`; wdrożono `MultimodalClientInterface` (`generateReply()` zwraca `usage` dla czatu i Langfuse) oraz wymuszone minimum `max_tokens >= 8192` (`MIN_MAX_TOKENS`).
+- **Cache katalogu (`ZaiModelCatalogue`):** dodano cache w pamięci i plikowy TTL (`var/cache/zai-models.json`, 1 h) z fallbackiem do starego cache przy awarii `docs.z.ai`, dzięki czemu wiadomości czatu nie pobierają `openapi.json` przy każdej turze.
+- **Testy:** rozszerzono `ZaiChatIntegrationTest` (endpointy Coding/standard, min. `max_tokens: 8192`, `usage`, retry 429 + brak retry dla `1113`, cache + stale fallback katalogu).
+
+## 2026-11-22 (2) — Autodeploy na produkcję po merge do `master` (GitHub Actions + Tailscale)
+
+- **Workflow `.github/workflows/deploy.yml`:** uruchamia się automatycznie po zielonym przejściu `Tests` na `push` do `master` (plus `workflow_dispatch`), łączy się z serwerem przez Tailscale OAuth Client (`tag:ci`, węzeł efemeryczny) i SSH z `StrictHostKeyChecking=yes` (`DEPLOY_SSH_KNOWN_HOSTS`, opcjonalny `DEPLOY_PORT`). Wdraża dokładny przetestowany commit (`workflow_run.head_sha` lub `github.sha` dla ręcznego uruchomienia) po weryfikacji przynależności do `origin/master` i pomija przestarzałe (superseded) uruchomienia. Wszystkie parametry i sekrety wyłącznie w GitHub Environment `production` (zero IP/ścieżek/kluczy w repo).
+- **Skrypt `bin/deploy-prod.sh`:** weryfikacja gałęzi `master` i czystych plików śledzonych (bez dotykania `.env`/`var/`), `git fetch` + `git pull --ff-only origin master` (gdy bez `--from-commit`), przebudowa obrazu `docker compose ... build app`, warunkowy `composer install --no-dev` sterowany znacznikiem `vendor/.deploy-composer-lock` (zapisywanym wyłącznie po udanym `composer install`, bezpiecznym dla ponowień), `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate app` (weryfikacja startu/migracji) oraz `nginx`, na końcu healthcheck wymagający poprawnego transferu i dokładnie HTTP `200` (`/api/ai-connections`). Automatyczna obsługa rootless `DOCKER_HOST` w nieinteraktywnym SSH.
+- **Dokumentacja i testy:** `docs/DEPLOY.md` (konfiguracja Tailscale ACL z portem zgodnym z `DEPLOY_PORT`, OAuth, SSH, sekrety w GitHub) oraz `tests/ui/deploy-prod.test.mjs` (testy na atrapach `git`/`docker`/`curl`, m.in. kolejność `build app` → `composer install` → `up -d`, znacznik locka przy retry i ścisły healthcheck HTTP 200). Walidacja: formatter 0/200, PHPUnit 331/331 (1500 asercji), UI 124/124.
+
 ## 2026-11-22 — Listy wyszukiwań (historyczne + doraźne), Smart UX czatu i przycisk `+`
 
 - **Backend list wyszukiwań (`ResearchService`, `ResearchRepository`, `ResearchInputMapper`, `ResearchReplyGenerator`):**

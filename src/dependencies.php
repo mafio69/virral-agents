@@ -66,12 +66,17 @@ return function (ContainerBuilder $containerBuilder) {
             );
         },
         \App\Infrastructure\AI\ChatModelRegistryInterface::class => function (ContainerInterface $c) {
-            $key = $c->get('settings')['zai']['key'] ?? '';
+            $zai = $c->get('settings')['zai'] ?? [];
+            $key = $zai['key'] ?? '';
+            $baseUrl = \App\Infrastructure\AI\ZaiEndpointPolicy::resolveConfiguredBaseUri($zai['base_url'] ?? '');
             $legacy = new \App\Infrastructure\AI\ZaiChatModelRegistry(
                 $c->get(\App\Repository\AiModelRepository::class),
                 static fn () => $c->get(\App\Infrastructure\AI\AiClientFactoryInterface::class),
-                environmentClient: $key !== '' ? new \App\Infrastructure\AI\OpenAiCompatClient(
-                    \App\Infrastructure\AI\ZaiEndpointPolicy::BASE_URI,
+                catalogue: new \App\Infrastructure\AI\ZaiModelCatalogue(
+                    cachePath: dirname(__DIR__).'/var/cache/zai-models.json',
+                ),
+                environmentClient: ($key !== '' && $baseUrl !== null) ? new \App\Infrastructure\AI\OpenAiCompatClient(
+                    $baseUrl,
                     $key,
                     'glm-5.3',
                 ) : null,

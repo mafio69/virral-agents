@@ -18,6 +18,7 @@
 | Instalacja | `composer install` | PHP ^8.4 z `pdo_sqlite`, `sodium`; lokalnie bywa 8.5, CI używa 8.4 |
 | Development | `./dev-start.sh` | Compose, `APP_ENV=dev`, poczta przez `MAIL_DSN` (zewnętrzny `mail-trap.dom`), aplikacja `http://localhost:8181`; Docker przez sudo |
 | Produkcja (lokalnie) | `./prod-start.sh` | wymusza `APP_ENV=prod`; `--dry-run` tylko wypisuje komendy |
+| Autodeploy (prod) | `.github/workflows/deploy.yml` → `bin/deploy-prod.sh` | po zielonym `Tests` na `master`, przez Tailscale OAuth (`tag:ci`) + SSH: `git pull --ff-only`, warunkowy `composer install`, `docker compose up -d --force-recreate`, healthcheck HTTP 200; szczegóły `docs/DEPLOY.md` |
 | Migracje | automatycznie w `docker/start-app.sh` (`php bin/migrate.php`) | błąd migracji blokuje start FPM; poza Compose operator uruchamia migrator ręcznie |
 | Testy kompletne | `composer check-all` | formatter (dry-run) + PHPUnit + testy UI Node; musi przejść przed commitem |
 | Walidacja Composer | `composer validate --strict --no-check-publish` | tak samo jak w GitHub Actions |
@@ -156,6 +157,12 @@ Projekt jest na licencji MIT (LICENSE). Przed commitem używaj `composer validat
 - `POST /api/auth/reset-password` → `UserRepository::resetPasswordWithToken()`: jeden `UPDATE … WHERE id AND token AND expires_at > now` w transakcji; `rowCount() !== 1` = link już zużyty (wyścig dwóch żądań) → 422. Ten sam UPDATE czyści token, potwierdza niepotwierdzony e-mail (decyzja właściciela: link dowodzi dostępu do skrzynki) i usuwa wszystkie sesje użytkownika.
 - `landing.html` po odczytaniu tokenu usuwa go z paska adresu (`history.replaceState`). 429 pokazuje czas oczekiwania z `Retry-After`.
 - `LoginRateLimitException` przyjmuje opcjonalny komunikat; middleware mapuje oba limity na 429 + `Retry-After`.
+
+### Z.ai / GLM (2026-11-23)
+
+- `ZaiEndpointPolicy` dopuszcza na allowliście oba oficjalne endpointy Z.ai: domyślny `https://api.z.ai/api/paas/v4/` oraz Coding Plan `https://api.z.ai/api/coding/paas/v4/` (normalizuje brak `/` i ewentualny sufiks `/chat/completions`, blokuje obce domeny). Env: `ZAI_API_KEY` + opcjonalny `ZAI_BASE_ENDPOINT` (przekazywany przez `docker-compose.yml` → `docker/php-fpm-env.conf` → `src/settings.php`).
+- `OpenAiCompatClient` implementuje `MultimodalClientInterface` (`generateReply()` z `usage`), wymusza minimum `max_tokens >= 8192` (`MIN_MAX_TOKENS`) i ponawia chwilowy HTTP `429` do 2 razy z backoffem (`Retry-After` max 5 s; kod konta/salda `1113` przerywa natychmiast bez retry).
+- `ZaiModelCatalogue` cache'uje listę modeli z `docs.z.ai/openapi.json` w pamięci i w `var/cache/zai-models.json` (TTL 1 h, fallback do starego cache przy awarii sieci).
 
 ### DeepSeek (dostawca czatu, 2026-11-08)
 

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-26 — Deploy: wymuszona komenda klucza CI (wzór guardiana)
+
+- **`ops/deploy-virral-agents` + `.github/workflows/deploy.yml`:** klucz CI nie dostaje już powłoki. Workflow wysyła wyłącznie `"<hash> auto|manual"`, a cała logika wdrożenia (czyste drzewo na `master`, `fetch`, `merge --ff-only`, pomijanie przestarzałych uruchomień, zakaz cofania ręcznym deployem, `bin/deploy-prod.sh`) wykonuje się w skrypcie po stronie serwera, uruchamianym jako wymuszona komenda (`restrict,from=…,command=…` w `authorized_keys`). Ścieżka repo jest tylko w `authorized_keys`, więc sekret `DEPLOY_PATH` nie jest już potrzebny. Workflow potwierdza sukces po ostatniej linii odpowiedzi (`wdrozone: <hash>` albo `pominieto: …`). Instalacja: `docs/DEPLOY.md`, sekcja „Wymuszona komenda”.
+
 ## 2026-11-23 — Z.ai / GLM: obsługa `ZAI_BASE_ENDPOINT` (Coding Plan), retry 429, min. 8192 tokenów, `usage` i cache katalogu
 
 - **Workflow `.github/workflows/deploy.yml` (2026-11-23):** czyszczenie `\r`/białych znaków z sekretów SSH (`DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_PATH`, `DEPLOY_SSH_KEY`), wstępna walidacja klucza prywatnego (`ssh-keygen -y -P ""`) oraz automatyczne pobieranie `known_hosts` (`ssh-keyscan -t ed25519`) wewnątrz uwierzytelnionego tunelu Tailscale (eliminacja błędów formatowania ręcznego `DEPLOY_SSH_KNOWN_HOSTS`).

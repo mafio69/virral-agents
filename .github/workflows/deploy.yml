@@ -30,11 +30,10 @@ jobs:
           TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           missing=()
-          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY; do
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY; do
             if [ -z "${!name:-}" ]; then
               missing+=("$name")
             fi
@@ -56,7 +55,6 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_EVENT: ${{ github.event_name }}
           DEPLOY_TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
@@ -78,11 +76,10 @@ jobs:
 
           deploy_host="$(trim "$DEPLOY_HOST")"
           deploy_user="$(trim "$DEPLOY_USER")"
-          deploy_path="$(trim "$DEPLOY_PATH")"
           ssh_port="$(trim "${DEPLOY_PORT:-22}")"
           ssh_port="${ssh_port:-22}"
-          if [[ -z "$deploy_host" || -z "$deploy_user" || -z "$deploy_path" ]]; then
-            echo "Pusty DEPLOY_HOST, DEPLOY_USER lub DEPLOY_PATH." >&2
+          if [[ -z "$deploy_host" || -z "$deploy_user" ]]; then
+            echo "Pusty DEPLOY_HOST lub DEPLOY_USER." >&2
             exit 1
           fi
           if [[ ! "$ssh_port" =~ ^[0-9]+$ ]]; then
@@ -109,47 +106,12 @@ jobs:
             exit 1
           fi
 
-          quoted_path="$(printf '%q' "$deploy_path")"
-          quoted_sha="$(printf '%q' "$DEPLOY_TARGET_SHA")"
-          quoted_event="$(printf '%q' "$DEPLOY_EVENT")"
-          remote_cmd="set -euo pipefail
-            cd ${quoted_path}
-            target_sha=${quoted_sha}
-            deploy_event=${quoted_event}
-            if [ \"\$(git rev-parse --abbrev-ref HEAD)\" != 'master' ]; then
-              echo 'Repo na serwerze nie jest na gałęzi master.' >&2
-              exit 1
-            fi
-            if ! git diff --quiet || ! git diff --cached --quiet; then
-              echo 'Repo na serwerze ma niezacommitowane zmiany śledzonych plików.' >&2
-              exit 1
-            fi
-            old_head=\"\$(git rev-parse HEAD)\"
-            git fetch --prune origin master
-            if ! git cat-file -e \"\${target_sha}^{commit}\" 2>/dev/null || ! git merge-base --is-ancestor \"\$target_sha\" origin/master; then
-              echo \"Docelowy commit \$target_sha nie należy do origin/master.\" >&2
-              exit 1
-            fi
-            if [ \"\$deploy_event\" = 'workflow_run' ]; then
-              origin_master=\"\$(git rev-parse origin/master)\"
-              if [ \"\$origin_master\" != \"\$target_sha\" ]; then
-                echo \"Pominięto przestarzały deploy (\$target_sha); origin/master jest już na \$origin_master.\"
-                exit 0
-              fi
-              if git merge-base --is-ancestor \"\$target_sha\" \"\$old_head\"; then
-                echo \"Pominięto — commit \$target_sha jest już wdrożony (HEAD=\$old_head).\"
-                exit 0
-              fi
-            else
-              if [ \"\$old_head\" != \"\$target_sha\" ] && git merge-base --is-ancestor \"\$target_sha\" \"\$old_head\"; then
-                echo \"Ręczny deploy nie może cofnąć serwera z \$old_head do starszego \$target_sha.\" >&2
-                exit 1
-              fi
-            fi
-            git merge --ff-only \"\$target_sha\"
-            ./bin/deploy-prod.sh --from-commit \"\$old_head\""
+          # Na serwer idzie wyłącznie "<hash> auto|manual". Klucz CI ma w authorized_keys wymuszoną komendę
+          # (ops/deploy-virral-agents) — cała logika wdrożenia i ścieżka repo są po stronie serwera.
+          mode=manual
+          [ "$DEPLOY_EVENT" = workflow_run ] && mode=auto
 
-          ssh \
+          out=$(ssh \
             -i "$ssh_dir/id_deploy" \
             -p "$ssh_port" \
             -o IdentitiesOnly=yes \
@@ -158,4 +120,10 @@ jobs:
             -o ConnectTimeout=15 \
             -o BatchMode=yes \
             "${deploy_user}@${deploy_host}" \
-            "bash -lc $(printf '%q' "$remote_cmd")"
+            "$DEPLOY_TARGET_SHA $mode") || { echo "$out"; exit 1; }
+          echo "$out"
+          last=$(printf '%s\n' "$out" | tail -n 1)
+          case "$last" in
+            "wdrozone: $DEPLOY_TARGET_SHA"|"pominieto: "*) ;;
+            *) echo "Serwer nie potwierdził wdrożenia $DEPLOY_TARGET_SHA." >&2; exit 1 ;;
+          esac

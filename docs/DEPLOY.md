@@ -43,8 +43,38 @@ Utwórz osobny klucz `ed25519` wyłącznie do deployu (nie używaj prywatnego kl
 
 ```bash
 ssh-keygen -t ed25519 -N "" -C "github-actions-deploy" -f ~/.ssh/virral_agents_deploy
-cat ~/.ssh/virral_agents_deploy.pub >> ~/.ssh/authorized_keys
 ```
+
+### Wymuszona komenda (wzór guardiana)
+
+Klucz CI **nie dostaje powłoki**. Każde połączenie tym kluczem uruchamia tylko skrypt
+[`ops/deploy-virral-agents`](../ops/deploy-virral-agents), który przyjmuje wyłącznie `"<pełny hash commita> auto|manual"`
+i odrzuca każdą inną komendę. Cała logika wdrożenia (czyste drzewo na `master`, `fetch`, `merge --ff-only`,
+`bin/deploy-prod.sh`) i ścieżka repo są po stronie serwera.
+
+1. Skrypt jako root, bez prawa zapisu dla konta wdrożeniowego:
+
+   ```bash
+   sudo install -o root -g root -m 755 ops/deploy-virral-agents /usr/local/bin/deploy-virral-agents
+   ```
+
+2. W `~/.ssh/authorized_keys` konta `DEPLOY_USER` **jedna linia** dla klucza CI — z ograniczeniami i ścieżką repo
+   (ścieżka zostaje tylko na serwerze, nie w repozytorium):
+
+   ```text
+   restrict,from="100.64.0.0/10",command="/usr/local/bin/deploy-virral-agents /BEZWZGLEDNA/SCIEZKA/REPO" ssh-ed25519 AAAA... github-actions-deploy
+   ```
+
+   Jeśli klucz był wcześniej dopisany bez ograniczeń, **zamień** tamtą linię na powyższą (nie zostawiaj obu).
+
+3. Test na serwerze, jako `DEPLOY_USER`:
+
+   ```bash
+   SSH_ORIGINAL_COMMAND="id" /usr/local/bin/deploy-virral-agents /BEZWZGLEDNA/SCIEZKA/REPO   # -> odrzucone
+   ```
+
+Uwaga na kolejność: nowy workflow (wysyła sam hash) i wymuszona komenda muszą wejść **razem**.
+Stary workflow wysyła cały skrypt — wymuszona komenda go odrzuci; nowy workflow bez wymuszonej komendy też nie zadziała.
 
 Odcisk hosta ED25519 (`known_hosts`) jest pobierany automatycznie wewnątrz uwierzytelnionego tunelu WireGuard Tailscale (`ssh-keyscan`) — nie trzeba go utrzymywać ręcznie jako osobnego sekretu.
 
@@ -59,7 +89,6 @@ Utwórz środowisko **`production`** i dodaj następujące **Environment secrets
 | `DEPLOY_HOST` | Adres Tailscale serwera (np. `100.x.y.z` lub nazwa MagicDNS) |
 | `DEPLOY_PORT` | *(opcjonalny, domyślnie `22`)* Port OpenSSH na serwerze (np. `2222`, gdy `22` zajmuje Tailscale SSH) |
 | `DEPLOY_USER` | Nazwa użytkownika SSH na serwerze |
-| `DEPLOY_PATH` | Bezwzględna ścieżka katalogu repozytorium na serwerze |
 | `DEPLOY_SSH_KEY` | Zawartość prywatnego klucza (`~/.ssh/virral_agents_deploy`) |
 
 > Opcjonalnie: w ustawieniach środowiska `production` możesz włączyć **Required reviewers**, jeśli zechcesz ręcznie zatwierdzać wdrożenie jednym kliknięciem przed jego startem.

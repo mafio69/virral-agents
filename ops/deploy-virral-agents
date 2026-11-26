@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# deploy-virral-agents — wejście wdrożenia z GitHub Actions (wzór: guardian ops/deploy-guardian.sh).
+#
+# Instalacja (root): /usr/local/bin/deploy-virral-agents, właściciel root:root, prawa 755
+# (konto wdrożeniowe nie może podmienić tego pliku).
+# Wywołanie: WYŁĄCZNIE jako wymuszona komenda klucza CI w ~/.ssh/authorized_keys konta DEPLOY_USER:
+#   restrict,from="100.64.0.0/10",command="/usr/local/bin/deploy-virral-agents <ŚCIEŻKA_REPO>" ssh-ed25519 AAAA... github-actions-deploy
+# Ścieżka repo jest zapisana tylko na serwerze (w authorized_keys), nie w repozytorium.
+#
+# Jedyne wejście od klienta (SSH_ORIGINAL_COMMAND): "<pełny hash commita> auto|manual".
+#   auto   — wywołanie po zielonych testach na master: przestarzały albo już wdrożony commit = pominięcie;
+#   manual — workflow_dispatch: wolno wdrożyć ponownie, ale nie cofnąć serwera do starszego commita.
+# Każda inna komenda wysłana tym kluczem zostaje odrzucona.
+#
+# Ostatnia linia przy sukcesie: "wdrozone: <hash>", przy pominięciu: "pominieto: …".
+# Test ręczny (na serwerze, jako DEPLOY_USER):
+#   SSH_ORIGINAL_COMMAND="<hash> manual" /usr/local/bin/deploy-virral-agents <ŚCIEŻKA_REPO>
+set -euo pipefail
+umask 022
+export PATH="$HOME/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+export LC_ALL=C
+
+reject() {
+    echo "odrzucone: $1"
+    exit "${2:-2}"
+}
+
+app_dir="${1-}"
+[[ $# -eq 1 && "$app_dir" == /* ]] || reject "brak bezwzglednej sciezki repo w authorized_keys" 3
+
+input="${SSH_ORIGINAL_COMMAND-}"
+if [[ ! "$input" =~ ^([0-9a-f]{40})\ (auto|manual)$ ]]; then
+    reject "oczekuje: <pelny hash commita> auto|manual"
+fi
+sha="${BASH_REMATCH[1]}"
+mode="${BASH_REMATCH[2]}"
+
+cd "$app_dir" || reject "brak katalogu repo" 3
+
+# Jedno wdrożenie naraz.
+exec 9>".git/deploy-virral-agents.lock"
+flock -w 120 9 || reject "trwa inne wdrozenie" 3
+
+[[ "$(git rev-parse --abbrev-ref HEAD)" == master ]] || reject "repo na serwerze nie jest na galezi master" 4
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    reject "repo na serwerze ma niezacommitowane zmiany sledzonych plikow" 4
+fi
+
+old_head="$(git rev-parse HEAD)"
+git fetch --quiet --prune origin master
+if ! git cat-file -e "${sha}^{commit}" 2>/dev/null || ! git merge-base --is-ancestor "$sha" origin/master; then
+    reject "commit $sha nie nalezy do origin/master" 4
+fi
+
+if [[ "$mode" == auto ]]; then
+    origin_master="$(git rev-parse origin/master)"
+    if [[ "$origin_master" != "$sha" ]]; then
+        echo "pominieto: przestarzaly deploy $sha, origin/master jest juz na $origin_master"
+        exit 0
+    fi
+    if git merge-base --is-ancestor "$sha" "$old_head"; then
+        echo "pominieto: $sha jest juz wdrozony (HEAD=$old_head)"
+        exit 0
+    fi
+elif [[ "$old_head" != "$sha" ]] && git merge-base --is-ancestor "$sha" "$old_head"; then
+    reject "reczny deploy nie cofa serwera z $old_head do starszego $sha" 4
+fi
+
+git merge --quiet --ff-only "$sha"
+./bin/deploy-prod.sh --from-commit "$old_head"
+
+echo "wdrozone: $sha"

@@ -32,10 +32,9 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
         run: |
           missing=()
-          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_SSH_KNOWN_HOSTS; do
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY; do
             if [ -z "${!name:-}" ]; then
               missing+=("$name")
             fi
@@ -59,7 +58,6 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
           DEPLOY_EVENT: ${{ github.event_name }}
           DEPLOY_TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
@@ -69,17 +67,49 @@ jobs:
             exit 1
           fi
 
+          trim() {
+            local v="$1"
+            v="${v//$'\r'/}"
+            v="${v//$'\n'/}"
+            v="${v#"${v%%[![:space:]]*}"}"
+            v="${v%"${v##*[![:space:]]}"}"
+            printf '%s' "$v"
+          }
+
+          deploy_host="$(trim "$DEPLOY_HOST")"
+          deploy_user="$(trim "$DEPLOY_USER")"
+          deploy_path="$(trim "$DEPLOY_PATH")"
+          ssh_port="$(trim "${DEPLOY_PORT:-22}")"
+          ssh_port="${ssh_port:-22}"
+          if [[ -z "$deploy_host" || -z "$deploy_user" || -z "$deploy_path" ]]; then
+            echo "Pusty DEPLOY_HOST, DEPLOY_USER lub DEPLOY_PATH." >&2
+            exit 1
+          fi
+          if [[ ! "$ssh_port" =~ ^[0-9]+$ ]]; then
+            echo "Nieprawidłowy port SSH w DEPLOY_PORT." >&2
+            exit 1
+          fi
+
           ssh_dir="$(mktemp -d)"
           chmod 700 "$ssh_dir"
           trap 'rm -rf "$ssh_dir"' EXIT
 
-          printf '%s\n' "$DEPLOY_SSH_KEY" > "$ssh_dir/id_deploy"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$ssh_dir/id_deploy"
           chmod 600 "$ssh_dir/id_deploy"
-          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
-          chmod 600 "$ssh_dir/known_hosts"
+          if ! ssh-keygen -y -P "" -f "$ssh_dir/id_deploy" >/dev/null 2>&1; then
+            echo "DEPLOY_SSH_KEY nie jest poprawnym kluczem prywatnym SSH bez hasła." >&2
+            exit 1
+          fi
 
-          ssh_port="${DEPLOY_PORT:-22}"
-          quoted_path="$(printf '%q' "$DEPLOY_PATH")"
+          # Connection runs strictly inside the authenticated Tailscale WireGuard mesh (tag:ci).
+          ssh-keyscan -T 15 -p "$ssh_port" -t ed25519 "$deploy_host" 2>/dev/null > "$ssh_dir/known_hosts" || true
+          chmod 600 "$ssh_dir/known_hosts"
+          if [ ! -s "$ssh_dir/known_hosts" ]; then
+            echo "Nie udało się pobrać klucza hosta ED25519 po Tailscale (sprawdź DEPLOY_HOST, DEPLOY_PORT i ACL)." >&2
+            exit 1
+          fi
+
+          quoted_path="$(printf '%q' "$deploy_path")"
           quoted_sha="$(printf '%q' "$DEPLOY_TARGET_SHA")"
           quoted_event="$(printf '%q' "$DEPLOY_EVENT")"
           remote_cmd="set -euo pipefail
@@ -127,5 +157,5 @@ jobs:
             -o UserKnownHostsFile="$ssh_dir/known_hosts" \
             -o ConnectTimeout=15 \
             -o BatchMode=yes \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "${deploy_user}@${deploy_host}" \
             "bash -lc $(printf '%q' "$remote_cmd")"
